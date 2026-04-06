@@ -10,7 +10,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://mo-abdelazem.vercel.app"),
+  metadataBase: new URL("https://mohamed.work"),
   title: "Mohamed Abdelazem — Frontend Developer",
   description:
     "Frontend Developer with production experience in React and Vue, focused on performance optimization, TypeScript, accessible design, and full RTL/LTR internationalization support.",
@@ -30,7 +30,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "en_US",
-    url: "https://mo-abdelazem.vercel.app",
+    url: "https://mohamed.work",
     title: "Mohamed Abdelazem — Frontend Developer",
     description:
       "React & Vue developer focused on performance optimization, TypeScript, accessible design, and full RTL/LTR internationalization support.",
@@ -60,8 +60,8 @@ const jsonLd = {
   "@type": "Person",
   name: "Mohamed Abdelazem",
   jobTitle: "Frontend Developer",
-  url: "https://mo-abdelazem.vercel.app",
-  email: "mohamed.abdelazem.youssef@gmail.com",
+  url: "https://mohamed.work",
+  email: "hello@mohamed.work",
   address: {
     "@type": "PostalAddress",
     addressLocality: "Damietta",
@@ -79,10 +79,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="en"
-      className={inter.variable}
-    >
+    <html lang="en" className={inter.variable}>
       <body>
         <a href="#main" className="skip-link">
           Skip to content

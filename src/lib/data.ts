@@ -3,7 +3,7 @@ import type { Personal, Skills, Experience, Project, Education, NavLink } from "
 export const PERSONAL = {
   name: "Mohamed Abdelazem",
   title: "Frontend Developer",
-  email: "mohamed.abdelazem.youssef@gmail.com",
+  email: "hello@mohamed.work",
   phone: "01281235865",
   location: "Damietta, Egypt",
   github: "https://github.com/mo-abdelazem",
