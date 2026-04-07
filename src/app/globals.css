@@ -231,6 +231,8 @@ button {
   gap: 5px;
   width: 24px;
   padding: 4px 0;
+  position: relative;
+  z-index: 100;
 }
 
 .nav__hamburger span {
