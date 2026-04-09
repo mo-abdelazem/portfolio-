@@ -41,6 +41,12 @@ export const SKILLS = {
     "Docker",
     "Figma",
   ],
+  "E-commerce & CMS": [
+    "WordPress",
+    "Shopify",
+    "Salla",
+    "Zid",
+  ],
   Practices: [
     "i18n/RTL",
     "SEO",
