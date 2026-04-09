@@ -37,7 +37,7 @@ export const metadata: Metadata = {
     siteName: "Mohamed Abdelazem",
   },
   twitter: {
-    card: "summary",
+    card: "summary_large_image",
     title: "Mohamed Abdelazem — Frontend Developer",
     description:
       "React & Vue developer focused on performance optimization, TypeScript, accessible design, and full RTL/LTR internationalization support.",
