@@ -1,0 +1,467 @@
+---
+title: "HTML Semantic: Write Pages That Mean Something"
+description: "A practical deep dive into semantic HTML, landmarks, document structure, accessibility, SEO, forms, media, tables, and common mistakes."
+publishedAt: "2026-06-04"
+translationKey: "html-semantic"
+tags: ["HTML", "Accessibility", "SEO", "Frontend"]
+---
+
+Semantic HTML means choosing elements for their meaning, not their default look. A `<button>` is not better because it looks like a button. It is better because browsers, keyboards, screen readers, forms, and accessibility APIs already understand what a button is.
+
+> The goal is simple: when CSS and JavaScript are removed, the document should still make sense.
+
+## Why Semantic HTML Matters
+
+Semantic HTML helps four groups at the same time:
+
+- **Users** get predictable controls, headings, forms, and navigation.
+- **Assistive technologies** get useful structure from the accessibility tree.
+- **Search engines** understand the page hierarchy and important content.
+- **Developers** read the code faster and write less custom behavior.
+
+Bad semantic HTML usually creates invisible debt. The page might look correct, but keyboard navigation, screen reader output, SEO, form submission, and browser defaults become harder to maintain.
+
+## The Mental Model
+
+Every HTML element answers one question:
+
+**What is this thing?**
+
+Not:
+
+- How should it look?
+- Where should it appear?
+- What class name is convenient?
+
+Use CSS for appearance. Use HTML for meaning. Use JavaScript for behavior.
+
+## Document Structure
+
+A good page starts with a clear document outline:
+
+```html
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Frontend Portfolio</title>
+  </head>
+  <body>
+    <header>...</header>
+    <main>...</main>
+    <footer>...</footer>
+  </body>
+</html>
+```
+
+Important details:
+
+- `<!doctype html>` puts the browser in standards mode.
+- `lang` helps screen readers pronounce content correctly.
+- `charset` avoids text encoding issues.
+- `viewport` is required for responsive layouts.
+- `title` is used by browser tabs, search results, bookmarks, and assistive tech.
+
+## Landmark Elements
+
+Landmarks help users jump between major areas of the page.
+
+| Element | Meaning | Use it for |
+| --- | --- | --- |
+| `<header>` | Introductory content | Site header, article header, section header |
+| `<nav>` | Navigation links | Main nav, pagination, table of contents |
+| `<main>` | Primary page content | The unique content of the page |
+| `<section>` | Thematic group | A titled area of related content |
+| `<article>` | Independent content | Blog post, card, news item, comment |
+| `<aside>` | Supporting content | Related links, sidebar, note |
+| `<footer>` | Closing metadata | Copyright, author, secondary links |
+
+Use only one visible `<main>` per page. The content inside `<main>` should be unique to that route.
+
+## Headings Are Structure, Not Styling
+
+Headings create the reading map of the page. Use them in order:
+
+```html
+<h1>Become a Professional Frontend Developer</h1>
+
+<h2>Core Frontend</h2>
+<h3>HTML Semantic</h3>
+<h3>CSS Box Model</h3>
+
+<h2>Framework</h2>
+<h3>React Fundamentals</h3>
+```
+
+Best practices:
+
+- Use one main `<h1>` for the page topic.
+- Do not skip levels only because a heading should look smaller.
+- Style headings with CSS instead of choosing the wrong heading level.
+- Every meaningful `<section>` should usually have a heading.
+
+Bad:
+
+```html
+<h1>Blog</h1>
+<h4>Latest Posts</h4>
+```
+
+Better:
+
+```html
+<h1>Blog</h1>
+<h2>Latest Posts</h2>
+```
+
+## Text Elements
+
+Use text elements for meaning:
+
+| Element | Use |
+| --- | --- |
+| `<p>` | Paragraph |
+| `<strong>` | Strong importance |
+| `<em>` | Emphasis |
+| `<mark>` | Highlighted or relevant text |
+| `<small>` | Side comments, legal text, fine print |
+| `<abbr>` | Abbreviation with optional `title` |
+| `<time>` | Machine-readable date/time |
+| `<blockquote>` | Long quotation |
+| `<cite>` | Source title |
+| `<code>` | Inline code |
+| `<pre>` | Preformatted block |
+
+Do not use `<strong>` just to make text bold. If the text is only visually bold, use CSS.
+
+## Links Vs Buttons
+
+This is one of the most important frontend rules:
+
+- Use `<a>` when the user navigates somewhere.
+- Use `<button>` when the user performs an action.
+
+Good:
+
+```html
+<a href="/blog">Read the blog</a>
+<button type="button">Open menu</button>
+```
+
+Bad:
+
+```html
+<div onclick="location.href='/blog'">Read the blog</div>
+<a href="#" onclick="openMenu()">Open menu</a>
+```
+
+Why this matters:
+
+- Links can open in new tabs.
+- Buttons work correctly with keyboard activation.
+- Screen readers announce them correctly.
+- Browser defaults handle focus, disabled state, and form behavior better.
+
+## Images And Figures
+
+Use `alt` text based on the image purpose.
+
+```html
+<img
+  src="/dashboard-performance.png"
+  alt="Lighthouse report showing a performance score of 95"
+/>
+```
+
+If the image is decorative, use empty alt:
+
+```html
+<img src="/divider.png" alt="" />
+```
+
+Use `<figure>` when media has a caption:
+
+```html
+<figure>
+  <img src="/semantic-layout.png" alt="Page layout with header, main, aside, and footer" />
+  <figcaption>Semantic page layout with major landmarks.</figcaption>
+</figure>
+```
+
+Do not write `alt="image"` or `alt="photo"`. That adds no useful meaning.
+
+## Lists
+
+Use real lists for grouped items:
+
+```html
+<ul>
+  <li>HTML semantic</li>
+  <li>CSS box model</li>
+  <li>JavaScript fundamentals</li>
+</ul>
+```
+
+Use:
+
+- `<ul>` when order does not matter.
+- `<ol>` when order matters.
+- `<dl>` for name/value pairs.
+
+Example with `<dl>`:
+
+```html
+<dl>
+  <dt>Role</dt>
+  <dd>Frontend Developer</dd>
+  <dt>Location</dt>
+  <dd>Damietta, Egypt</dd>
+</dl>
+```
+
+## Forms
+
+Forms are where semantic HTML gives huge value.
+
+Good form structure:
+
+```html
+<form action="/contact" method="post">
+  <div>
+    <label for="name">Name</label>
+    <input id="name" name="name" type="text" autocomplete="name" required />
+  </div>
+
+  <div>
+    <label for="email">Email</label>
+    <input id="email" name="email" type="email" autocomplete="email" required />
+  </div>
+
+  <div>
+    <label for="message">Message</label>
+    <textarea id="message" name="message" required></textarea>
+  </div>
+
+  <button type="submit">Send message</button>
+</form>
+```
+
+Rules:
+
+- Every input needs a real `<label>`.
+- `name` is required for form submission.
+- Choose the correct `type`: `email`, `tel`, `url`, `number`, `search`, `password`.
+- Use `autocomplete` when possible.
+- Use `required`, `minlength`, `maxlength`, `pattern`, `min`, and `max` when they match the rule.
+- Put error messages near the field they describe.
+
+For grouped controls:
+
+```html
+<fieldset>
+  <legend>Preferred contact method</legend>
+
+  <label>
+    <input type="radio" name="contact" value="email" />
+    Email
+  </label>
+
+  <label>
+    <input type="radio" name="contact" value="phone" />
+    Phone
+  </label>
+</fieldset>
+```
+
+## Tables
+
+Use tables for tabular data, not layout.
+
+```html
+<table>
+  <caption>Weekly class schedule</caption>
+  <thead>
+    <tr>
+      <th scope="col">Day</th>
+      <th scope="col">Class</th>
+      <th scope="col">Time</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th scope="row">Monday</th>
+      <td>Frontend Basics</td>
+      <td>7:00 PM</td>
+    </tr>
+  </tbody>
+</table>
+```
+
+Important table semantics:
+
+- `<caption>` describes the table.
+- `<thead>`, `<tbody>`, and `<tfoot>` group rows.
+- `<th scope="col">` labels a column.
+- `<th scope="row">` labels a row.
+
+## Interactive Elements
+
+Use built-in HTML before creating custom components.
+
+| Need | Prefer |
+| --- | --- |
+| Expand/collapse | `<details>` and `<summary>` |
+| Dialog | `<dialog>` when appropriate |
+| Progress | `<progress>` |
+| Metered value | `<meter>` |
+| Date input | `<input type="date">` |
+| Search | `<input type="search">` |
+
+Example:
+
+```html
+<details>
+  <summary>Need project ideas?</summary>
+  <ul>
+    <li>Your dev portfolio</li>
+    <li>Café website</li>
+    <li>Local gym schedule</li>
+  </ul>
+</details>
+```
+
+## Accessibility Tree
+
+Browsers convert HTML into an accessibility tree. Screen readers and other assistive technologies use that tree.
+
+Semantic HTML gives elements:
+
+- role
+- name
+- state
+- value
+
+For example:
+
+```html
+<button type="button" aria-expanded="false" aria-controls="mobile-menu">
+  Menu
+</button>
+```
+
+The button has a role automatically. `aria-expanded` adds state. `aria-controls` connects it to the controlled element.
+
+## ARIA Rule
+
+Use ARIA when HTML cannot express the meaning by itself.
+
+The first rule of ARIA is: do not use ARIA if native HTML already solves the problem.
+
+Bad:
+
+```html
+<div role="button" tabindex="0">Submit</div>
+```
+
+Better:
+
+```html
+<button type="submit">Submit</button>
+```
+
+ARIA can improve semantics, but it can also make the page worse if used incorrectly.
+
+## SEO And Semantic HTML
+
+Semantic HTML does not magically rank a page. But it helps search engines understand:
+
+- the page topic through `<title>`, headings, and content hierarchy
+- primary content through `<main>`
+- article content through `<article>`
+- dates through `<time>`
+- media context through `alt` and captions
+- navigation and internal links through `<nav>` and `<a>`
+
+Good SEO still needs useful content, fast pages, crawlable links, and clear metadata.
+
+## Common Mistakes
+
+Avoid these:
+
+- Using `<div>` for everything.
+- Using headings because of size, not structure.
+- Putting a `<button>` inside an `<a>`.
+- Using clickable `<div>` elements.
+- Removing focus outlines without replacing them.
+- Using placeholder text instead of `<label>`.
+- Using tables for layout.
+- Writing `alt` text that repeats nearby text without adding value.
+- Adding `role` attributes that conflict with native semantics.
+- Using multiple visible `<main>` elements.
+
+## A Practical Page Template
+
+This is a strong starting point for most marketing, portfolio, and blog pages:
+
+```html
+<body>
+  <a href="#main">Skip to content</a>
+
+  <header>
+    <nav aria-label="Primary navigation">
+      <a href="/">Home</a>
+      <a href="/blog">Blog</a>
+      <a href="/contact">Contact</a>
+    </nav>
+  </header>
+
+  <main id="main">
+    <article>
+      <header>
+        <h1>HTML Semantic</h1>
+        <p>Write pages that are meaningful before they are styled.</p>
+      </header>
+
+      <section aria-labelledby="landmarks-heading">
+        <h2 id="landmarks-heading">Landmarks</h2>
+        <p>Use landmarks to describe major page areas.</p>
+      </section>
+    </article>
+  </main>
+
+  <footer>
+    <small>&copy; 2026 Mohamed Abdelazem</small>
+  </footer>
+</body>
+```
+
+## How To Practice
+
+Build one page without CSS first:
+
+1. Add the real content.
+2. Add headings in the correct order.
+3. Add landmarks.
+4. Add forms with labels.
+5. Add images with useful `alt`.
+6. Navigate the page with only the keyboard.
+7. Inspect it with browser accessibility tools.
+8. Add CSS after the structure is correct.
+
+## Final Checklist
+
+Before shipping a page, ask:
+
+- Does the page have one clear `<h1>`?
+- Are headings in order?
+- Is there exactly one primary `<main>`?
+- Are navigation areas wrapped in `<nav>`?
+- Are independent items using `<article>`?
+- Do all inputs have labels?
+- Are buttons and links used correctly?
+- Can I use the page with only a keyboard?
+- Do images have useful `alt` text?
+- Does the page still make sense without CSS?
+
+If the answer is yes, your HTML is not just valid. It is meaningful.

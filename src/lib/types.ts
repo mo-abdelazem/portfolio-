@@ -41,3 +41,74 @@ export interface NavLink {
   readonly label: string;
   readonly href: string;
 }
+
+export type Locale = "en" | "ar";
+
+export interface RoadmapTopic {
+  readonly key: string;
+  readonly title: string;
+}
+
+export interface RoadmapSection {
+  readonly key: string;
+  readonly title: string;
+  readonly description: string;
+  readonly topics: readonly RoadmapTopic[];
+}
+
+export interface RoadmapCategory {
+  readonly key: string;
+  readonly title: string;
+  readonly description: string;
+  readonly sections: readonly RoadmapSection[];
+}
+
+export interface Detail {
+  readonly label: string;
+  readonly value: string;
+}
+
+export interface SiteCopy {
+  readonly skipLink: string;
+  readonly heroPrimaryCta: string;
+  readonly heroSecondaryCta: string;
+  readonly scrollLabel: string;
+  readonly navCta: string;
+  readonly navAriaLabel: string;
+  readonly navOpenLabel: string;
+  readonly navCloseLabel: string;
+  readonly navTopLabel: string;
+  readonly navMenuLabel: string;
+  readonly languageSwitchLabel: string;
+  readonly themeToggleLabel: string;
+  readonly sectionNavLabel: string;
+  readonly externalProjectLabel: string;
+  readonly footerRights: string;
+  readonly contactHeading: string;
+  readonly contactLabel: string;
+}
+
+export interface SectionCopy {
+  readonly label: string;
+  readonly title: string;
+}
+
+export interface SiteContent {
+  readonly locale: Locale;
+  readonly dir: "ltr" | "rtl";
+  readonly personal: Personal;
+  readonly navLinks: readonly NavLink[];
+  readonly details: readonly Detail[];
+  readonly skills: Skills;
+  readonly experience: readonly Experience[];
+  readonly projects: readonly Project[];
+  readonly education: readonly Education[];
+  readonly sections: {
+    readonly about: SectionCopy;
+    readonly skills: SectionCopy;
+    readonly experience: SectionCopy;
+    readonly projects: SectionCopy;
+    readonly education: SectionCopy;
+  };
+  readonly copy: SiteCopy;
+}

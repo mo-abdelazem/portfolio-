@@ -1,26 +1,30 @@
-import { PERSONAL } from "@/lib/data";
+import type { SiteContent } from "@/lib/types";
 import { Reveal } from "./reveal";
 
-const LINKS = [
-  { label: "Email", href: `mailto:${PERSONAL.email}` },
-  { label: "GitHub", href: PERSONAL.github },
-  { label: "WhatsApp", href: PERSONAL.whatsapp },
-  { label: "LinkedIn", href: PERSONAL.linkedin },
-] as const;
+interface ContactProps {
+  content: SiteContent;
+}
 
-export function Contact() {
+export function Contact({ content }: ContactProps) {
+  const links = [
+    { label: "Email", href: `mailto:${content.personal.email}` },
+    { label: "GitHub", href: content.personal.github },
+    { label: "WhatsApp", href: content.personal.whatsapp },
+    { label: "LinkedIn", href: content.personal.linkedin },
+  ] as const;
+
   return (
     <section id="contact" className="section section--centered" aria-labelledby="contact-heading">
       <div className="section__inner">
         <Reveal>
-          <p className="section__label">Contact</p>
+          <p className="section__label">{content.copy.contactLabel}</p>
           <h2 id="contact-heading" className="section__title">
-            Let&apos;s build together
+            {content.copy.contactHeading}
           </h2>
         </Reveal>
         <Reveal delay={100}>
           <div className="contact__links">
-            {LINKS.map((link) => (
+            {links.map((link) => (
               <a
                 key={link.label}
                 href={link.href}

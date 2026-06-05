@@ -1,0 +1,205 @@
+---
+title: "The CSS Box Model: Everything That Actually Matters"
+description: "A complete, visual guide to the CSS box model — content, padding, border, margin, box-sizing, margin collapsing, logical properties, and the gotchas that bite in real layouts."
+publishedAt: "2026-06-05"
+translationKey: "css-box-model"
+tags: ["CSS", "Box Model", "Layout", "Frontend"]
+---
+
+Every element on a page is a rectangular box. Layout, spacing, alignment, and most "why is this 8px off?" bugs come down to one thing: how that box is measured. The box model is the rulebook for that measurement, and once it is concrete in your head, CSS layout stops feeling like guesswork.
+
+> The box model answers one question: when you set `width`, `height`, `padding`, `border`, and `margin`, how big is the element, and where does the next one sit?
+
+## The Four Layers
+
+Every box is built from four nested layers, from the inside out: **content**, **padding**, **border**, and **margin**.
+
+<figure>
+
+<svg viewBox="0 0 540 360" role="img" aria-label="The CSS box model showing content surrounded by padding, then border, then margin" style={{ width: "100%", height: "auto" }}>
+  <rect x="8" y="8" width="524" height="344" className="dgm-margin" strokeWidth="1.5" strokeDasharray="6 6" rx="6" />
+  <text x="22" y="30" fontSize="13" className="dgm-muted">margin</text>
+  <rect x="78" y="58" width="384" height="244" className="dgm-border" strokeWidth="2" rx="4" />
+  <text x="92" y="78" fontSize="13" className="dgm-muted">border</text>
+  <rect x="128" y="98" width="284" height="164" className="dgm-padding" strokeWidth="1.5" strokeDasharray="4 4" rx="3" />
+  <text x="142" y="118" fontSize="13" className="dgm-muted">padding</text>
+  <rect x="190" y="140" width="160" height="80" className="dgm-content" strokeWidth="1.5" rx="2" />
+  <text x="270" y="185" fontSize="14" className="dgm-ink" textAnchor="middle">content</text>
+</svg>
+
+<figcaption>From the inside out: content holds text and child boxes, padding is space inside the border, the border wraps the padding, and the margin pushes other boxes away.</figcaption>
+
+</figure>
+
+- **Content** — where your text, images, and child elements live. Its size is driven by `width`/`height` (and their `min-`/`max-` variants).
+- **Padding** — transparent space **inside** the border. It shares the element's background.
+- **Border** — a visible (or invisible) edge with width, style, and color.
+- **Margin** — transparent space **outside** the border that separates the box from its neighbors. It never has a background.
+
+## The One That Trips Everyone: `box-sizing`
+
+Here is the question that causes the most confusion: does `width: 200px` mean the **content** is 200px, or the **whole box** is 200px? The answer depends on `box-sizing`.
+
+<figure>
+
+<svg viewBox="0 0 560 250" role="img" aria-label="Comparison of content-box and border-box sizing for a declared width of 200 pixels" style={{ width: "100%", height: "auto" }}>
+  <text x="20" y="30" fontSize="13" className="dgm-ink">box-sizing: content-box (default)</text>
+  <rect x="20" y="44" width="200" height="40" className="dgm-content" strokeWidth="1.5" />
+  <rect x="220" y="44" width="40" height="40" className="dgm-padding" />
+  <rect x="260" y="44" width="16" height="40" className="dgm-border" strokeWidth="2" />
+  <text x="120" y="69" fontSize="13" className="dgm-ink" textAnchor="middle">width 200</text>
+  <text x="240" y="69" fontSize="11" className="dgm-muted" textAnchor="middle">pad</text>
+  <line x1="20" y1="100" x2="276" y2="100" className="dgm-line" strokeWidth="1" />
+  <text x="148" y="118" fontSize="12" className="dgm-muted" textAnchor="middle">rendered width = 256px</text>
+
+  <text x="20" y="160" fontSize="13" className="dgm-ink">box-sizing: border-box</text>
+  <rect x="20" y="174" width="16" height="40" className="dgm-border" strokeWidth="2" />
+  <rect x="36" y="174" width="40" height="40" className="dgm-padding" />
+  <rect x="76" y="174" width="144" height="40" className="dgm-content" strokeWidth="1.5" />
+  <text x="148" y="199" fontSize="13" className="dgm-ink" textAnchor="middle">content</text>
+  <line x1="20" y1="230" x2="220" y2="230" className="dgm-line" strokeWidth="1" />
+  <text x="120" y="248" fontSize="12" className="dgm-muted" textAnchor="middle">rendered width = 200px</text>
+</svg>
+
+<figcaption>With content-box, padding and border are added on top of the declared width. With border-box, they are absorbed inside it.</figcaption>
+
+</figure>
+
+- **`content-box`** (the default): `width` sizes only the content. Padding and border are **added on top**, so the rendered box is wider than the number you wrote.
+- **`border-box`**: `width` sizes the content + padding + border together. The number you write is the real, on-screen width. Content shrinks to make room.
+
+This is why nearly every codebase starts with a global reset:
+
+```css
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+```
+
+With `border-box`, `width: 50%` plus `padding: 20px` still fits in half the container — no overflow math in your head. Treat this reset as a default, not an option.
+
+## Content: `width`, `height`, and Their Limits
+
+The content area is controlled by:
+
+- `width` / `height` — explicit sizes. `auto` (the default) lets block elements fill their container's width and shrink-wrap their height.
+- `min-width` / `min-height` — a floor the box cannot go below.
+- `max-width` / `max-height` — a ceiling. `max-width: 100%` is the classic guard that keeps images and cards from overflowing small screens.
+
+Percentages on `width` are relative to the **containing block's** width. Percentages on `height` only work if the parent has a resolved height — otherwise they compute to `auto`. That single rule explains most "my `height: 100%` does nothing" bugs.
+
+## Padding: Space Inside
+
+Padding adds breathing room between the content and the border, and it carries the element's background.
+
+```css
+.card {
+  padding: 24px;             /* all four sides */
+  padding: 16px 24px;        /* block (top/bottom) | inline (left/right) */
+  padding: 8px 16px 12px;    /* top | left-right | bottom */
+  padding: 8px 16px 12px 4px;/* top | right | bottom | left (clockwise) */
+}
+```
+
+Two things people forget:
+
+- Padding **cannot be negative**.
+- **Percentage padding is relative to the container's width** — even `padding-top`. That quirk is the trick behind the old "aspect-ratio box" hack (use `aspect-ratio` now instead).
+
+## Border: The Visible Edge
+
+```css
+.box {
+  border: 2px solid #111;          /* width | style | color */
+  border-bottom: 1px solid #ddd;   /* one side */
+  border-radius: 12px;             /* rounds the border box */
+}
+```
+
+In `content-box`, border width counts toward the element's total size; in `border-box`, it eats into the content. `outline` looks similar but is **not** part of the box model — it is drawn on top and does not affect layout, which is exactly why it is the right tool for focus rings.
+
+## Margin: Space Outside
+
+Margin separates a box from its neighbors. Unlike padding, it can be negative, and it has two special behaviors.
+
+```css
+.block {
+  margin: 0 auto;     /* horizontal auto = center a fixed-width block */
+  margin-top: -8px;   /* negative margins pull neighbors closer / overlap */
+}
+```
+
+`margin: auto` is how you center a block horizontally: give it a `width` and `auto` left/right margins. (Vertical `auto` margins do nothing in normal flow — but they *do* center in flex and grid.)
+
+## Margin Collapsing — The Classic Gotcha
+
+When two **vertical** margins meet in normal flow, they don't add up — they **collapse** into the single larger value.
+
+<figure>
+
+<svg viewBox="0 0 440 300" role="img" aria-label="Two stacked boxes whose vertical margins collapse to the larger value instead of adding" style={{ width: "100%", height: "auto" }}>
+  <rect x="120" y="24" width="200" height="64" className="dgm-border" strokeWidth="2" rx="4" />
+  <text x="220" y="60" fontSize="13" className="dgm-ink" textAnchor="middle">Box A · margin-bottom: 30</text>
+  <rect x="120" y="88" width="200" height="40" className="dgm-margin" strokeDasharray="5 5" />
+  <text x="220" y="113" fontSize="12" className="dgm-muted" textAnchor="middle">collapsed gap = 30</text>
+  <rect x="120" y="128" width="200" height="64" className="dgm-border" strokeWidth="2" rx="4" />
+  <text x="220" y="164" fontSize="13" className="dgm-ink" textAnchor="middle">Box B · margin-top: 20</text>
+  <text x="220" y="232" fontSize="13" className="dgm-muted" textAnchor="middle">Gap is 30px (the larger), not 50px.</text>
+</svg>
+
+<figcaption>Adjacent vertical margins collapse to the maximum of the two, not their sum.</figcaption>
+
+</figure>
+
+Collapsing happens between adjacent siblings, and between a parent and its first/last child. It is **vertical only** — horizontal margins never collapse — and it does **not** happen inside flex or grid containers. You break the collapse by putting something between the margins: padding, a border, or a new formatting context (`display: flex`, `overflow: hidden`, etc.). This is the real reason modern layouts prefer `gap` in flex/grid: `gap` never collapses, so spacing is predictable.
+
+## Block, Inline, and Inline-Block Boxes
+
+The box model applies to every element, but `display` changes which parts take effect:
+
+| Display | Respects width/height | Vertical margin/padding push layout |
+|---|---|---|
+| `block` | Yes | Yes |
+| `inline` | No (sizes to content) | Padding/border render but don't move surrounding lines; margins only apply horizontally |
+| `inline-block` | Yes | Yes |
+
+That table explains why `width` on a `<span>` "does nothing" until you make it `inline-block` or `block`.
+
+## Logical Properties (and Why They Matter Here)
+
+Physical properties like `margin-left` assume left-to-right. On an Arabic (RTL) page, "left" is the wrong side. **Logical properties** follow the reading direction instead:
+
+```css
+/* Physical — breaks in RTL */
+margin-left: 16px;
+padding-right: 8px;
+
+/* Logical — correct in both LTR and RTL */
+margin-inline-start: 16px;
+padding-inline-end: 8px;
+```
+
+- `inline-start` / `inline-end` map to left/right in LTR and flip automatically in RTL.
+- `block-start` / `block-end` map to top/bottom.
+- Shorthands exist too: `margin-inline`, `padding-block`, `inset-inline`.
+
+For any interface that ships in more than one direction, logical properties remove a whole category of mirroring bugs.
+
+## Inspecting the Box in DevTools
+
+Open the element inspector and look at the **Computed** tab's box-model diagram. It draws the exact four layers — content in the center, then padding, border, and margin — with the real pixel values. When spacing is "mysteriously" wrong, this diagram tells you in seconds whether it's padding, margin, or a collapsed margin doing it.
+
+## Common Mistakes
+
+- Forgetting the `box-sizing: border-box` reset, then fighting overflow from added padding.
+- Expecting `height: 100%` to work when the parent has no resolved height.
+- Adding vertical margins and being surprised they collapsed instead of summing.
+- Using `width`/`height` on inline elements and wondering why nothing changes.
+- Reaching for `margin` to space flex/grid children when `gap` is cleaner and collapse-free.
+- Using `margin-left`/`right` on a bidirectional site instead of logical `inline-start`/`inline-end`.
+
+## The Mental Model to Keep
+
+The box is **content → padding → border → margin**, measured according to `box-sizing`. Set `border-box` globally so the number you write is the number you get. Use `gap` and logical properties for spacing, reach for DevTools' box diagram when something is off, and most layout mysteries disappear.

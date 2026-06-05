@@ -1,23 +1,30 @@
 "use client";
 
-import { useState } from "react";
-import { SKILLS } from "@/lib/data";
+import { useEffect, useMemo, useState } from "react";
+import type { SectionCopy, Skills as SkillsData } from "@/lib/types";
 import { Reveal } from "./reveal";
 
-type SkillCategory = keyof typeof SKILLS;
-const categories = Object.keys(SKILLS) as SkillCategory[];
+interface SkillsProps {
+  skills: SkillsData;
+  section: SectionCopy;
+}
 
-export function Skills() {
-  const [active, setActive] = useState<SkillCategory>(categories[0]!);
-  const items = SKILLS[active];
+export function Skills({ skills, section }: SkillsProps) {
+  const categories = useMemo(() => Object.keys(skills), [skills]);
+  const [active, setActive] = useState(categories[0]!);
+  const items = skills[active] ?? [];
+
+  useEffect(() => {
+    setActive(categories[0]!);
+  }, [categories]);
 
   return (
     <section id="skills" className="section" aria-labelledby="skills-heading">
       <div className="section__inner">
         <Reveal>
-          <p className="section__label">Capabilities</p>
+          <p className="section__label">{section.label}</p>
           <h2 id="skills-heading" className="section__title">
-            Tech Stack
+            {section.title}
           </h2>
         </Reveal>
         <Reveal delay={100}>
@@ -37,9 +44,14 @@ export function Skills() {
           </div>
         </Reveal>
         <Reveal delay={200}>
-          <div className="skills__chips" role="tabpanel" aria-label={`${active} skills`}>
-            {items?.map((skill) => (
-              <span key={skill} className="skills__chip">
+          <div
+            key={active}
+            className="skills__grid"
+            role="tabpanel"
+            aria-label={`${active} skills`}
+          >
+            {items.map((skill) => (
+              <span key={skill} className="skills__tile">
                 {skill}
               </span>
             ))}
