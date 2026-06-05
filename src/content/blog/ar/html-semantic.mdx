@@ -1,0 +1,468 @@
+---
+title: "HTML Semantic: اكتب صفحات لها معنى"
+description: "شرح عملي شامل لـ semantic HTML، landmarks، document structure، accessibility، SEO، forms، media، tables، والأخطاء الشائعة."
+publishedAt: "2026-06-04"
+translationKey: "html-semantic"
+tags: ["HTML", "Accessibility", "SEO", "Frontend"]
+---
+
+HTML Semantic يعني اختيار العنصر بناء على معناه، وليس شكله الافتراضي. عنصر `<button>` ليس أفضل لأنه يشبه الزر، بل لأنه مفهوم مسبقا للمتصفح، keyboard، screen readers، forms، و accessibility APIs.
+
+> الهدف بسيط: إذا أزلت CSS و JavaScript، يجب أن تظل الصفحة مفهومة.
+
+## لماذا HTML Semantic مهم؟
+
+Semantic HTML يخدم أربع جهات في نفس الوقت:
+
+- **المستخدمون** يحصلون على controls و headings و forms و navigation بشكل متوقع.
+- **Assistive technologies** تحصل على structure واضح من accessibility tree.
+- **Search engines** تفهم page hierarchy والمحتوى الأهم.
+- **المطورون** يقرؤون الكود بسرعة ويكتبون custom behavior أقل.
+
+المشكلة في HTML غير الدلالي أنه قد يبدو صحيحا بصريا، لكن keyboard navigation و screen reader output و SEO و form submission تصبح أصعب في الصيانة.
+
+## الفكرة الأساسية
+
+كل HTML element يجب أن يجيب عن سؤال:
+
+**ما معنى هذا الشيء؟**
+
+وليس:
+
+- كيف سيبدو؟
+- أين سيظهر؟
+- ما اسم class الأسهل؟
+
+استخدم CSS للشكل. استخدم HTML للمعنى. استخدم JavaScript للسلوك.
+
+## Document Structure
+
+الصفحة الجيدة تبدأ ببنية واضحة:
+
+```html
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Frontend Portfolio</title>
+  </head>
+  <body>
+    <header>...</header>
+    <main>...</main>
+    <footer>...</footer>
+  </body>
+</html>
+```
+
+نقاط مهمة:
+
+- `<!doctype html>` يجعل المتصفح يعمل في standards mode.
+- `lang` يساعد screen readers على نطق المحتوى بشكل صحيح.
+- `dir="rtl"` مهم للصفحات العربية.
+- `charset` يمنع مشاكل encoding.
+- `viewport` ضروري للواجهات responsive.
+- `title` يظهر في browser tab و search results و bookmarks.
+
+## Landmark Elements
+
+Landmarks تساعد المستخدم على التنقل بين الأجزاء الرئيسية في الصفحة.
+
+| Element | المعنى | يستخدم في |
+| --- | --- | --- |
+| `<header>` | محتوى تمهيدي | site header أو article header أو section header |
+| `<nav>` | روابط تنقل | main nav أو pagination أو table of contents |
+| `<main>` | المحتوى الأساسي | المحتوى الفريد في الصفحة |
+| `<section>` | مجموعة مرتبطة بموضوع | جزء له عنوان ومحتوى مرتبط |
+| `<article>` | محتوى مستقل | blog post أو card أو news item أو comment |
+| `<aside>` | محتوى مساعد | related links أو sidebar أو note |
+| `<footer>` | معلومات ختامية | copyright أو author أو secondary links |
+
+استخدم `<main>` مرئيا واحدا فقط في الصفحة. محتوى `<main>` يجب أن يكون هو المحتوى الفريد لهذا route.
+
+## Headings هي Structure وليست Styling
+
+Headings ترسم خريطة قراءة الصفحة. استخدمها بالترتيب:
+
+```html
+<h1>Become a Professional Frontend Developer</h1>
+
+<h2>Core Frontend</h2>
+<h3>HTML Semantic</h3>
+<h3>CSS Box Model</h3>
+
+<h2>Framework</h2>
+<h3>React Fundamentals</h3>
+```
+
+أفضل الممارسات:
+
+- استخدم `<h1>` واحدا لموضوع الصفحة الرئيسي.
+- لا تتخطى المستويات لمجرد أن العنوان يحتاج أن يظهر أصغر.
+- غير شكل العنوان باستخدام CSS وليس بتغيير المستوى الدلالي.
+- كل `<section>` مهم غالبا يحتاج heading واضح.
+
+مثال سيئ:
+
+```html
+<h1>Blog</h1>
+<h4>Latest Posts</h4>
+```
+
+مثال أفضل:
+
+```html
+<h1>Blog</h1>
+<h2>Latest Posts</h2>
+```
+
+## Text Elements
+
+استخدم text elements لمعناها:
+
+| Element | الاستخدام |
+| --- | --- |
+| `<p>` | فقرة |
+| `<strong>` | أهمية قوية |
+| `<em>` | تأكيد أو emphasis |
+| `<mark>` | نص مميز أو relevant |
+| `<small>` | ملاحظات جانبية أو legal text |
+| `<abbr>` | اختصار مع `title` اختياري |
+| `<time>` | تاريخ أو وقت machine-readable |
+| `<blockquote>` | اقتباس طويل |
+| `<cite>` | عنوان المصدر |
+| `<code>` | كود inline |
+| `<pre>` | كود أو نص يحافظ على التنسيق |
+
+لا تستخدم `<strong>` لمجرد جعل النص bold. إذا كان الهدف بصريا فقط، استخدم CSS.
+
+## Links Vs Buttons
+
+هذه من أهم قواعد Frontend:
+
+- استخدم `<a>` عندما ينتقل المستخدم إلى مكان آخر.
+- استخدم `<button>` عندما ينفذ المستخدم action.
+
+صحيح:
+
+```html
+<a href="/blog">Read the blog</a>
+<button type="button">Open menu</button>
+```
+
+خطأ:
+
+```html
+<div onclick="location.href='/blog'">Read the blog</div>
+<a href="#" onclick="openMenu()">Open menu</a>
+```
+
+لماذا هذا مهم؟
+
+- Links يمكن فتحها في tab جديد.
+- Buttons تعمل بشكل صحيح مع keyboard activation.
+- Screen readers تعلن عنها بشكل صحيح.
+- Browser defaults تتعامل مع focus و disabled state و form behavior أفضل.
+
+## Images And Figures
+
+اكتب `alt` بناء على وظيفة الصورة.
+
+```html
+<img
+  src="/dashboard-performance.png"
+  alt="Lighthouse report showing a performance score of 95"
+/>
+```
+
+إذا كانت الصورة decorative فقط:
+
+```html
+<img src="/divider.png" alt="" />
+```
+
+استخدم `<figure>` عندما يكون للوسائط caption:
+
+```html
+<figure>
+  <img src="/semantic-layout.png" alt="Page layout with header, main, aside, and footer" />
+  <figcaption>Semantic page layout with major landmarks.</figcaption>
+</figure>
+```
+
+لا تكتب `alt="image"` أو `alt="photo"` لأنها لا تضيف معنى.
+
+## Lists
+
+استخدم lists حقيقية للعناصر المرتبطة:
+
+```html
+<ul>
+  <li>HTML semantic</li>
+  <li>CSS box model</li>
+  <li>JavaScript fundamentals</li>
+</ul>
+```
+
+استخدم:
+
+- `<ul>` عندما لا يهم الترتيب.
+- `<ol>` عندما يكون الترتيب مهما.
+- `<dl>` لعلاقات name/value.
+
+مثال `<dl>`:
+
+```html
+<dl>
+  <dt>Role</dt>
+  <dd>Frontend Developer</dd>
+  <dt>Location</dt>
+  <dd>Damietta, Egypt</dd>
+</dl>
+```
+
+## Forms
+
+Forms من أكثر الأماكن التي يظهر فيها تأثير semantic HTML.
+
+Form جيد:
+
+```html
+<form action="/contact" method="post">
+  <div>
+    <label for="name">Name</label>
+    <input id="name" name="name" type="text" autocomplete="name" required />
+  </div>
+
+  <div>
+    <label for="email">Email</label>
+    <input id="email" name="email" type="email" autocomplete="email" required />
+  </div>
+
+  <div>
+    <label for="message">Message</label>
+    <textarea id="message" name="message" required></textarea>
+  </div>
+
+  <button type="submit">Send message</button>
+</form>
+```
+
+قواعد مهمة:
+
+- كل input يحتاج `<label>` حقيقي.
+- `name` ضروري عند إرسال form.
+- اختر `type` الصحيح: `email`, `tel`, `url`, `number`, `search`, `password`.
+- استخدم `autocomplete` عندما يكون مناسبا.
+- استخدم `required`, `minlength`, `maxlength`, `pattern`, `min`, و `max` عندما تعبر عن القاعدة فعلا.
+- ضع error messages بالقرب من field الذي تصفه.
+
+للمجموعات:
+
+```html
+<fieldset>
+  <legend>Preferred contact method</legend>
+
+  <label>
+    <input type="radio" name="contact" value="email" />
+    Email
+  </label>
+
+  <label>
+    <input type="radio" name="contact" value="phone" />
+    Phone
+  </label>
+</fieldset>
+```
+
+## Tables
+
+استخدم tables للبيانات الجدولية، وليس layout.
+
+```html
+<table>
+  <caption>Weekly class schedule</caption>
+  <thead>
+    <tr>
+      <th scope="col">Day</th>
+      <th scope="col">Class</th>
+      <th scope="col">Time</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th scope="row">Monday</th>
+      <td>Frontend Basics</td>
+      <td>7:00 PM</td>
+    </tr>
+  </tbody>
+</table>
+```
+
+Semantic مهم داخل الجداول:
+
+- `<caption>` يصف الجدول.
+- `<thead>`, `<tbody>`, و `<tfoot>` تنظم rows.
+- `<th scope="col">` يصف column.
+- `<th scope="row">` يصف row.
+
+## Interactive Elements
+
+استخدم HTML الجاهز قبل بناء custom components.
+
+| الحاجة | الأفضل |
+| --- | --- |
+| Expand/collapse | `<details>` و `<summary>` |
+| Dialog | `<dialog>` عند مناسبته |
+| Progress | `<progress>` |
+| Metered value | `<meter>` |
+| Date input | `<input type="date">` |
+| Search | `<input type="search">` |
+
+مثال:
+
+```html
+<details>
+  <summary>Need project ideas?</summary>
+  <ul>
+    <li>Your dev portfolio</li>
+    <li>Café website</li>
+    <li>Local gym schedule</li>
+  </ul>
+</details>
+```
+
+## Accessibility Tree
+
+المتصفح يحول HTML إلى accessibility tree. تستخدم screen readers و assistive technologies هذه الشجرة.
+
+Semantic HTML يوفر للعناصر:
+
+- role
+- name
+- state
+- value
+
+مثال:
+
+```html
+<button type="button" aria-expanded="false" aria-controls="mobile-menu">
+  Menu
+</button>
+```
+
+العنصر لديه role تلقائيا لأنه `<button>`. `aria-expanded` تضيف state. `aria-controls` تربطه بالعنصر الذي يتحكم فيه.
+
+## قاعدة ARIA
+
+استخدم ARIA عندما لا يستطيع HTML الأصلي التعبير عن المعنى.
+
+القاعدة الأولى في ARIA: لا تستخدم ARIA إذا كان native HTML يحل المشكلة.
+
+خطأ:
+
+```html
+<div role="button" tabindex="0">Submit</div>
+```
+
+أفضل:
+
+```html
+<button type="submit">Submit</button>
+```
+
+ARIA يمكن أن يحسن semantics، لكنه يمكن أيضا أن يضر الصفحة إذا استخدم بشكل خاطئ.
+
+## SEO و Semantic HTML
+
+Semantic HTML لا يرفع ترتيب الصفحة وحده. لكنه يساعد search engines على فهم:
+
+- موضوع الصفحة من خلال `<title>` و headings و content hierarchy.
+- المحتوى الأساسي من خلال `<main>`.
+- المقال من خلال `<article>`.
+- التواريخ من خلال `<time>`.
+- سياق الصور من خلال `alt` و captions.
+- الروابط الداخلية من خلال `<nav>` و `<a>`.
+
+SEO الجيد يحتاج أيضا محتوى مفيد، صفحات سريعة، روابط قابلة للزحف، و metadata واضحة.
+
+## أخطاء شائعة
+
+تجنب:
+
+- استخدام `<div>` لكل شيء.
+- استخدام headings بسبب الحجم وليس structure.
+- وضع `<button>` داخل `<a>`.
+- استخدام clickable `<div>`.
+- حذف focus outline بدون بديل واضح.
+- استخدام placeholder بدلا من `<label>`.
+- استخدام tables للـ layout.
+- كتابة `alt` لا يضيف معنى.
+- إضافة `role` يتعارض مع native semantics.
+- استخدام أكثر من `<main>` مرئي في نفس الصفحة.
+
+## Template عملي
+
+هذا template جيد كبداية لمعظم landing pages و portfolio و blog pages:
+
+```html
+<body>
+  <a href="#main">Skip to content</a>
+
+  <header>
+    <nav aria-label="Primary navigation">
+      <a href="/">Home</a>
+      <a href="/blog">Blog</a>
+      <a href="/contact">Contact</a>
+    </nav>
+  </header>
+
+  <main id="main">
+    <article>
+      <header>
+        <h1>HTML Semantic</h1>
+        <p>Write pages that are meaningful before they are styled.</p>
+      </header>
+
+      <section aria-labelledby="landmarks-heading">
+        <h2 id="landmarks-heading">Landmarks</h2>
+        <p>Use landmarks to describe major page areas.</p>
+      </section>
+    </article>
+  </main>
+
+  <footer>
+    <small>&copy; 2026 Mohamed Abdelazem</small>
+  </footer>
+</body>
+```
+
+## كيف تتدرب؟
+
+ابن صفحة واحدة بدون CSS أولا:
+
+1. أضف المحتوى الحقيقي.
+2. أضف headings بالترتيب الصحيح.
+3. أضف landmarks.
+4. أضف forms مع labels.
+5. أضف images مع `alt` مفيد.
+6. جرب الصفحة باستخدام keyboard فقط.
+7. افحصها باستخدام browser accessibility tools.
+8. أضف CSS بعد أن تكون البنية صحيحة.
+
+## Final Checklist
+
+قبل نشر أي صفحة، اسأل:
+
+- هل يوجد `<h1>` واضح واحد؟
+- هل headings مرتبة؟
+- هل يوجد `<main>` أساسي واحد؟
+- هل navigation داخل `<nav>`؟
+- هل العناصر المستقلة تستخدم `<article>`؟
+- هل كل inputs لها labels؟
+- هل buttons و links مستخدمة بشكل صحيح؟
+- هل يمكن استخدام الصفحة بالـ keyboard فقط؟
+- هل الصور لديها `alt` مفيد؟
+- هل تظل الصفحة مفهومة بدون CSS؟
+
+إذا كانت الإجابة نعم، فـ HTML ليس فقط valid. هو meaningful.

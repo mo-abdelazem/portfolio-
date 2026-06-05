@@ -1,0 +1,205 @@
+---
+title: "CSS Box Model: كل ما يهم فعليا"
+description: "دليل بصري كامل لـ CSS box model — content وpadding وborder وmargin وbox-sizing وانهيار الـ margins والخصائص المنطقية، مع الأخطاء التي تظهر في التخطيطات الحقيقية."
+publishedAt: "2026-06-05"
+translationKey: "css-box-model"
+tags: ["CSS", "Box Model", "Layout", "Frontend"]
+---
+
+كل عنصر في الصفحة هو صندوق مستطيل. التخطيط، المسافات، المحاذاة، ومعظم مشاكل "لماذا يوجد فرق 8px هنا؟" ترجع كلها إلى شيء واحد: كيف يُقاس هذا الصندوق. الـ box model هو قواعد هذا القياس، وعندما تصبح واضحة في ذهنك، يتوقف تخطيط CSS عن أن يكون تخمينا.
+
+> الـ box model يجيب على سؤال واحد: عندما تضبط `width` و`height` و`padding` و`border` و`margin`، ما حجم العنصر فعليا، وأين سيقف العنصر التالي؟
+
+## الطبقات الأربع
+
+كل صندوق مبني من أربع طبقات متداخلة، من الداخل إلى الخارج: **content** و**padding** و**border** و**margin**.
+
+<figure>
+
+<svg viewBox="0 0 540 360" role="img" aria-label="نموذج الصندوق في CSS: المحتوى محاطا بالحشو ثم الحد ثم الهامش" style={{ width: "100%", height: "auto" }}>
+  <rect x="8" y="8" width="524" height="344" className="dgm-margin" strokeWidth="1.5" strokeDasharray="6 6" rx="6" />
+  <text x="22" y="30" fontSize="13" className="dgm-muted">margin</text>
+  <rect x="78" y="58" width="384" height="244" className="dgm-border" strokeWidth="2" rx="4" />
+  <text x="92" y="78" fontSize="13" className="dgm-muted">border</text>
+  <rect x="128" y="98" width="284" height="164" className="dgm-padding" strokeWidth="1.5" strokeDasharray="4 4" rx="3" />
+  <text x="142" y="118" fontSize="13" className="dgm-muted">padding</text>
+  <rect x="190" y="140" width="160" height="80" className="dgm-content" strokeWidth="1.5" rx="2" />
+  <text x="270" y="185" fontSize="14" className="dgm-ink" textAnchor="middle">content</text>
+</svg>
+
+<figcaption>من الداخل للخارج: الـ content يحمل النص والعناصر الأبناء، الـ padding مسافة داخل الـ border، والـ border يلف الـ padding، والـ margin يدفع الصناديق الأخرى بعيدا.</figcaption>
+
+</figure>
+
+- **Content** — حيث يعيش النص والصور والعناصر الأبناء. حجمه يحدده `width`/`height` (ونسخ `min-`/`max-`).
+- **Padding** — مسافة شفافة **داخل** الـ border، وتأخذ نفس خلفية العنصر.
+- **Border** — حافة مرئية (أو غير مرئية) لها عرض ونمط ولون.
+- **Margin** — مسافة شفافة **خارج** الـ border تفصل الصندوق عن جيرانه، وليس لها خلفية أبدا.
+
+## الخاصية التي تُربك الجميع: `box-sizing`
+
+هذا هو السؤال الذي يسبب أكبر قدر من الالتباس: هل `width: 200px` تعني أن **المحتوى** عرضه 200px، أم أن **الصندوق كله** عرضه 200px؟ الإجابة تعتمد على `box-sizing`.
+
+<figure>
+
+<svg viewBox="0 0 560 250" role="img" aria-label="مقارنة بين content-box وborder-box عند ضبط عرض 200 بكسل" style={{ width: "100%", height: "auto" }}>
+  <text x="20" y="30" fontSize="13" className="dgm-ink">box-sizing: content-box (default)</text>
+  <rect x="20" y="44" width="200" height="40" className="dgm-content" strokeWidth="1.5" />
+  <rect x="220" y="44" width="40" height="40" className="dgm-padding" />
+  <rect x="260" y="44" width="16" height="40" className="dgm-border" strokeWidth="2" />
+  <text x="120" y="69" fontSize="13" className="dgm-ink" textAnchor="middle">width 200</text>
+  <text x="240" y="69" fontSize="11" className="dgm-muted" textAnchor="middle">pad</text>
+  <line x1="20" y1="100" x2="276" y2="100" className="dgm-line" strokeWidth="1" />
+  <text x="148" y="118" fontSize="12" className="dgm-muted" textAnchor="middle">rendered width = 256px</text>
+
+  <text x="20" y="160" fontSize="13" className="dgm-ink">box-sizing: border-box</text>
+  <rect x="20" y="174" width="16" height="40" className="dgm-border" strokeWidth="2" />
+  <rect x="36" y="174" width="40" height="40" className="dgm-padding" />
+  <rect x="76" y="174" width="144" height="40" className="dgm-content" strokeWidth="1.5" />
+  <text x="148" y="199" fontSize="13" className="dgm-ink" textAnchor="middle">content</text>
+  <line x1="20" y1="230" x2="220" y2="230" className="dgm-line" strokeWidth="1" />
+  <text x="120" y="248" fontSize="12" className="dgm-muted" textAnchor="middle">rendered width = 200px</text>
+</svg>
+
+<figcaption>مع content-box يُضاف الـ padding والـ border فوق العرض المعلن. مع border-box يُمتصّان داخله.</figcaption>
+
+</figure>
+
+- **`content-box`** (الافتراضي): `width` تحدد المحتوى فقط. الـ padding والـ border **يُضافان فوقها**، فيصبح الصندوق الظاهر أعرض من الرقم الذي كتبته.
+- **`border-box`**: `width` تحدد المحتوى + الـ padding + الـ border معا. الرقم الذي تكتبه هو العرض الحقيقي على الشاشة، والمحتوى يتقلص ليفسح المكان.
+
+ولهذا تبدأ معظم المشاريع بهذا الـ reset:
+
+```css
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+```
+
+مع `border-box`، فإن `width: 50%` مع `padding: 20px` يبقى داخل نصف الحاوية — بدون حسابات overflow في رأسك. اعتبر هذا الـ reset قاعدة افتراضية، لا خيارا.
+
+## Content: العرض والارتفاع وحدودهما
+
+تتحكم في منطقة المحتوى:
+
+- `width` / `height` — قياسات صريحة. القيمة `auto` (الافتراضية) تجعل عناصر الـ block تملأ عرض الحاوية وتتقلص حول ارتفاع محتواها.
+- `min-width` / `min-height` — حد أدنى لا ينزل الصندوق تحته.
+- `max-width` / `max-height` — حد أقصى. و`max-width: 100%` هي الحماية الكلاسيكية التي تمنع الصور والبطاقات من تجاوز الشاشات الصغيرة.
+
+النسب المئوية على `width` تكون نسبة إلى عرض **الحاوية**. أما النسب على `height` فلا تعمل إلا إذا كان للأب ارتفاع محدد — وإلا تتحول إلى `auto`. هذه القاعدة وحدها تفسر معظم مشاكل "لماذا لا يفعل `height: 100%` شيئا".
+
+## Padding: المسافة الداخلية
+
+الـ padding يضيف مساحة بين المحتوى والـ border، ويحمل خلفية العنصر.
+
+```css
+.card {
+  padding: 24px;             /* الجهات الأربع */
+  padding: 16px 24px;        /* أعلى/أسفل | يمين/يسار */
+  padding: 8px 16px 12px;    /* أعلى | يمين-يسار | أسفل */
+  padding: 8px 16px 12px 4px;/* أعلى | يمين | أسفل | يسار (باتجاه عقارب الساعة) */
+}
+```
+
+أمران يُنسيان غالبا:
+
+- الـ padding **لا يمكن أن يكون سالبا**.
+- **النسبة المئوية في الـ padding تكون نسبة إلى عرض الحاوية** — حتى `padding-top`. هذه الخاصية كانت الحيلة خلف صناديق النسبة القديمة (استخدم `aspect-ratio` الآن بدلا منها).
+
+## Border: الحافة المرئية
+
+```css
+.box {
+  border: 2px solid #111;          /* العرض | النمط | اللون */
+  border-bottom: 1px solid #ddd;   /* جهة واحدة */
+  border-radius: 12px;             /* تدوير صندوق الـ border */
+}
+```
+
+في `content-box` يُحسب عرض الـ border ضمن الحجم الكلي للعنصر؛ وفي `border-box` يأكل من المحتوى. أما `outline` فيبدو مشابها لكنه **ليس** جزءا من الـ box model — يُرسم فوق العنصر ولا يؤثر على التخطيط، ولهذا بالضبط هو الأداة الصحيحة لـ focus rings.
+
+## Margin: المسافة الخارجية
+
+الـ margin يفصل الصندوق عن جيرانه. وعلى عكس الـ padding يمكن أن يكون سالبا، وله سلوكان خاصان.
+
+```css
+.block {
+  margin: 0 auto;     /* auto الأفقي = توسيط صندوق بعرض ثابت */
+  margin-top: -8px;   /* الهوامش السالبة تقرّب الجيران أو تتداخل معهم */
+}
+```
+
+`margin: auto` هي طريقة توسيط الـ block أفقيا: أعطه `width` وهوامش `auto` يمين ويسار. (الـ margin العمودي بقيمة `auto` لا يفعل شيئا في التدفق العادي — لكنه **يوسّط** داخل flex وgrid.)
+
+## انهيار الـ Margins — الفخ الكلاسيكي
+
+عندما يلتقي هامشان **عموديان** في التدفق العادي، فإنهما لا يُجمعان — بل **ينهاران** إلى القيمة الأكبر فقط.
+
+<figure>
+
+<svg viewBox="0 0 440 300" role="img" aria-label="صندوقان فوق بعضهما ينهار هامشاهما العموديان إلى القيمة الأكبر بدل جمعهما" style={{ width: "100%", height: "auto" }}>
+  <rect x="120" y="24" width="200" height="64" className="dgm-border" strokeWidth="2" rx="4" />
+  <text x="220" y="60" fontSize="13" className="dgm-ink" textAnchor="middle">Box A · margin-bottom: 30</text>
+  <rect x="120" y="88" width="200" height="40" className="dgm-margin" strokeDasharray="5 5" />
+  <text x="220" y="113" fontSize="12" className="dgm-muted" textAnchor="middle">collapsed gap = 30</text>
+  <rect x="120" y="128" width="200" height="64" className="dgm-border" strokeWidth="2" rx="4" />
+  <text x="220" y="164" fontSize="13" className="dgm-ink" textAnchor="middle">Box B · margin-top: 20</text>
+  <text x="220" y="232" fontSize="13" className="dgm-muted" textAnchor="middle">المسافة 30px (الأكبر)، وليست 50px.</text>
+</svg>
+
+<figcaption>الهوامش العمودية المتجاورة تنهار إلى أكبر القيمتين، لا إلى مجموعهما.</figcaption>
+
+</figure>
+
+يحدث الانهيار بين الأشقاء المتجاورين، وبين الأب وأول/آخر ابن له. وهو **عمودي فقط** — الهوامش الأفقية لا تنهار أبدا — ولا يحدث داخل حاويات flex أو grid. تكسر الانهيار بوضع شيء بين الهامشين: padding أو border أو formatting context جديد (`display: flex`، `overflow: hidden`، إلخ). وهذا هو السبب الحقيقي لتفضيل التخطيطات الحديثة لـ `gap` في flex/grid: فالـ `gap` لا ينهار أبدا، فتصبح المسافات متوقعة.
+
+## صناديق Block وInline وInline-Block
+
+الـ box model ينطبق على كل عنصر، لكن `display` يغير أي الأجزاء يسري مفعولها:
+
+| Display | يحترم width/height | الهامش/الحشو العمودي يدفع التخطيط |
+|---|---|---|
+| `block` | نعم | نعم |
+| `inline` | لا (يتحجّم حسب المحتوى) | الـ padding/border يظهران لكن لا يحركان السطور المحيطة؛ والهوامش أفقية فقط |
+| `inline-block` | نعم | نعم |
+
+هذا الجدول يفسر لماذا `width` على `<span>` "لا يفعل شيئا" حتى تجعله `inline-block` أو `block`.
+
+## الخصائص المنطقية (ولماذا تهم هنا)
+
+الخصائص الفيزيائية مثل `margin-left` تفترض الاتجاه من اليسار لليمين. وفي صفحة عربية (RTL) يكون "اليسار" هو الجهة الخاطئة. أما **الخصائص المنطقية** فتتبع اتجاه القراءة:
+
+```css
+/* فيزيائية — تنكسر في RTL */
+margin-left: 16px;
+padding-right: 8px;
+
+/* منطقية — صحيحة في LTR وRTL معا */
+margin-inline-start: 16px;
+padding-inline-end: 8px;
+```
+
+- `inline-start` / `inline-end` تقابل اليسار/اليمين في LTR وتنعكس تلقائيا في RTL.
+- `block-start` / `block-end` تقابل الأعلى/الأسفل.
+- وهناك اختصارات أيضا: `margin-inline` و`padding-block` و`inset-inline`.
+
+لأي واجهة تُطلق في أكثر من اتجاه، تزيل الخصائص المنطقية فئة كاملة من أخطاء الانعكاس.
+
+## فحص الصندوق في DevTools
+
+افتح فاحص العناصر وانظر إلى مخطط الـ box model في تبويب **Computed**. يرسم الطبقات الأربع بالضبط — المحتوى في المنتصف، ثم padding ثم border ثم margin — بالقيم الحقيقية بالبكسل. وعندما تكون المسافة "خاطئة بشكل غامض"، يخبرك هذا المخطط في ثوان هل السبب padding أم margin أم margin منهار.
+
+## أخطاء شائعة
+
+- نسيان reset الـ `box-sizing: border-box` ثم محاربة الـ overflow الناتج عن الـ padding.
+- توقّع عمل `height: 100%` بينما الأب بلا ارتفاع محدد.
+- إضافة هوامش عمودية والاندهاش من انهيارها بدل جمعها.
+- استخدام `width`/`height` على عناصر inline والتساؤل لماذا لا يتغير شيء.
+- اللجوء إلى `margin` لتوزيع أبناء flex/grid بينما `gap` أنظف وبلا انهيار.
+- استخدام `margin-left`/`right` في موقع ثنائي الاتجاه بدل المنطقية `inline-start`/`inline-end`.
+
+## النموذج الذهني الذي تحتفظ به
+
+الصندوق هو **content ← padding ← border ← margin**، يُقاس وفق `box-sizing`. اضبط `border-box` عالميا ليكون الرقم الذي تكتبه هو الرقم الذي تحصل عليه. استخدم `gap` والخصائص المنطقية للمسافات، والجأ إلى مخطط الصندوق في DevTools عند وجود خلل، وستختفي معظم ألغاز التخطيط.

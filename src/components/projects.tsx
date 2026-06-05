@@ -1,4 +1,4 @@
-import { PROJECTS } from "@/lib/data";
+import type { SiteContent } from "@/lib/types";
 import { Reveal } from "./reveal";
 
 function ExternalLinkIcon() {
@@ -22,18 +22,22 @@ function ExternalLinkIcon() {
   );
 }
 
-export function Projects() {
+interface ProjectsProps {
+  content: SiteContent;
+}
+
+export function Projects({ content }: ProjectsProps) {
   return (
     <section id="projects" className="section" aria-labelledby="projects-heading">
       <div className="section__inner">
         <Reveal>
-          <p className="section__label">Work</p>
+          <p className="section__label">{content.sections.projects.label}</p>
           <h2 id="projects-heading" className="section__title">
-            Key Projects
+            {content.sections.projects.title}
           </h2>
         </Reveal>
         <div className="projects__list">
-          {PROJECTS.map((project, i) => (
+          {content.projects.map((project, i) => (
             <Reveal key={project.name} delay={100 + i * 100}>
               <article className="projects__card">
                 <div className="projects__card-header">
@@ -45,7 +49,7 @@ export function Projects() {
                       target="_blank"
                       rel="noopener noreferrer"
                       className="projects__link"
-                      aria-label={`Visit ${project.name} (opens in new tab)`}
+                      aria-label={`${content.copy.externalProjectLabel} ${project.name}`}
                     >
                       <ExternalLinkIcon />
                     </a>
