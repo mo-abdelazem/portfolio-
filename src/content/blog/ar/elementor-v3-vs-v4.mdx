@@ -1,0 +1,128 @@
+---
+title: "Elementor V3 ضد V4: ما الذي تغير ولماذا يهمك"
+description: "شرح عملي لمحرر Elementor V4 الجديد (Atomic Editor) — الـ Classes والـ Variables وتبويب الـ Style الموحد والـ DOM الأنظف بكثير — مع مثال حقيقي قبل/بعد ونصائح صادقة للترقية."
+publishedAt: "2026-06-11"
+translationKey: "elementor-v3-vs-v4"
+tags: ["WordPress", "Elementor", "Page Builders", "Performance"]
+---
+
+Elementor V4 — أو "Atomic Editor" — صدر رسميا في أبريل 2026، وهو أكبر تغيير معماري في المحرر منذ Flexbox containers. هذا ليس تحديثا شكليا للواجهة. V4 يغير *طريقة تفكير Elementor في التنسيق نفسها*: من إعدادات لكل widget على حدة إلى نظام CSS-first مبني على Classes وVariables وComponents.
+
+> V3 وجبة جاهزة — Button widget معبأ مسبقا بالخيارات التي قرر Elementor أنها تكفيك. أما V4 فهو مكونات خام — تركب العناصر وتنسقها بالـ classes، كما يفعل مطور الواجهات الأمامية تماما.
+
+## مقارنة سريعة بين V3 وV4
+
+| | Elementor V3 | Elementor V4 (Atomic) |
+|---|---|---|
+| **نموذج التنسيق** | لوحة styles خاصة بكل widget | تبويب Style موحد + Classes قابلة لإعادة الاستخدام |
+| **إعادة الاستخدام** | نسخ/لصق الـ styles وGlobal widgets | Classes وVariables وComponents متزامنة (Pro) |
+| **مخرجات الـ DOM** | عدة `div`s متداخلة لكل عنصر | غلاف واحد، HTML شبه نقي |
+| **مخرجات الـ CSS** | CSS لكل عنصر على حدة | CSS عام مبني على الـ classes |
+| **التحكم المتجاوب** | خصائص محددة فقط | كل خاصية، على كل breakpoint |
+| **حالات hover/focus** | فقط حيث يوفرها الـ widget | hover وfocus وactive على أي class |
+| **Design tokens** | Global Colors & Fonts فقط | Variables للألوان والخطوط والأحجام |
+
+## DOM أنظف بشكل جذري
+
+هذا هو التغيير الذي يشعر به الزوار فعلا. في V3، الزر الواحد يُرسم داخل سلسلة من الـ divs المتداخلة. في V4، الـ Atomic Elements تُرسم كعناصر HTML شبه نقية.
+
+```html
+<!-- V3: زر واحد -->
+<div class="elementor-element elementor-element-a1b2c3 elementor-widget elementor-widget-button">
+  <div class="elementor-widget-container">
+    <div class="elementor-button-wrapper">
+      <a class="elementor-button elementor-button-link elementor-size-md" href="/signup">
+        <span class="elementor-button-content-wrapper">
+          <span class="elementor-button-text">Get Started</span>
+        </span>
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- V4: نفس الزر -->
+<a class="btn-primary" href="/signup">Get Started</a>
+```
+
+<figure>
+
+<svg viewBox="0 0 560 300" role="img" aria-label="في V3 يُرسم الزر داخل خمس طبقات متداخلة بينما في V4 يُرسم كعنصر واحد" style={{ width: "100%", height: "auto" }}>
+  <text x="130" y="28" fontSize="14" className="dgm-ink" textAnchor="middle">V3 — 6 طبقات DOM</text>
+  <rect x="20" y="44" width="220" height="220" className="dgm-margin" strokeWidth="1.5" strokeDasharray="6 6" rx="6" />
+  <rect x="38" y="68" width="184" height="172" className="dgm-border" strokeWidth="1.5" rx="5" />
+  <rect x="56" y="92" width="148" height="124" className="dgm-padding" strokeWidth="1.5" strokeDasharray="4 4" rx="4" />
+  <rect x="74" y="116" width="112" height="76" className="dgm-content" strokeWidth="1.5" rx="4" />
+  <rect x="90" y="138" width="80" height="30" className="dgm-border" strokeWidth="1.5" rx="15" />
+  <text x="130" y="158" fontSize="12" className="dgm-ink" textAnchor="middle">Button</text>
+
+  <line x1="262" y1="154" x2="296" y2="154" className="dgm-line" strokeWidth="2" />
+  <path d="M 290 146 L 300 154 L 290 162" fill="none" className="dgm-line" strokeWidth="2" />
+
+  <text x="430" y="28" fontSize="14" className="dgm-ink" textAnchor="middle">V4 — عنصر واحد</text>
+  <rect x="320" y="44" width="220" height="220" className="dgm-margin" strokeWidth="1.5" strokeDasharray="6 6" rx="6" />
+  <rect x="370" y="134" width="120" height="40" className="dgm-content" strokeWidth="1.5" rx="20" />
+  <text x="430" y="159" fontSize="13" className="dgm-ink" textAnchor="middle">Button</text>
+  <text x="430" y="206" fontSize="12" className="dgm-muted" textAnchor="middle">&lt;a class="btn-primary"&gt;</text>
+</svg>
+
+<figcaption>زر واحد: ست طبقات DOM في V3 تنهار إلى عنصر anchor واحد في V4.</figcaption>
+
+</figure>
+
+اضرب هذا الفرق في كل عناصر الصفحة وستحصل على HTML أصغر وCSS أقل وعمل أخف على المتصفح — وهو ما ينعكس مباشرة على Core Web Vitals. قياسات المجتمع تشير إلى تحسن في سرعة الرسم يصل إلى ~30% مقارنة بـ V3.x. جانب الـ CSS يتحسن أيضا: V4 يستبدل الـ styles المتناثرة لكل عنصر بملف CSS عام مبني على الـ classes، فتُكتب القاعدة مرة واحدة بدل مرة لكل widget.
+
+## الـ Classes: نسق مرة واحدة وطبق في كل مكان
+
+في V3، لو كان لديك موقع فيه 40 زرا وطلب العميل تغيير لون الأزرار، فإما أن تعدل 40 widget يدويا أو تكون قد جهزت Global widgets مسبقا. في V4 تنشئ class مثل `btn-primary` مرة واحدة، تطبقه على كل زر، وأي تعديل مستقبلي يحدث الجميع فورا.
+
+الـ Classes أيضا **تتراكب** مثل CSS الحقيقي تماما — يمكن دمج `btn-base` + `btn-large` + `btn-outline` على عنصر واحد — مع **Class Manager** مركزي لإعادة التسمية والحذف وترتيب الأولوية.
+
+## الـ Variables: design tokens حقيقية
+
+تتيح لك Variables في V4 تعريف الألوان وعائلات الخطوط والأحجام مرة واحدة واستخدامها من أي class أو عنصر. غير قيمة `brand-color` من الأخضر إلى الكحلي وسينتشر التعديل في كل ما يتصل بها. كانت Global Colors في V3 تغطي جزءا من هذا، لكن فقط في الخصائص القليلة التي تدعمها.
+
+## تبويب Style واحد يحكم الجميع
+
+كان V3 يجبرك على إعادة تعلم كل widget — خيارات تنسيق الـ Button في أماكن مختلفة عن خيارات الـ Heading، وكثير من الخصائص لم تكن متجاوبة أصلا. في V4 كل Atomic Element يحصل على نفس التبويبين: **General** (المحتوى والوظيفة) و**Style** (الشكل). كل خاصية تنسيق متجاوبة على كل breakpoint بلا استثناءات، وأي class يمكنه حمل حالات hover وfocus وactive دون CSS مخصص.
+
+## إضافات النسخة Pro
+
+- **Components** — أقسام تخطيط قابلة لإعادة الاستخدام (بطاقات، هيدرات، أقسام CTA) تبقى متزامنة عبر الموقع كله مع تخصيصات محكومة لكل نسخة. عدل الأصل وستتحدث كل النسخ.
+- **Atomic Forms** — نماذج مركبة من عناصر حقول مستقلة قابلة للسحب (Label وInput وTextarea وCheckbox وSubmit)، كل منها يُنسق عبر النظام الموحد.
+- **Interactions** — حركات scroll-reveal وhover وclick قابلة للضبط لكل breakpoint، دون إضافات خارجية.
+
+## مثال عملي: نظام أزرار
+
+الفرق في سير العمل عمليا — أزرار primary وsecondary متناسقة عبر موقع من 20 صفحة.
+
+**طريقة V3:**
+
+1. أسقط Button widget ونسقه من تبويب الـ Style الخاص به.
+2. كليك يمين → Copy ثم Paste Style على كل زر آخر… في كل صفحة.
+3. غير العميل لون الهوية؟ كرر الخطوة 2 عشرين مرة، أو تمن أن تكون استخدمت Global Colors في الخصائص التي تدعمها.
+
+**طريقة V4:**
+
+1. أنشئ Variables: `brand-color` و`radius-md` و`font-heading`.
+2. أنشئ class باسم `btn-primary`: الخلفية = `brand-color`، الاستدارة = `radius-md`، مع الـ padding والـ typography. أضف حالة hover على الـ class مباشرة.
+3. أنشئ `btn-secondary` يعيد استخدام نفس الـ Variables بنمط outline.
+4. طبق الـ class على أي زر في أي مكان. إعادة الهوية لاحقا = تعديل Variable واحد.
+
+هذا ليس تحسينا صغيرا في سير العمل — إنه الفرق بين "page builder" و"design system".
+
+## هل يجب أن تهاجر الآن؟ (لا.)
+
+هذا هو الجزء الذي أتقنه Elementor: **V4 وV3 يتعايشان في نفس الموقع، وحتى في نفس الصفحة.**
+
+- صفحات V3 الحالية والـ widgets والقوالب تستمر في العمل دون تغيير — لا حاجة لإعادة البناء.
+- منذ أبريل 2026، التنصيبات *الجديدة* تأتي بالـ Atomic Elements مفعلة افتراضيا؛ المواقع القائمة تفعّلها يدويا من إشعار لوحة العناصر أو إعدادات WordPress Admin.
+- التبني يمكن أن يكون تدريجيا: ابن الأقسام الجديدة بالـ Atomic Elements بينما تبقى القديمة على V3 widgets.
+- الـ Classes والـ Variables تدعم التصدير/الاستيراد، فيمكن لنظام التصميم أن ينتقل بين المشاريع.
+
+تنبيه صادق: الـ Classes والـ Variables **لا تعمل على V3 widgets القديمة**، ومنظومة الإضافات الخارجية ما زالت تنقل عناصرها إلى المعمارية الجديدة. إذا كان موقعك يعتمد بشدة على widget من إضافة معينة، تأكد أن لها نسخة Atomic قبل إعادة بناء ذلك القسم.
+
+## الخلاصة
+
+للمشاريع الجديدة، V4 يستحق التبني الآن: مستقر وجاهز للإنتاج، وسير عمل الـ design system يدفع ثمن نفسه من أول طلب تعديل من العميل. للمواقع القائمة على V3 لا توجد هجرة إجبارية — تبن الـ Atomic Elements قسما بقسم، وتحقق أولا من دعم الإضافات الأساسية لديك.
+
+V3 جعل Elementor أشهر منشئ مواقع في WordPress. أما V4 فهو ما يجعله أخيرا يبدو كأداة front-end احترافية — والتفكير المبني على الـ classes الذي يعلمك إياه ينتقل مباشرة إلى CSS الحقيقي.
