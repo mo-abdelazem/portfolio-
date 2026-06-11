@@ -71,6 +71,22 @@ This is the change visitors actually feel. In V3, a single button renders as a s
 
 Multiply that across a page and you get smaller HTML, less CSS, and less work for the browser — which translates directly into better Core Web Vitals. Community benchmarks have reported up to ~30% faster rendering versus V3.x. The CSS side improves too: V4 replaces scattered per-element styles with a global, class-based stylesheet, so the same rule is written once instead of once per widget.
 
+## Meet the Atomic Elements
+
+V4 does not just restyle the old widgets — it ships a new set of building blocks. The lineup so far:
+
+| Group | Elements | Notes |
+|---|---|---|
+| **Layout** | Div Block, Flexbox, Grid | Nestable containers. Nearly identical under the hood — they differ in their default display: `block`, `flex`, and `grid` respectively, with native controls for direction, alignment, wrapping, and gaps. |
+| **Content** | Heading, Paragraph, Button, Image, SVG, Video | Text elements support inline editing directly on the canvas. Video is self-hosted with control over autoplay, looping, and poster images. |
+| **Interactive** | Tabs | Full control over the structure, styling, and behavior of tabbed layouts — each tab part is its own styleable element. |
+| **Forms (Pro)** | Label, Input, Textarea, Checkbox, Radio, Submit | Individual draggable fields instead of one monolithic form widget. |
+
+Two details worth knowing:
+
+- **You can change the rendered HTML tag.** A Heading switches between `h1`–`h6`, and a Div Block automatically becomes an `<a>` when you give it a link. The full set of semantic tags (`section`, `header`, `article`…) is still being expanded — it is one of the most-requested items on Elementor's GitHub.
+- **The lineup keeps growing.** Elementor adds elements with each release, and third-party addon developers are porting their widgets to the atomic architecture too. If a classic widget you need has no atomic version yet, you can still drop the V3 widget on the same page.
+
 ## Classes: Style Once, Apply Everywhere
 
 In V3, if a site had 40 buttons and the client asked to change the button color, you either edited 40 widgets or had set up Global widgets in advance. In V4 you create a class like `btn-primary` once, apply it everywhere, and any future change updates all of them instantly.
