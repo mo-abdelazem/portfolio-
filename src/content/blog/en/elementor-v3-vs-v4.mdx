@@ -85,7 +85,7 @@ V4 does not just restyle the old widgets — it ships a new set of building bloc
 Two details worth knowing:
 
 - **You can change the rendered HTML tag.** A Heading switches between `h1`–`h6`, and a Div Block automatically becomes an `<a>` when you give it a link. The full set of semantic tags (`section`, `header`, `article`…) is still being expanded — it is one of the most-requested items on Elementor's GitHub.
-- **The lineup keeps growing.** Elementor adds elements with each release, and third-party addon developers are porting their widgets to the atomic architecture too. If a classic widget you need has no atomic version yet, you can still drop the V3 widget on the same page.
+- **The lineup keeps growing.** Elementor adds elements with each release — the stated roadmap includes complex grid layouts, an Atomic Loop, carousels, and advanced form logic — and third-party addon developers are porting their widgets to the atomic architecture too. If a classic widget you need has no atomic version yet, you can still drop the V3 widget on the same page.
 
 ## Classes: Style Once, Apply Everywhere
 
@@ -93,19 +93,29 @@ In V3, if a site had 40 buttons and the client asked to change the button color,
 
 Classes also **stack**, exactly like real CSS — `btn-base` + `btn-large` + `btn-outline` can combine on one element — and a central **Class Manager** handles renaming, deletion, and priority.
 
+And classes do not trap you. If one element needs to look slightly different, override that property locally — the class stays intact everywhere else. Already styled something locally and want to reuse it? A one-click **Convert to global class** turns it into a reusable class.
+
 ## Variables: Real Design Tokens
 
-V4's Variables let you define colors, font families, and sizes once and reference them from any class or element. Change `brand-color` from teal to navy and the update cascades through everything connected to it. V3's Global Colors did a slice of this, but only for the handful of controls that supported them.
+V4's Variables let you define colors, font families, and sizes once and reference them from any class or element. Change `brand-color` from teal to navy and the update cascades through everything connected to it. V3's Global Colors did a slice of this, but only for the handful of controls that supported them. (Color and font Variables are free; size Variables — spacing, padding, font sizes — are a Pro feature, and they let you rescale an entire site's spacing from a single control.)
 
 ## One Style Tab to Rule Them All
 
-V3 forced you to relearn every widget — the Button's style options lived in different places than the Heading's, and many controls were not responsive. Every V4 Atomic Element gets the same two tabs: **General** (content and function) and **Style** (visuals). Every style property is responsive per breakpoint, with no exceptions, and any class can carry hover, focus, and active states without custom CSS.
+V3 forced you to relearn every widget — the Button's style options lived in different places than the Heading's, and many controls were not responsive. Every V4 Atomic Element gets the same three tabs: **General** (content and function), **Style** (visuals), and **Interactions** (motion — scroll, hover, and entrance effects, built into every element rather than bolted on, with the advanced triggers as a Pro feature). Every style property is responsive per breakpoint, with no exceptions, and any class can carry hover, focus, and active states without custom CSS.
 
-## The Pro Additions
+## Components: Build Once, Lock What Matters (Pro)
 
-- **Components** — reusable layout sections (cards, headers, CTAs) that stay synchronized site-wide with controlled per-instance overrides. Edit the master, every instance updates.
-- **Atomic Forms** — forms composed from individual draggable field elements (Label, Input, Textarea, Checkbox, Submit), each styled through the unified system.
-- **Interactions** — scroll-reveal, hover, and click-triggered animations, configurable per breakpoint, without third-party plugins.
+Components deserve more than a bullet point, because they solve two problems at once: repetition, and hand-off safety.
+
+Build something once — say a team-member card with an image, name, and title — and save it as a Component. Drag it into as many slots as you need; every instance stays connected, so editing the master updates them all.
+
+The part that changes client work: inside component edit mode you choose which content properties are **exposed** (the name, the role, the photo — the things that change per person), and everything else — layout, spacing, classes — stays **locked**. A client editing the site can swap the content but cannot break the design. That is the difference between handing off a component and handing off a pile of elements.
+
+## The Other Pro Additions
+
+- **Atomic Forms** — every part of the form is its own element (Label, Input, Textarea, Checkbox, Submit — even the error state), so you can build multi-column form layouts and nest other elements straight inside the form, neither of which the classic form widget allowed.
+- **Interactions** — scroll-reveal, hover, and entrance animations, configurable per breakpoint, without third-party plugins.
+- **Angie** — Elementor's generative AI framework understands the atomic system: describe a component, and it generates a ready-to-use one inside the editor, already connected to your Variables and Classes.
 
 ## A Practical Example: A Button System
 
@@ -135,7 +145,7 @@ This is the part Elementor got right: **V4 and V3 coexist on the same site, even
 - Adoption can be gradual: build new sections with Atomic Elements while old ones stay on V3 widgets.
 - Classes and Variables support export/import, so a design system can travel between projects.
 
-One honest caveat: Classes and Variables **do not apply to legacy V3 widgets**, and the third-party addon ecosystem is still porting its widgets to the Atomic architecture. If a site leans heavily on a specific addon widget, check that it has an Atomic version before rebuilding that section.
+One honest caveat: Classes and Variables style only the new Atomic Elements — they cannot restyle legacy V3 widgets directly. There is a bridge, though: color Variables can sync to V3 Global Colors, and typography classes can sync to V3 Global Fonts, so classic widgets can consume the same design system. The third-party addon ecosystem is also still porting its widgets to the Atomic architecture — if a site leans heavily on a specific addon widget, check that it has an Atomic version before rebuilding that section.
 
 ## The Verdict
 
