@@ -22,6 +22,23 @@ export function ThemeToggle({
   label: string;
   className?: string;
 }) {
+  // Re-apply the theme on mount: switching locale remounts the root layout,
+  // and React drops the data-theme attribute the inline <script> set on <html>.
+  useEffect(() => {
+    let theme: string | null = null;
+    try {
+      theme = localStorage.getItem("theme");
+    } catch {
+      // ignore (private mode / storage disabled)
+    }
+    if (theme !== "light" && theme !== "dark") {
+      theme = window.matchMedia("(prefers-color-scheme: dark)").matches
+        ? "dark"
+        : "light";
+    }
+    document.documentElement.setAttribute("data-theme", theme);
+  }, []);
+
   // Follow the device's color scheme live, unless the user has chosen a theme.
   useEffect(() => {
     const media = window.matchMedia("(prefers-color-scheme: dark)");
