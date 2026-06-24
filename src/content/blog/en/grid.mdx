@@ -1,0 +1,396 @@
+---
+title: "CSS Grid: Everything You Need to Lay Things Out in Two Dimensions"
+description: "A complete, visual guide to CSS Grid — the grid container, tracks, fr units, repeat() and minmax(), template areas, line-based and area placement, auto-fit vs auto-fill, gap, alignment, implicit grids, and hands-on exercises with solutions."
+publishedAt: "2026-06-25"
+translationKey: "grid"
+tags: ["CSS", "Grid", "Layout", "Frontend"]
+---
+
+Flexbox lines items up along a single axis. The moment you need rows **and** columns to line up together — a page shell, a photo gallery, a dashboard, a real two-dimensional layout — you want Grid. Grid lets you define the structure first (the rows and columns) and then drop items into it, so alignment across both axes is something you declare rather than nudge into place.
+
+> Grid answers one question: given a set of rows and columns, where does each item sit, and how is the leftover space divided between the tracks?
+
+## The Two Halves: Container and Items
+
+Like flexbox, Grid has a **container** (where you define the grid) and **items** (the direct children you place into it). You turn it on with `display: grid`, then describe the tracks:
+
+```css
+.container {
+  display: grid;
+  grid-template-columns: 200px 1fr 1fr;  /* three columns */
+  grid-template-rows: 80px auto;          /* two rows */
+  gap: 16px;                              /* space between tracks */
+}
+```
+
+That's a 3×2 grid. The cells exist whether or not you fill them, and items flow into them in order. The vocabulary you need is small: **tracks** (a column or a row), **lines** (the numbered edges between and around tracks), **cells** (one column × one row), and **areas** (a rectangle of one or more cells).
+
+<figure>
+
+<svg viewBox="0 0 560 280" role="img" aria-label="A grid showing column and row tracks, numbered grid lines, a single cell, and a multi-cell area" style={{ width: "100%", height: "auto" }}>
+  <rect x="60" y="40" width="440" height="200" className="dgm-margin" strokeWidth="1.5" rx="6" />
+  <line x1="60" y1="107" x2="500" y2="107" className="dgm-line" strokeWidth="1" strokeDasharray="4 4" />
+  <line x1="60" y1="174" x2="500" y2="174" className="dgm-line" strokeWidth="1" strokeDasharray="4 4" />
+  <line x1="206" y1="40" x2="206" y2="240" className="dgm-line" strokeWidth="1" strokeDasharray="4 4" />
+  <line x1="353" y1="40" x2="353" y2="240" className="dgm-line" strokeWidth="1" strokeDasharray="4 4" />
+  <rect x="68" y="48" width="130" height="51" className="dgm-content" strokeWidth="1.5" rx="3" />
+  <text x="133" y="78" fontSize="12" className="dgm-ink" textAnchor="middle">cell</text>
+  <rect x="361" y="115" width="131" height="117" className="dgm-padding" strokeWidth="1.5" rx="3" />
+  <text x="426" y="177" fontSize="12" className="dgm-ink" textAnchor="middle">area</text>
+  <text x="60" y="32" fontSize="11" className="dgm-muted" textAnchor="middle">1</text>
+  <text x="206" y="32" fontSize="11" className="dgm-muted" textAnchor="middle">2</text>
+  <text x="353" y="32" fontSize="11" className="dgm-muted" textAnchor="middle">3</text>
+  <text x="500" y="32" fontSize="11" className="dgm-muted" textAnchor="middle">4</text>
+  <text x="48" y="44" fontSize="11" className="dgm-muted" textAnchor="end">1</text>
+  <text x="48" y="111" fontSize="11" className="dgm-muted" textAnchor="end">2</text>
+  <text x="48" y="178" fontSize="11" className="dgm-muted" textAnchor="end">3</text>
+  <text x="48" y="240" fontSize="11" className="dgm-muted" textAnchor="end">4</text>
+  <text x="280" y="266" fontSize="12" className="dgm-muted" textAnchor="middle">column lines 1–4 (top), row lines 1–4 (side)</text>
+</svg>
+
+<figcaption>Tracks are the columns and rows; lines are the numbered edges around them (a 3-column grid has 4 column lines). A cell is one column × one row; an area spans several cells.</figcaption>
+
+</figure>
+
+## The `fr` Unit: Dividing Leftover Space
+
+The single most useful Grid idea is the **fraction unit**, `fr`. It represents a share of the *available* space after fixed sizes are subtracted — it's Grid's answer to `flex-grow`.
+
+```css
+grid-template-columns: 1fr 1fr 1fr;   /* three equal columns */
+grid-template-columns: 2fr 1fr;       /* first column twice as wide */
+grid-template-columns: 200px 1fr;     /* fixed sidebar + fluid content */
+```
+
+In `200px 1fr`, the fixed 200px is reserved first, and the `1fr` column takes everything left over. Mix fixed tracks (px, rem), content tracks (`auto`, `max-content`, `min-content`), and flexible tracks (`fr`) freely.
+
+## `repeat()`, `minmax()`, and the Responsive Grid
+
+Writing `1fr 1fr 1fr 1fr` gets old. `repeat()` compresses it, and `minmax()` gives a track a floor and a ceiling:
+
+```css
+grid-template-columns: repeat(4, 1fr);              /* four equal columns */
+grid-template-columns: repeat(3, minmax(0, 1fr));   /* equal, allowed to shrink */
+grid-template-columns: 200px repeat(2, 1fr);        /* mix literal + repeat   */
+```
+
+Put them together with `auto-fit`/`auto-fill` and you get the famous **responsive grid with no media queries** — columns are created automatically based on available width:
+
+```css
+.gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+```
+
+Read that as: "make as many columns as fit, each at least 220px, sharing leftover space equally." The grid reflows from one column on a phone to many on a wide screen, on its own.
+
+### `auto-fit` vs `auto-fill` — the one difference
+
+Both create as many tracks as fit. They differ only when there are **fewer items than columns that could fit**:
+
+- **`auto-fill`** keeps the empty columns, so existing items stay their `minmax` size and gaps appear on the side.
+- **`auto-fit`** *collapses* the empty columns to zero, so the present items stretch to fill the whole row.
+
+Most galleries want `auto-fit` (items grow to fill the row); use `auto-fill` when you want items to keep a fixed size and not stretch into empty space.
+
+## Placing Items: Line-Based
+
+By default items auto-flow into the next available cell. To place one deliberately, name the lines it should span:
+
+```css
+.item {
+  grid-column: 1 / 3;        /* from column line 1 to line 3 → spans 2 columns */
+  grid-row: 2 / 4;           /* from row line 2 to line 4 → spans 2 rows       */
+
+  grid-column: 1 / span 2;   /* same span, expressed as "start, then span 2"   */
+  grid-column: -1;           /* negative lines count from the end (last line)   */
+}
+```
+
+Lines are numbered from 1 at the start. Negative numbers count back from the end, so `grid-column: 1 / -1` is the reliable way to say "span the full width" no matter how many columns there are.
+
+## Placing Items: Named Template Areas
+
+For page-level layout, `grid-template-areas` is unbeatable for readability — you literally draw the layout as ASCII art:
+
+```css
+.page {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  grid-template-rows: auto 1fr auto;
+  grid-template-areas:
+    "header header"
+    "sidebar main"
+    "footer footer";
+  min-height: 100vh;
+  gap: 16px;
+}
+.page header  { grid-area: header; }
+.page .side   { grid-area: sidebar; }
+.page main    { grid-area: main; }
+.page footer  { grid-area: footer; }
+```
+
+<figure>
+
+<svg viewBox="0 0 560 300" role="img" aria-label="A page layout built from named grid areas: header across the top, sidebar and main in the middle, footer across the bottom" style={{ width: "100%", height: "auto" }}>
+  <rect x="40" y="20" width="480" height="50" className="dgm-content" strokeWidth="1.5" rx="3" />
+  <text x="280" y="50" fontSize="13" className="dgm-ink" textAnchor="middle">header</text>
+  <rect x="40" y="82" width="150" height="136" className="dgm-content" strokeWidth="1.5" rx="3" />
+  <text x="115" y="154" fontSize="13" className="dgm-ink" textAnchor="middle">sidebar</text>
+  <rect x="202" y="82" width="318" height="136" className="dgm-content" strokeWidth="1.5" rx="3" />
+  <text x="361" y="154" fontSize="13" className="dgm-ink" textAnchor="middle">main</text>
+  <rect x="40" y="230" width="480" height="50" className="dgm-content" strokeWidth="1.5" rx="3" />
+  <text x="280" y="260" fontSize="13" className="dgm-ink" textAnchor="middle">footer</text>
+</svg>
+
+<figcaption>The <code>grid-template-areas</code> strings <em>are</em> the layout: repeating a name across cells makes the area span them. Reorganising the page is a matter of rearranging the strings.</figcaption>
+
+</figure>
+
+To rearrange the whole page for mobile, you just rewrite the area strings inside a media query — no item-level changes needed. That maintainability is why template areas are the go-to for app shells.
+
+## `gap`: Gutters Between Tracks
+
+```css
+.container {
+  gap: 16px;           /* row and column gaps */
+  gap: 24px 16px;      /* row-gap | column-gap */
+  column-gap: 16px;
+  row-gap: 24px;
+}
+```
+
+`gap` adds space *between* tracks only, never on the outer edge, and never collapses — the same clean model as in flexbox. It replaced the old margin-juggling entirely.
+
+## Alignment: Two Axes, Two Pairs of Properties
+
+Grid has a full alignment system. The trick is which word controls which axis:
+
+- **`justify-*`** works along the **row (inline) axis** — left/right.
+- **`align-*`** works along the **column (block) axis** — up/down.
+- **`*-items`** aligns items **within their cells**; **`*-content`** aligns the **whole grid** when tracks don't fill the container.
+
+```css
+.container {
+  justify-items: center;   /* each item, horizontally in its cell */
+  align-items: center;     /* each item, vertically in its cell   */
+  place-items: center;     /* shorthand for both → dead-center everything */
+
+  justify-content: space-between;  /* the track group, horizontally */
+  align-content: center;           /* the track group, vertically   */
+}
+.item {
+  justify-self: end;       /* override for one item, horizontally */
+  align-self: start;       /* override for one item, vertically   */
+}
+```
+
+`place-items: center` is the shortest perfect-centering recipe in all of CSS: two words on the container and a single child sits dead center.
+
+## The Implicit Grid and `grid-auto-*`
+
+You define the **explicit** grid with `grid-template-*`. When items land outside it — more rows than you declared, say — Grid creates **implicit** tracks to hold them. You control their size and flow:
+
+```css
+.container {
+  grid-template-columns: repeat(3, 1fr);
+  grid-auto-rows: 120px;            /* size of rows Grid has to invent */
+  grid-auto-flow: row;             /* default: fill row by row        */
+  grid-auto-flow: column;          /* fill column by column instead   */
+  grid-auto-flow: dense;           /* backfill earlier gaps when possible */
+}
+```
+
+This is what makes a gallery "just work": you declare the columns, set `grid-auto-rows`, and every new item creates a new row at the right height without you touching the row template.
+
+## Subgrid (when children must align to the parent grid)
+
+A nested grid normally has its own independent tracks. `subgrid` lets a child adopt its parent's track lines, so things like card titles and footers line up across separate cards:
+
+```css
+.card {
+  display: grid;
+  grid-row: span 3;
+  grid-template-rows: subgrid;   /* inherit the parent's row lines */
+}
+```
+
+It's the clean fix for "rows of cards where the headings/buttons must align" — no fixed heights, no JavaScript. It's well supported in current browsers; keep a graceful fallback if you must support very old ones.
+
+## Common Mistakes
+
+- Reaching for Grid when the layout is genuinely one-dimensional — a simple button row is a flexbox job.
+- Forgetting that `1fr` has a content-based minimum; use `minmax(0, 1fr)` when a track must be allowed to shrink (the same family as flexbox's `min-width: 0`).
+- Mixing up the axes: `justify-*` is the row axis (horizontal), `align-*` is the column axis (vertical).
+- Confusing `*-items` (align items in their cells) with `*-content` (align the track group in the container).
+- Expecting `auto-fit` and `auto-fill` to look different when the row is full — they only differ with empty leftover columns.
+- Hardcoding `grid-column: 1 / 4` when `1 / -1` ("to the last line") is what you actually mean.
+
+## Exercises
+
+Try each before opening the solution. Assume a simple set of children unless noted:
+
+```html
+<div class="grid">
+  <div>1</div><div>2</div><div>3</div>
+  <div>4</div><div>5</div><div>6</div>
+</div>
+```
+
+### Exercise 1 — Dead-center a single item
+
+Center one child both ways inside a 300×200 box, using Grid.
+
+```html
+<div class="frame"><div class="badge">Centered</div></div>
+```
+
+<details>
+
+<summary>Show solution</summary>
+
+```css
+.frame {
+  width: 300px;
+  height: 200px;
+  display: grid;
+  place-items: center;   /* justify-items + align-items, both center */
+}
+```
+
+Two words. `place-items: center` centers the child on both axes.
+
+</details>
+
+### Exercise 2 — Responsive card gallery (no media queries)
+
+Lay out cards in as many columns as fit, each at least 240px, growing to fill the row, with even gaps.
+
+```html
+<div class="gallery">
+  <article>A</article><article>B</article>
+  <article>C</article><article>D</article>
+</div>
+```
+
+<details>
+
+<summary>Show solution</summary>
+
+```css
+.gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+```
+
+`auto-fit` makes as many ≥240px columns as fit and stretches the present cards to fill leftover space — fully responsive with zero breakpoints.
+
+</details>
+
+### Exercise 3 — Classic page shell with named areas
+
+Build a full-height layout: header on top, a 220px sidebar beside the main content, footer at the bottom.
+
+```html
+<div class="page">
+  <header>Header</header>
+  <aside>Sidebar</aside>
+  <main>Main</main>
+  <footer>Footer</footer>
+</div>
+```
+
+<details>
+
+<summary>Show solution</summary>
+
+```css
+.page {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  grid-template-rows: auto 1fr auto;
+  grid-template-areas:
+    "header header"
+    "sidebar main"
+    "footer footer";
+  gap: 16px;
+}
+.page header { grid-area: header; }
+.page aside  { grid-area: sidebar; }
+.page main   { grid-area: main; }
+.page footer { grid-area: footer; }
+```
+
+The `1fr` middle row makes the body absorb spare height (sticky footer for free), and the area strings make the structure obvious at a glance.
+
+</details>
+
+### Exercise 4 — A feature item spanning the grid
+
+In a 3-column grid, make the first item span the full width (a hero), and the rest flow underneath normally.
+
+```html
+<div class="grid">
+  <div class="hero">Featured</div>
+  <div>1</div><div>2</div><div>3</div>
+</div>
+```
+
+<details>
+
+<summary>Show solution</summary>
+
+```css
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+.grid .hero {
+  grid-column: 1 / -1;   /* from the first line to the last → full width */
+}
+```
+
+`1 / -1` always means "edge to edge" regardless of column count — more robust than hardcoding `1 / 4`.
+
+</details>
+
+### Exercise 5 — Masonry-ish gallery with dense packing
+
+Lay images into a 4-column grid where some items span 2 columns, and backfill the gaps the wide items leave behind.
+
+```html
+<div class="masonry">
+  <img class="wide" /><img /><img />
+  <img /><img class="wide" /><img />
+</div>
+```
+
+<details>
+
+<summary>Show solution</summary>
+
+```css
+.masonry {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-auto-rows: 140px;
+  grid-auto-flow: dense;   /* pull later items back to fill earlier holes */
+  gap: 12px;
+}
+.masonry .wide { grid-column: span 2; }
+```
+
+`grid-auto-flow: dense` lets narrow items hop backward into the gaps the wide ones leave, packing the grid tightly. (Note: dense can reorder items visually away from source order — fine for galleries, avoid where reading order matters.)
+
+</details>
+
+## The Mental Model to Keep
+
+Grid is **two-dimensional**: you define columns and rows on the container, then place items by line numbers, spans, or named areas. Use `fr` to divide leftover space, `repeat(auto-fit, minmax(…, 1fr))` for media-query-free responsiveness, and `grid-template-areas` for readable page shells. Remember `justify-*` is the row axis and `align-*` is the column axis, that `*-items` aligns within cells while `*-content` aligns the whole track group, and that implicit tracks (`grid-auto-rows`) handle everything you didn't explicitly declare. Reach for Grid when you have a real grid — and for Flexbox when you just have a line.

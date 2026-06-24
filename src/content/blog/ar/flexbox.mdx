@@ -1,0 +1,559 @@
+---
+title: "Flexbox: كل ما تحتاجه لترتيب العناصر في بُعد واحد"
+description: "دليل بصري كامل لـ CSS Flexbox — المحوران، flex-direction والالتفاف وjustify-content وalign-items وgap وgrow/shrink/basis واختصار flex والهوامش التلقائية وفخ min-width:0 وسلوك RTL، مع تمارين عملية وحلولها."
+publishedAt: "2026-06-25"
+translationKey: "flexbox"
+tags: ["CSS", "Flexbox", "Layout", "Frontend"]
+---
+
+بعد أن تتعلم كيف يُقاس الصندوق، يأتي السؤال التالي: كيف ترتّب *صفا* منها؟ الـ Flexbox أداة مصممة لهذا بالضبط: خذ مجموعة عناصر، صُفّها على محور واحد، ودعها تتقاسم المساحة المتبقية بدلا من أن تحسب العروض بيدك. التوسيط، أشرطة التنقل، أشرطة الأدوات، صفوف البطاقات، الأشرطة الجانبية — تقريبا كل مشكلة من نوع "ضع هذه بجانب بعضها واجعلها تتصرف بشكل جيد" هي مشكلة flexbox.
+
+> الـ Flexbox يجيب على سؤال واحد: عند وجود صف من العناصر ومساحة فارغة، كيف تُوزَّع هذه المساحة *على طول* الصف، وكيف تُحاذى العناصر *عبره*؟
+
+## بُعد واحد، محوران
+
+الـ Flexbox يرتّب العناصر على بُعد واحد في كل مرة — صف **أو** عمود. هذا البُعد هو **المحور الرئيسي** (main axis)؛ والعمودي عليه هو **المحور المتقاطع** (cross axis). تقريبا كل خاصية في flex هي إما "افعل شيئا على المحور الرئيسي" أو "افعل شيئا على المحور المتقاطع"، فإتقان هذين المحورين هو معظم المعركة.
+
+<figure>
+
+<svg viewBox="0 0 560 250" role="img" aria-label="حاوية flex بها ثلاثة عناصر في صف، مع محور رئيسي أفقي ومحور متقاطع عمودي" style={{ width: "100%", height: "auto" }}>
+  <rect x="70" y="30" width="430" height="140" className="dgm-margin" strokeWidth="1.5" rx="8" />
+  <rect x="95" y="55" width="90" height="90" className="dgm-content" strokeWidth="1.5" rx="3" />
+  <rect x="205" y="55" width="90" height="90" className="dgm-content" strokeWidth="1.5" rx="3" />
+  <rect x="315" y="55" width="90" height="90" className="dgm-content" strokeWidth="1.5" rx="3" />
+  <text x="140" y="105" fontSize="14" className="dgm-ink" textAnchor="middle">1</text>
+  <text x="250" y="105" fontSize="14" className="dgm-ink" textAnchor="middle">2</text>
+  <text x="360" y="105" fontSize="14" className="dgm-ink" textAnchor="middle">3</text>
+  <line x1="95" y1="205" x2="470" y2="205" className="dgm-line" strokeWidth="1.5" />
+  <polygon points="470,205 460,200 460,210" className="dgm-muted" />
+  <text x="265" y="228" fontSize="12" className="dgm-muted" textAnchor="middle">main axis — justify-content</text>
+  <line x1="45" y1="30" x2="45" y2="170" className="dgm-line" strokeWidth="1.5" />
+  <polygon points="45,170 40,160 50,160" className="dgm-muted" />
+  <text x="30" y="100" fontSize="12" className="dgm-muted" textAnchor="middle" transform="rotate(-90 30 100)">cross axis — align-items</text>
+</svg>
+
+<figcaption>مع القيمة الافتراضية <code>flex-direction: row</code>، يمتد المحور الرئيسي أفقيا (مع اتجاه الكتابة) ويمتد المحور المتقاطع عموديا. <code>justify-content</code> يعمل على المحور الرئيسي، و<code>align-items</code> يعمل على المحور المتقاطع.</figcaption>
+
+</figure>
+
+أهم نتيجة: **المحوران يتبادلان عند تغيير الاتجاه.** في العمود يمتد المحور الرئيسي من الأعلى للأسفل، فيتحكم `justify-content` الآن بالموضع العمودي ويتحكم `align-items` بالأفقي. احفظ *الأدوار* (justify = الرئيسي، align = المتقاطع)، لا "أفقي/عمودي".
+
+## التفعيل: `display: flex`
+
+تفعّل الخاصية على **الحاوية**، لا على العناصر:
+
+```css
+.container {
+  display: flex;        /* حاوية flex على مستوى block */
+  /* display: inline-flex;   تتدفق inline مثل inline-block */
+}
+```
+
+في اللحظة التي يصبح فيها العنصر حاوية flex، تحدث ثلاثة أمور لـ **أبنائه المباشرين** (عناصر flex الآن):
+
+- يصطفّون على المحور الرئيسي بدل أن يتكدّسوا.
+- يجلسون على سطر واحد افتراضيا (بلا التفاف).
+- **يتمددون** ليملؤوا المحور المتقاطع (أعمدة متساوية الارتفاع، مجانا).
+
+الأبناء المباشرون فقط يصبحون عناصر flex — التأثير لا يصل إلى الأحفاد. كما تتوقف `float` و`clear` و`vertical-align` عن التأثير على عناصر flex.
+
+## `flex-direction`: اختيار المحور الرئيسي
+
+```css
+.container {
+  flex-direction: row;            /* الافتراضي — المحور الرئيسي باتجاه الكتابة */
+  flex-direction: row-reverse;    /* نفس السطر، العناصر معكوسة */
+  flex-direction: column;         /* المحور الرئيسي للأسفل */
+  flex-direction: column-reverse; /* المحور الرئيسي للأعلى */
+}
+```
+
+<figure>
+
+<svg viewBox="0 0 560 220" role="img" aria-label="مقارنة بين flex-direction row وcolumn" style={{ width: "100%", height: "auto" }}>
+  <text x="20" y="22" fontSize="13" className="dgm-ink">flex-direction: row</text>
+  <rect x="20" y="34" width="240" height="150" className="dgm-margin" strokeWidth="1.5" rx="8" />
+  <rect x="36" y="60" width="56" height="98" className="dgm-content" strokeWidth="1.5" rx="3" />
+  <rect x="102" y="60" width="56" height="98" className="dgm-content" strokeWidth="1.5" rx="3" />
+  <rect x="168" y="60" width="56" height="98" className="dgm-content" strokeWidth="1.5" rx="3" />
+  <line x1="36" y1="175" x2="224" y2="175" className="dgm-line" strokeWidth="1.5" />
+  <polygon points="224,175 214,170 214,180" className="dgm-muted" />
+
+  <text x="300" y="22" fontSize="13" className="dgm-ink">flex-direction: column</text>
+  <rect x="300" y="34" width="240" height="150" className="dgm-margin" strokeWidth="1.5" rx="8" />
+  <rect x="320" y="48" width="200" height="36" className="dgm-content" strokeWidth="1.5" rx="3" />
+  <rect x="320" y="91" width="200" height="36" className="dgm-content" strokeWidth="1.5" rx="3" />
+  <rect x="320" y="134" width="200" height="36" className="dgm-content" strokeWidth="1.5" rx="3" />
+  <line x1="312" y1="48" x2="312" y2="170" className="dgm-line" strokeWidth="1.5" />
+  <polygon points="312,170 307,160 317,160" className="dgm-muted" />
+</svg>
+
+<figcaption>التحويل من <code>row</code> إلى <code>column</code> يدوّر المحور الرئيسي — ومعه أي خاصية (justify أم align) تتحكم بكل اتجاه.</figcaption>
+
+</figure>
+
+فضّل `row`/`column` ودع اتجاه كتابة الصفحة يتولى الانعكاس. لا تلجأ إلى `-reverse` إلا عندما تريد فعلا انعكاسا *بصريا* يجب ألا ينقلب في RTL — فهو يغيّر ترتيب الرسم فقط لا ترتيب DOM ولا ترتيب التنقل بـ Tab، وهو ما قد يضر بإمكانية الوصول عند الإفراط فيه.
+
+## الالتفاف: `flex-wrap` و`flex-flow`
+
+افتراضيا لا ينكسر سطر flex أبدا — تتقلص العناصر لتتسع، وإن عجزت عن التقلص أكثر فإنها **تفيض**. تتيح `flex-wrap` أن تنتقل إلى أسطر جديدة بدلا من ذلك:
+
+```css
+.container {
+  flex-wrap: nowrap;       /* الافتراضي — سطر واحد، قد يفيض */
+  flex-wrap: wrap;         /* الانكسار إلى أسطر جديدة حسب الحاجة */
+  flex-wrap: wrap-reverse; /* الالتفاف لكن بترتيب أسطر معكوس */
+
+  /* اختصار للاتجاه + الالتفاف: */
+  flex-flow: row wrap;
+}
+```
+
+`flex-wrap: wrap` هو أساس شبكات البطاقات المتجاوبة: أعطِ كل بطاقة `flex-basis` (أو `min-width`) ودع الصف ينكسر طبيعيا كلما ضاقت الشاشة — بلا media queries لإعادة التدفق الأساسية.
+
+## `justify-content`: التوزيع على المحور الرئيسي
+
+هكذا تُقتسم المساحة المتبقية على المحور الرئيسي:
+
+<figure>
+
+<svg viewBox="0 0 560 360" role="img" aria-label="قيم justify-content الست تعرض ثلاثة عناصر موزعة بطرق مختلفة على صف" style={{ width: "100%", height: "auto" }}>
+  <text x="20" y="32" fontSize="12" className="dgm-muted">flex-start</text>
+  <rect x="178" y="14" width="362" height="36" className="dgm-margin" strokeWidth="1" rx="4" />
+  <rect x="182" y="20" width="46" height="24" className="dgm-content" strokeWidth="1" rx="2" />
+  <rect x="232" y="20" width="46" height="24" className="dgm-content" strokeWidth="1" rx="2" />
+  <rect x="282" y="20" width="46" height="24" className="dgm-content" strokeWidth="1" rx="2" />
+
+  <text x="20" y="84" fontSize="12" className="dgm-muted">center</text>
+  <rect x="178" y="66" width="362" height="36" className="dgm-margin" strokeWidth="1" rx="4" />
+  <rect x="287" y="72" width="46" height="24" className="dgm-content" strokeWidth="1" rx="2" />
+  <rect x="337" y="72" width="46" height="24" className="dgm-content" strokeWidth="1" rx="2" />
+  <rect x="385" y="72" width="46" height="24" className="dgm-content" strokeWidth="1" rx="2" />
+
+  <text x="20" y="136" fontSize="12" className="dgm-muted">flex-end</text>
+  <rect x="178" y="118" width="362" height="36" className="dgm-margin" strokeWidth="1" rx="4" />
+  <rect x="390" y="124" width="46" height="24" className="dgm-content" strokeWidth="1" rx="2" />
+  <rect x="440" y="124" width="46" height="24" className="dgm-content" strokeWidth="1" rx="2" />
+  <rect x="490" y="124" width="46" height="24" className="dgm-content" strokeWidth="1" rx="2" />
+
+  <text x="20" y="188" fontSize="12" className="dgm-muted">space-between</text>
+  <rect x="178" y="170" width="362" height="36" className="dgm-margin" strokeWidth="1" rx="4" />
+  <rect x="182" y="176" width="46" height="24" className="dgm-content" strokeWidth="1" rx="2" />
+  <rect x="336" y="176" width="46" height="24" className="dgm-content" strokeWidth="1" rx="2" />
+  <rect x="490" y="176" width="46" height="24" className="dgm-content" strokeWidth="1" rx="2" />
+
+  <text x="20" y="240" fontSize="12" className="dgm-muted">space-around</text>
+  <rect x="178" y="222" width="362" height="36" className="dgm-margin" strokeWidth="1" rx="4" />
+  <rect x="214" y="228" width="46" height="24" className="dgm-content" strokeWidth="1" rx="2" />
+  <rect x="336" y="228" width="46" height="24" className="dgm-content" strokeWidth="1" rx="2" />
+  <rect x="458" y="228" width="46" height="24" className="dgm-content" strokeWidth="1" rx="2" />
+
+  <text x="20" y="292" fontSize="12" className="dgm-muted">space-evenly</text>
+  <rect x="178" y="274" width="362" height="36" className="dgm-margin" strokeWidth="1" rx="4" />
+  <rect x="232" y="280" width="46" height="24" className="dgm-content" strokeWidth="1" rx="2" />
+  <rect x="336" y="280" width="46" height="24" className="dgm-content" strokeWidth="1" rx="2" />
+  <rect x="440" y="280" width="46" height="24" className="dgm-content" strokeWidth="1" rx="2" />
+
+  <text x="280" y="340" fontSize="12" className="dgm-muted" textAnchor="middle">ثلاثة عناصر بنفس العرض — تتغير المسافات فقط</text>
+</svg>
+
+<figcaption><code>space-between</code> يثبّت العنصر الأول والأخير على الحافتين؛ <code>space-around</code> يعطي كل عنصر مساحة متساوية على جانبيه (فتحصل الحواف على نصف فجوة)؛ <code>space-evenly</code> يجعل كل الفجوات — بما فيها الحواف — متطابقة.</figcaption>
+
+</figure>
+
+```css
+.container {
+  justify-content: flex-start;    /* الافتراضي */
+  justify-content: center;
+  justify-content: flex-end;
+  justify-content: space-between;
+  justify-content: space-around;
+  justify-content: space-evenly;
+}
+```
+
+## `align-items`: المحاذاة على المحور المتقاطع
+
+بينما يوزّع `justify-content` العناصر *على طول* السطر، يضع `align-items` العناصر *عبره* — أداة المحور المتقاطع لسطر واحد:
+
+<figure>
+
+<svg viewBox="0 0 560 230" role="img" aria-label="قيم align-items: flex-start وcenter وflex-end وstretch داخل حاوية flex مرتفعة" style={{ width: "100%", height: "auto" }}>
+  <rect x="20" y="20" width="520" height="150" className="dgm-margin" strokeWidth="1.5" rx="8" />
+  <rect x="55" y="32" width="90" height="46" className="dgm-content" strokeWidth="1.5" rx="3" />
+  <rect x="185" y="74" width="90" height="46" className="dgm-content" strokeWidth="1.5" rx="3" />
+  <rect x="315" y="112" width="90" height="46" className="dgm-content" strokeWidth="1.5" rx="3" />
+  <rect x="445" y="32" width="90" height="126" className="dgm-content" strokeWidth="1.5" rx="3" />
+  <text x="100" y="200" fontSize="12" className="dgm-muted" textAnchor="middle">flex-start</text>
+  <text x="230" y="200" fontSize="12" className="dgm-muted" textAnchor="middle">center</text>
+  <text x="360" y="200" fontSize="12" className="dgm-muted" textAnchor="middle">flex-end</text>
+  <text x="490" y="200" fontSize="12" className="dgm-muted" textAnchor="middle">stretch</text>
+</svg>
+
+<figcaption><code>stretch</code> هي الافتراضية — العناصر التي بلا قياس ثابت على المحور المتقاطع تتمدد لتملأ الحاوية، ولهذا تعطي صفوف flex أعمدة متساوية الارتفاع تلقائيا. أما البقية فتثبّت العناصر عند بداية المحور المتقاطع أو وسطه أو نهايته.</figcaption>
+
+</figure>
+
+```css
+.container {
+  align-items: stretch;     /* الافتراضي */
+  align-items: flex-start;
+  align-items: center;
+  align-items: flex-end;
+  align-items: baseline;    /* محاذاة خطوط أساس النص */
+}
+```
+
+`baseline` هي البطل الخفي لأشرطة الأدوات وصفوف النماذج: تحاذي النص على خط أساسه حتى لو اختلفت أحجام الخطوط أو الـ padding بين العناصر.
+
+### التوسيط، أخيرا
+
+الجواب من سطرين عن "كيف أوسّط شيئا في الاتجاهين" هو ببساطة محاذاة على المحور الرئيسي + المتقاطع:
+
+```css
+.center {
+  display: flex;
+  justify-content: center;  /* المحور الرئيسي */
+  align-items: center;      /* المحور المتقاطع */
+}
+```
+
+## `align-content`: محاذاة الأسطر المتعددة
+
+هناك خاصية محاذاة ثالثة لا تفعل شيئا إلا عندما **يلتف المحتوى على أسطر متعددة**. `align-items` تحاذي العناصر داخل سطرها؛ أما `align-content` فتحاذي *الأسطر نفسها* داخل المحور المتقاطع للحاوية (`flex-start`، `center`، `space-between`، `stretch`، …). على حاوية بسطر واحد لا تأثير لها — وهذا مصدر شائع لسؤال "لماذا لا تفعل هذه الخاصية شيئا؟".
+
+## `gap`: مسافات بلا متاعب الـ margin
+
+```css
+.container {
+  gap: 16px;            /* فجوات الصفوف والأعمدة معا */
+  gap: 12px 24px;       /* row-gap | column-gap */
+  column-gap: 24px;
+  row-gap: 12px;
+}
+```
+
+تضيف `gap` مسافة *بين* العناصر فقط — لا على الحواف الخارجية أبدا — وعلى عكس الـ margin لا تنهار أبدا ولا تحتاج حيل `:not(:last-child)`. لتوزيع المسافات بين أبناء flex (وgrid)، صارت `gap` الخيار الافتراضي الحديث؛ ولا تلجأ إلى الـ margin إلا عند الحاجة لمسافة على جهة واحدة محددة.
+
+## تحجيم العناصر: `flex-grow` و`flex-shrink` و`flex-basis`
+
+هذا هو قلب الـ flexbox — كيف تتغير أحجام العناصر لتستهلك المساحة أو تتنازل عنها. ثلاث خصائص تعيش على **العناصر**:
+
+- **`flex-basis`** — القياس *الابتدائي* للعنصر على المحور الرئيسي قبل توزيع المساحة الفارغة. القيمة `auto` (الافتراضية) تعني "استخدم `width`/`height` أو حجم المحتوى"؛ وقيمة كـ `200px` أو `0` تضبطه صراحة.
+- **`flex-grow`** — مدى نهم العنصر في امتصاص المساحة **المتبقية**. القيمة `0` (الافتراضية) = لا تنمُ. والأرقام الأكبر تأخذ حصصا أكبر تناسبيا.
+- **`flex-shrink`** — مدى استعداد العنصر **للتنازل** عن المساحة عند فيض السطر. القيمة `1` (الافتراضية) = تقلّص حسب الحاجة. والقيمة `0` = ارفض التقلص.
+
+<figure>
+
+<svg viewBox="0 0 560 230" role="img" aria-label="الصف العلوي يعرض ثلاثة عناصر ثابتة تترك مساحة فارغة؛ والصف السفلي يعرض العنصر الأوسط ينمو ليملأ تلك المساحة" style={{ width: "100%", height: "auto" }}>
+  <text x="20" y="30" fontSize="12" className="dgm-muted">all items: flex: 0 0 auto — free space sits unused</text>
+  <rect x="20" y="40" width="520" height="56" className="dgm-margin" strokeWidth="1.5" rx="6" />
+  <rect x="30" y="50" width="110" height="36" className="dgm-content" strokeWidth="1.5" rx="3" />
+  <rect x="150" y="50" width="110" height="36" className="dgm-content" strokeWidth="1.5" rx="3" />
+  <rect x="270" y="50" width="110" height="36" className="dgm-content" strokeWidth="1.5" rx="3" />
+  <rect x="390" y="50" width="140" height="36" className="dgm-padding" strokeWidth="1" strokeDasharray="4 4" rx="3" />
+  <text x="460" y="73" fontSize="11" className="dgm-muted" textAnchor="middle">free space</text>
+
+  <text x="20" y="148" fontSize="12" className="dgm-muted">middle item: flex: 1 — it grows to eat the free space</text>
+  <rect x="20" y="158" width="520" height="56" className="dgm-margin" strokeWidth="1.5" rx="6" />
+  <rect x="30" y="168" width="110" height="36" className="dgm-content" strokeWidth="1.5" rx="3" />
+  <rect x="150" y="168" width="260" height="36" className="dgm-content" strokeWidth="1.5" rx="3" />
+  <rect x="420" y="168" width="110" height="36" className="dgm-content" strokeWidth="1.5" rx="3" />
+  <text x="280" y="190" fontSize="12" className="dgm-ink" textAnchor="middle">flex: 1</text>
+</svg>
+
+<figcaption>النمو يوزّع المساحة <em>المتبقية</em>. مع عنصر واحد بـ <code>flex: 1</code> والبقية بـ <code>flex: 0 0 auto</code>، يمتص العنصر المرن كل ما تبقى بعد وضع العناصر الثابتة.</figcaption>
+
+</figure>
+
+### اختصار `flex` (استخدم هذا، لا الخصائص المنفصلة)
+
+ستضبط الثلاث معا غالبا عبر اختصار `flex`. وهذه القيم التي تستخدمها فعليا كل يوم:
+
+| الاختصار | يتوسع إلى | المعنى |
+|---|---|---|
+| `flex: 1` | `1 1 0%` | ينمو ويتقلص من أساس صفري → أعمدة مرنة **متساوية** |
+| `flex: auto` | `1 1 auto` | ينمو ويتقلص من حجم المحتوى → مرن لكنه يراعي المحتوى |
+| `flex: none` | `0 0 auto` | حجم ثابت، لا ينمو ولا يتقلص |
+| `flex: 0 1 auto` | (الافتراضي) | لا ينمو، يتقلص عند الحاجة — السلوك الابتدائي |
+| `flex: 0 0 240px` | `0 0 240px` | عمود صارم بعرض 240px (ممتاز للأشرطة الجانبية) |
+
+الفخ الكبير هنا: `flex: 1` يستخدم أساسا **صفريا**، فثلاثة عناصر بـ `flex: 1` تصبح *متساوية تماما* بغض النظر عن المحتوى. أما `flex: auto` فيستخدم المحتوى كأساس، فيبدأ العنصر الأطول أعرض ويبقى أعرض قليلا. اختر `flex: 1` حين تريد أعمدة متساوية تماما، و`flex: auto` حين يجب أن يؤثر المحتوى في التقسيم.
+
+## تجاوزات لكل عنصر: `align-self` و`order`
+
+```css
+.item {
+  align-self: center;  /* تجاوز align-items للحاوية لهذا العنصر فقط */
+  order: -1;           /* انقل هذا العنصر مبكرا؛ الافتراضي 0، الأقل يُرسم أولا */
+}
+```
+
+`align-self` مثالية لتعديل عنصر واحد (مثلا صورة رمزية يجب أن تتوسط بينما يتمدد إخوتها). و`order` يعيد ترتيب التسلسل *البصري* دون لمس HTML — مفيد، لكن تذكّر أنه **لا** يغيّر ترتيب القراءة ولا التنقل بـ Tab، فلا تستخدمه لإصلاح مشاكل ترتيب المصدر المهمة لإمكانية الوصول.
+
+## الهوامش التلقائية تلتهم المساحة الفارغة
+
+حيلة خاصة بـ flex تستحق الحفظ: الهامش `auto` على عنصر flex يمتص **كل** المساحة الفارغة على تلك الجهة. فـ `margin-inline-start: auto` على العنصر الأخير يدفعه (وكل ما بعده) إلى أقصى النهاية — أنظف طريقة لبناء شريط "الشعار في جهة والأزرار في الأخرى":
+
+```css
+.navbar { display: flex; gap: 16px; align-items: center; }
+.navbar .spacer-target { margin-inline-start: auto; } /* يُدفع إلى النهاية */
+```
+
+والهوامش التلقائية تُوسّط أيضا: `margin: auto` على عنصر flex يوسّطه في **كلا** المحورين (نعم، عموديا أيضا — ما لم يستطع تخطيط الـ block العادي فعله بنظافة).
+
+## فخ `min-width: 0`
+
+افتراضيا لن يتقلص عنصر flex تحت الحجم الأدنى **لمحتواه** (`min-width: auto`). غالبا غير مرئي — حتى يحمل العنصر سلسلة نصية طويلة بلا فواصل، أو `<pre>`، أو ابنا فيه `overflow`، فيرفض التقلص ويفجّر التخطيط أو يفرض شريط تمرير. الحل أن تسمح له بالتقلص تحت حجم المحتوى:
+
+```css
+.flex-child {
+  min-width: 0;           /* اسمح بالتقلص تحت حجم المحتوى (صف) */
+  /* min-height: 0;          المكافئ لاتجاه العمود */
+}
+
+/* الكلاسيكي: اقتطاع النص داخل ابن flex */
+.label {
+  flex: 1;
+  min-width: 0;           /* بدونها لن تعمل النقاط الثلاث أبدا */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+```
+
+إذا كانت النقاط الثلاث (ellipsis) "لا تعمل" داخل flexbox، فهذا هو السبب دائما تقريبا.
+
+## الـ Flexbox والاتجاه (RTL)
+
+الـ Flexbox مدرك للاتجاه بحكم تصميمه، وهذه ميزة. مع `flex-direction: row` في صفحة RTL، يمتد المحور الرئيسي **من اليمين لليسار** تلقائيا: فـ `justify-content: flex-start` تعني الحافة اليمنى، وتتدفق العناصر يمينا، وينعكس شريط التنقل بشكل صحيح بلا أي كود إضافي. ولهذا بالضبط يجب أن تفضّل الأدوات المنطقية المرتبطة بالاتجاه:
+
+- أبقِ `flex-direction: row`/`column` ودع `dir="rtl"` يقلب المحور الرئيسي لك — وتجنّب `row-reverse` المثبّت لـ "الوضع العربي".
+- استخدم `margin-inline-start`/`margin-inline-end` (لا `left`/`right`) لحيلة دفع الهامش التلقائي، لتنقلب مع الاتجاه.
+- `gap` محايدة تجاه الاتجاه ولا تحتاج شيئا خاصا.
+
+لموقع يُطلق في LTR وRTL معا، يحذف الاعتماد على إدراك flex الأصيل للاتجاه فئة كاملة من أخطاء الانعكاس.
+
+## متى flexbox ومتى grid؟
+
+قاعدة سريعة: **الـ Flexbox أحادي البُعد** (المحتوى يتدفق على سطر واحد، والالتفاف أثر جانبي)، **والـ Grid ثنائي البُعد** (تضع العناصر في صفوف *و*أعمدة معا). الجأ إلى flexbox لأشرطة الأدوات وصفوف الأزرار وأشرطة التنقل والتوسيط و"دع هذه تتقاسم سطرا"؛ والجأ إلى grid حين تعرّف بنية صفوف وأعمدة فعلية. وهما يتكاملان بسعادة — يمكن أن تكون خلية grid حاوية flex والعكس.
+
+## أخطاء شائعة
+
+- ضبط خصائص flex على **العناصر** بينما مكانها **الحاوية** (`justify-content` و`align-items` و`flex-wrap` خصائص حاوية).
+- الخلط بين المحاور بعد التحويل إلى `column` — صار `justify-content` عموديا و`align-items` أفقيا.
+- توقّع أن تفعل `align-content` شيئا على حاوية بسطر واحد (بلا التفاف).
+- نسيان `min-width: 0`، ثم التساؤل لماذا تكسر سلسلة طويلة أو النقاط الثلاث التخطيط.
+- استخدام `flex: auto` والاندهاش لأن الأعمدة ليست متساوية تماما — استخدم `flex: 1` للأعمدة المتساوية.
+- اللجوء إلى `margin` بين العناصر بينما `gap` أنظف وبلا انهيار.
+- استخدام `row-reverse`/الهوامش الفيزيائية لـ RTL بدل ترك `dir` والخصائص المنطقية تقلب الأمور.
+
+## تمارين
+
+طبّق هذه في ملف HTML تجريبي (أو أي بيئة لعب). جرّب كل تمرين قبل فتح الحل. كل نقطة بداية تستخدم هذا الترميز البسيط ما لم يُذكر غير ذلك:
+
+```html
+<div class="box">
+  <div>One</div>
+  <div>Two</div>
+  <div>Three</div>
+</div>
+```
+
+### تمرين 1 — التوسيط المثالي
+
+وسّط ابنا واحدا أفقيا وعموديا داخل صندوق 300×200.
+
+```html
+<div class="frame">
+  <div class="badge">Centered</div>
+</div>
+```
+
+<details>
+
+<summary>اعرض الحل</summary>
+
+```css
+.frame {
+  width: 300px;
+  height: 200px;
+  display: flex;
+  justify-content: center; /* المحور الرئيسي: أفقي */
+  align-items: center;     /* المحور المتقاطع: عمودي */
+}
+```
+
+سطرا محاذاة — بلا transforms ولا أرقام سحرية.
+
+</details>
+
+### تمرين 2 — شريط تنقل بأزرار مدفوعة للنهاية
+
+ابنِ شريطا بشعار في جهة البداية ورابطين مدفوعين إلى النهاية، متوسطين عموديا. ويجب أن ينعكس صحيحا في RTL.
+
+```html
+<nav class="navbar">
+  <span class="logo">Logo</span>
+  <a href="#">Docs</a>
+  <a href="#">Login</a>
+</nav>
+```
+
+<details>
+
+<summary>اعرض الحل</summary>
+
+```css
+.navbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.navbar a:first-of-type {
+  margin-inline-start: auto; /* يمتص المساحة الفارغة، يدفع الروابط للنهاية */
+}
+```
+
+الهامش `auto` على الرابط الأول يمتص كل المساحة المتبقية فيدفعه وما بعده إلى أقصى النهاية. ولأنه `inline-start` (منطقي)، ينقلب تلقائيا في RTL.
+
+</details>
+
+### تمرين 3 — صف بطاقات متجاوب يلتف
+
+رتّب بطاقات في صف يلتف إلى أسطر جديدة كلما ضاقت الشاشة، كل بطاقة بعرض 220px على الأقل وتنمو لتتقاسم المساحة المتبقية. بلا media queries.
+
+```html
+<div class="cards">
+  <article>Card A</article>
+  <article>Card B</article>
+  <article>Card C</article>
+  <article>Card D</article>
+</div>
+```
+
+<details>
+
+<summary>اعرض الحل</summary>
+
+```css
+.cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.cards article {
+  flex: 1 1 220px; /* ينمو ويتقلص، أساس مثالي 220px */
+}
+```
+
+تريد كل بطاقة 220px؛ والمساحة الزائدة تُقتسم عبر `flex-grow: 1`؛ وعندما يعجز الصف عن استيعاب بطاقة 220px أخرى، يُنزلها `flex-wrap` إلى السطر التالي. سائل تماما بلا أي نقاط توقف.
+
+</details>
+
+### تمرين 4 — كائن وسائط بنص يُقتطع
+
+صورة رمزية ثابتة 48px في جهة البداية، ثم عنوان يملأ الباقي ويُقتطع بنقاط ثلاث حين يطول.
+
+```html
+<div class="media">
+  <img class="avatar" src="..." alt="" />
+  <p class="title">A very long title that should be cut off with an ellipsis…</p>
+</div>
+```
+
+<details>
+
+<summary>اعرض الحل</summary>
+
+```css
+.media {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.avatar {
+  flex: 0 0 48px;  /* صارم: لا ينمو ولا يتقلص */
+  width: 48px;
+  height: 48px;
+}
+.title {
+  flex: 1;
+  min-width: 0;    /* الحل — اسمح للنص بالتقلص تحت حجم محتواه */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+```
+
+بدون `min-width: 0` يرفض العنوان التقلص تحت عرض نصه فلا تظهر النقاط الثلاث أبدا — أكثر مفاجآت flexbox شيوعا.
+
+</details>
+
+### تمرين 5 — تذييل ملتصق بالأسفل
+
+اجعل التذييل يجلس أسفل نافذة العرض حين يكون المحتوى قصيرا، لكنه يُدفع للأسفل طبيعيا حين يطول المحتوى.
+
+```html
+<body class="layout">
+  <header>Header</header>
+  <main>Content</main>
+  <footer>Footer</footer>
+</body>
+```
+
+<details>
+
+<summary>اعرض الحل</summary>
+
+```css
+.layout {
+  min-height: 100vh;       /* أو 100dvh */
+  display: flex;
+  flex-direction: column;  /* المحور الرئيسي للأسفل */
+}
+.layout main {
+  flex: 1;                 /* ينمو ليمتص كل المساحة العمودية المتبقية */
+}
+```
+
+في حاوية flex عمودية، يجعل `flex: 1` على `main` يلتهم الارتفاع المتبقي، فيثبّت التذييل أسفل الشاشة حين يكون المحتوى قصيرا ويتركه يتدفق للأسفل حين يطول.
+
+</details>
+
+### تمرين 6 — شريط جانبي + محتوى سائل
+
+شريط جانبي ثابت 240px بجانب منطقة محتوى تملأ الباقي. ويتكدّسان على الشاشات الضيقة.
+
+```html
+<div class="shell">
+  <aside>Sidebar</aside>
+  <section>Main content</section>
+</div>
+```
+
+<details>
+
+<summary>اعرض الحل</summary>
+
+```css
+.shell {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+}
+.shell aside {
+  flex: 0 0 240px; /* عمود صارم 240px */
+}
+.shell section {
+  flex: 1 1 320px; /* يملأ المساحة المتبقية؛ أساسه 320px يفرض الالتفاف-والتكدّس عند الضيق */
+}
+```
+
+على الشاشات العريضة يتقاسم الشريط الصارم والمحتوى المرن الصف؛ وحين لا يعود أساس المحتوى 320px يتسع بجانب الشريط 240px، يكدّسهما `flex-wrap`. تخطيط شبيه بـ grid بإعلان واحد لكل عنصر وبلا نقاط توقف.
+
+</details>
+
+## النموذج الذهني الذي تحتفظ به
+
+حاوية flex تصفّ عناصرها على **محور رئيسي**، والمحور **المتقاطع** عمودي عليه. `justify-content` يوزّع على المحور الرئيسي؛ و`align-items` يحاذي عبر المحور المتقاطع؛ والتحويل إلى `column` يبدّل أيهما أيّ. تتغير أحجام العناصر عبر `flex: grow shrink basis` — الجأ إلى `flex: 1` (متساوٍ) أو `flex: auto` (يراعي المحتوى) أو `flex: none` (صارم). استخدم `gap` للمسافات، و`min-width: 0` لترويض الأبناء العنيدين، والهوامش التلقائية لإبعاد العناصر، واعتمد على إدراك الاتجاه الأصيل ليعمل RTL وحده. أتقن هذه، وسيتوقف التخطيط أحادي البُعد عن كونه معركة.

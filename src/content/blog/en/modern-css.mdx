@@ -1,0 +1,338 @@
+---
+title: "Modern CSS: The Features That Changed How We Write Styles"
+description: "A tour of the modern CSS features now shipping in browsers — container queries, :has(), nesting, cascade layers, subgrid, custom properties, color-mix() and modern color, logical properties, clamp(), aspect-ratio, scroll-driven animations, view transitions, and :is()/:where() — with hands-on exercises."
+publishedAt: "2026-06-25"
+translationKey: "modern-css"
+tags: ["CSS", "Modern CSS", "Frontend"]
+---
+
+CSS in the last few years stopped being the language you fought and became one you can lean on. Whole categories of hacks — clearfixes, JavaScript for "style the parent", Sass just to nest selectors, magic numbers for fluid type — have been replaced by native features that are now broadly supported. This is a tour of the modern toolkit: what each feature does, when to reach for it, and the one-liners that used to take a build step.
+
+> Modern CSS shifts work *into the platform*: layout, theming, interactivity, and even page transitions now have native, declarative answers — fewer dependencies, less JavaScript, better performance.
+
+## Custom Properties (CSS Variables)
+
+The backbone of modern CSS. Real variables that live in the cascade, inherit, and can be read and changed at runtime:
+
+```css
+:root {
+  --brand: oklch(62% 0.19 256);
+  --space: 8px;
+}
+.card {
+  padding: calc(var(--space) * 2);
+  border: 1px solid var(--brand);
+}
+.card--danger {
+  --brand: crimson;   /* override locally; everything using it updates */
+}
+```
+
+Unlike Sass variables (compiled away), custom properties are *live* — change one in a media query, a `:hover`, or via JavaScript (`element.style.setProperty`) and every dependent value recomputes. They're how theming, design tokens, and dark mode are built today.
+
+## `:has()` — The Long-Awaited Parent Selector
+
+For two decades CSS could only style downward. `:has()` lets a selector depend on its **descendants or following siblings** — the "parent selector" people asked for forever:
+
+```css
+/* a card that contains an image gets different padding */
+.card:has(img) { padding: 0; }
+
+/* a label whose checkbox is checked */
+label:has(input:checked) { font-weight: 600; }
+
+/* a form with an invalid field shows its error banner */
+form:has(:invalid) .error-banner { display: block; }
+```
+
+`:has()` is far more than a parent selector — it's a *relational* selector, so it expresses "style A based on the state of B" entirely in CSS. Huge amounts of "add a class with JavaScript" logic disappear.
+
+## Native Nesting
+
+You can now nest selectors without Sass:
+
+```css
+.card {
+  padding: 16px;
+
+  & .title { font-weight: 600; }
+
+  &:hover { box-shadow: var(--shadow); }
+
+  @media (min-width: 768px) {
+    padding: 24px;
+  }
+}
+```
+
+The `&` references the parent rule. It removes one of the most common reasons projects pulled in a CSS preprocessor at all. (Keep nesting shallow — deeply nested rules get specificity-heavy and hard to read, same as in Sass.)
+
+## Cascade Layers (`@layer`)
+
+Specificity wars — where you bump a selector or add `!important` just to win — get solved structurally by **cascade layers**. You declare an explicit order, and later layers beat earlier ones regardless of specificity:
+
+```css
+@layer reset, framework, components, utilities;
+
+@layer framework {
+  .btn { padding: 8px 16px; }     /* a complex, high-specificity selector */
+}
+@layer utilities {
+  .p-0 { padding: 0; }            /* still wins — its layer is later */
+}
+```
+
+Layers let you tame third-party CSS, guarantee your overrides land, and stop writing `!important`. Order is decided once, by intent, not by accident of selector strength.
+
+## `:is()` and `:where()` — Grouping Without the Repetition
+
+```css
+/* before: repetitive */
+.content h1, .content h2, .content h3 { margin-top: 1.5em; }
+
+/* after */
+.content :is(h1, h2, h3) { margin-top: 1.5em; }
+```
+
+The difference between the two: `:is()` takes the specificity of its most specific argument, while **`:where()` always has zero specificity** — making it perfect for low-priority defaults that are trivially easy to override.
+
+## Modern Color: `oklch()` and `color-mix()`
+
+CSS color grew up. `oklch()` describes color in a perceptually uniform space (lightness, chroma, hue), so a "10% lighter" tweak actually looks 10% lighter — unlike HSL. And `color-mix()` blends two colors right in the stylesheet:
+
+```css
+:root { --brand: oklch(62% 0.19 256); }
+
+.btn:hover {
+  /* 15% white mixed into the brand color — a tint with no extra variable */
+  background: color-mix(in oklch, var(--brand), white 15%);
+}
+.muted {
+  /* translucent version of any color, even a variable */
+  color: color-mix(in srgb, currentColor 60%, transparent);
+}
+```
+
+Together they let you derive a whole palette (hovers, tints, shades, borders) from a single base color — the kind of thing that used to require Sass color functions.
+
+## Logical Properties
+
+Physical `left`/`right`/`top`/`bottom` assume a writing direction. **Logical properties** follow the text flow, so the same CSS works in LTR and RTL without mirroring:
+
+```css
+.card {
+  margin-inline: 16px;        /* left+right in LTR, flips in RTL  */
+  padding-block: 12px;        /* top+bottom                       */
+  border-inline-start: 2px solid; /* the "start" edge of the line */
+  inset-inline-start: 0;      /* logical 'left' for positioning   */
+}
+```
+
+For any site that ships in more than one direction, logical properties delete an entire class of bugs — write once, mirror automatically.
+
+## Intrinsic Sizing: `clamp()`, `min()`, `max()`, `aspect-ratio`
+
+Fluid design without a pile of media queries:
+
+```css
+h1     { font-size: clamp(1.75rem, 1rem + 3vw, 3rem); }  /* fluid type   */
+.wrap  { width: min(100% - 2rem, 1100px); margin-inline: auto; } /* fluid cap */
+.video { aspect-ratio: 16 / 9; }                          /* no padding hack */
+.thumb { aspect-ratio: 1; object-fit: cover; }            /* perfect squares */
+```
+
+`aspect-ratio` alone retired the infamous "padding-top: 56.25%" trick. `clamp()` retired stacks of font-size breakpoints. These are values that *scale*, so the layout breathes instead of jumping at fixed widths.
+
+## Container Queries
+
+The leap beyond media queries: a component can respond to the size of **its own container** instead of the viewport, so the same card adapts whether it's in a narrow sidebar or a wide column.
+
+```css
+.list { container-type: inline-size; }
+
+@container (min-width: 400px) {
+  .card { grid-template-columns: 120px 1fr; }
+}
+```
+
+This is what finally makes components *truly* reusable — they carry their own responsiveness with them. (Covered in depth in the [responsive design](/blog/responsive-media-queries) post.)
+
+## Subgrid
+
+A nested grid can now align to its parent's tracks with `grid-template-rows: subgrid` (or columns), so card titles, bodies, and footers line up across a row of independent cards — no fixed heights, no JavaScript. It's the missing piece that made CSS Grid complete for component libraries.
+
+## Scroll-Driven Animations
+
+Animations can now be tied to scroll position **without JavaScript**, running on the compositor for smoothness:
+
+```css
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: none; }
+}
+.reveal {
+  animation: fade-in linear both;
+  animation-timeline: view();   /* progress driven by element entering the viewport */
+}
+```
+
+A reading-progress bar, reveal-on-scroll, or parallax that used to need a scroll listener and `requestAnimationFrame` becomes a few declarative lines — and far better performance because it never touches the main thread.
+
+## View Transitions
+
+Animated transitions between two states — or even two pages — with the browser doing the crossfade and morph for you:
+
+```css
+@view-transition { navigation: auto; }   /* cross-document transitions */
+
+/* give a shared element a name so it morphs between states */
+.hero-img { view-transition-name: hero; }
+```
+
+```js
+// for in-page state changes
+document.startViewTransition(() => updateTheDOM());
+```
+
+The app-like "the thumbnail smoothly grows into the detail page" effect, native and a few lines long, instead of a heavy animation library.
+
+## A Few More Worth Knowing
+
+- **`accent-color`** — theme checkboxes, radios, and ranges with one property.
+- **`:focus-visible`** — show focus rings for keyboard users without flashing them on mouse clicks.
+- **`gap`** in flexbox and grid — collapse-free spacing that replaced margin hacks.
+- **`inset`** — shorthand for `top`/`right`/`bottom`/`left` in one line.
+- **`text-wrap: balance`** / **`pretty`** — balanced headings and orphan-free paragraphs, for free.
+- **`:user-invalid`** — validation styles that only kick in *after* the user has interacted, not on page load.
+
+## Common Mistakes
+
+- Reaching for JavaScript to "style the parent" when `:has()` does it in CSS.
+- Adding a Sass build purely for nesting and variables that CSS now does natively.
+- Fighting specificity with `!important` instead of organizing with `@layer`.
+- Writing `padding-top: 56.25%` hacks when `aspect-ratio` exists.
+- Using HSL for color scales and getting uneven steps — `oklch()` is perceptually uniform.
+- Using `left`/`right` on a bidirectional site instead of logical `inline-start`/`inline-end`.
+- Animating scroll effects in JavaScript when scroll-driven animations run off-main-thread.
+
+## Exercises
+
+Try each before opening the solution. A quick note: a couple of these (scroll-driven animations, view transitions) are newer — test in an up-to-date browser.
+
+### Exercise 1 — Style a card based on its content with `:has()`
+
+Give any `.card` that contains an `<img>` zero padding, and any `.card` *without* one a 16px padding — no extra classes, no JavaScript.
+
+<details>
+
+<summary>Show solution</summary>
+
+```css
+.card { padding: 16px; }      /* default for cards without an image */
+.card:has(img) { padding: 0; } /* override for cards that contain one */
+```
+
+`:has(img)` matches the card *because of* its descendant — the relational selector that used to require a JavaScript class toggle.
+
+</details>
+
+### Exercise 2 — A tint and a translucent color from one variable
+
+Given `--brand`, make a hover background that's 15% lighter and a border that's the brand at 30% opacity, without declaring any new color variables.
+
+<details>
+
+<summary>Show solution</summary>
+
+```css
+.btn {
+  background: var(--brand);
+  border: 1px solid color-mix(in srgb, var(--brand) 30%, transparent);
+}
+.btn:hover {
+  background: color-mix(in oklch, var(--brand), white 15%);
+}
+```
+
+`color-mix()` derives both the tint and the translucent border from the single base color — no Sass functions, no extra tokens.
+
+</details>
+
+### Exercise 3 — Solve a specificity clash with `@layer`
+
+A framework rule `.btn { color: blue }` keeps beating your utility `.text-red { color: red }` because of source order. Make the utility win *without* `!important` or bumping specificity.
+
+<details>
+
+<summary>Show solution</summary>
+
+```css
+@layer framework, utilities;   /* utilities declared later → higher priority */
+
+@layer framework {
+  .btn { color: blue; }
+}
+@layer utilities {
+  .text-red { color: red; }   /* wins regardless of specificity */
+}
+```
+
+Because `utilities` is a later layer than `framework`, every rule in it beats every rule in the earlier layer — specificity inside layers no longer decides the cross-layer winner.
+
+</details>
+
+### Exercise 4 — Fluid hero, no media queries
+
+A hero heading should scale from 32px to 64px with the viewport, and the hero box should always be 16:9. No breakpoints, no padding hacks.
+
+<details>
+
+<summary>Show solution</summary>
+
+```css
+.hero {
+  aspect-ratio: 16 / 9;
+  display: grid;
+  place-items: center;
+}
+.hero h1 {
+  font-size: clamp(2rem, 1rem + 5vw, 4rem); /* 32px → 64px, fluid */
+}
+```
+
+`aspect-ratio` shapes the box and `clamp()` scales the type — two declarations replace a media-query stack and the old percentage-padding trick.
+
+</details>
+
+### Exercise 5 — Reveal-on-scroll without JavaScript
+
+Fade-and-rise each `.section` into view as it scrolls into the viewport, using a scroll-driven animation.
+
+<details>
+
+<summary>Show solution</summary>
+
+```css
+@keyframes rise {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: none; }
+}
+.section {
+  animation: rise linear both;
+  animation-timeline: view();
+  animation-range: entry 0% entry 100%; /* play while entering the viewport */
+}
+
+/* respect users who prefer less motion */
+@media (prefers-reduced-motion: reduce) {
+  .section { animation: none; }
+}
+```
+
+`animation-timeline: view()` ties the animation's progress to the element entering the viewport — no scroll listener, runs off the main thread, and it still honors reduced-motion.
+
+</details>
+
+## The Mental Model to Keep
+
+Modern CSS pulls work back into the platform. Build theming on **custom properties**, derive palettes with **`oklch()`** and **`color-mix()`**, and organize the cascade with **`@layer`** instead of `!important`. Style relationally with **`:has()`**, group with **`:is()`/`:where()`**, and nest natively. Make things *scale* with **`clamp()`/`min()`/`aspect-ratio`**, make components self-responsive with **container queries** and **subgrid**, and write direction-agnostic CSS with **logical properties**. For motion and navigation, reach for **scroll-driven animations** and **view transitions** before a JavaScript library. The throughline: if you last learned CSS a few years ago, a surprising number of your old workarounds now have a one-line native answer.

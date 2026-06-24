@@ -1,0 +1,396 @@
+---
+title: "CSS Grid: كل ما تحتاجه لترتيب العناصر في بُعدين"
+description: "دليل بصري كامل لـ CSS Grid — حاوية الشبكة والمسارات ووحدة fr ودالتا repeat() وminmax() ومناطق القوالب والتوضيع بالأسطر والمناطق وauto-fit مقابل auto-fill وgap والمحاذاة والشبكة الضمنية، مع تمارين عملية وحلولها."
+publishedAt: "2026-06-25"
+translationKey: "grid"
+tags: ["CSS", "Grid", "Layout", "Frontend"]
+---
+
+الـ Flexbox يصفّ العناصر على محور واحد. لكن في اللحظة التي تحتاج فيها أن تتحاذى الصفوف **و**الأعمدة معا — هيكل صفحة، معرض صور، لوحة تحكم، تخطيط ثنائي البُعد حقيقي — تريد Grid. الـ Grid يتيح لك تعريف البنية أولا (الصفوف والأعمدة) ثم إسقاط العناصر فيها، فتصبح المحاذاة في كلا المحورين شيئا تعلنه لا شيئا تدفعه إلى مكانه.
+
+> الـ Grid يجيب على سؤال واحد: عند وجود مجموعة من الصفوف والأعمدة، أين يجلس كل عنصر، وكيف تُقسَّم المساحة المتبقية بين المسارات؟
+
+## النصفان: الحاوية والعناصر
+
+مثل flexbox، للـ Grid **حاوية** (حيث تعرّف الشبكة) و**عناصر** (الأبناء المباشرون الذين تضعهم فيها). تفعّله بـ `display: grid`، ثم تصف المسارات:
+
+```css
+.container {
+  display: grid;
+  grid-template-columns: 200px 1fr 1fr;  /* ثلاثة أعمدة */
+  grid-template-rows: 80px auto;          /* صفّان */
+  gap: 16px;                              /* مسافة بين المسارات */
+}
+```
+
+تلك شبكة 3×2. الخلايا موجودة سواء ملأتها أم لا، والعناصر تتدفق فيها بالترتيب. المصطلحات قليلة: **المسارات** (tracks، عمود أو صف)، **الأسطر** (lines، الحواف المرقّمة بين المسارات وحولها)، **الخلايا** (cells، عمود واحد × صف واحد)، و**المناطق** (areas، مستطيل من خلية أو أكثر).
+
+<figure>
+
+<svg viewBox="0 0 560 280" role="img" aria-label="شبكة تعرض مسارات الأعمدة والصفوف والأسطر المرقّمة وخلية واحدة ومنطقة متعددة الخلايا" style={{ width: "100%", height: "auto" }}>
+  <rect x="60" y="40" width="440" height="200" className="dgm-margin" strokeWidth="1.5" rx="6" />
+  <line x1="60" y1="107" x2="500" y2="107" className="dgm-line" strokeWidth="1" strokeDasharray="4 4" />
+  <line x1="60" y1="174" x2="500" y2="174" className="dgm-line" strokeWidth="1" strokeDasharray="4 4" />
+  <line x1="206" y1="40" x2="206" y2="240" className="dgm-line" strokeWidth="1" strokeDasharray="4 4" />
+  <line x1="353" y1="40" x2="353" y2="240" className="dgm-line" strokeWidth="1" strokeDasharray="4 4" />
+  <rect x="68" y="48" width="130" height="51" className="dgm-content" strokeWidth="1.5" rx="3" />
+  <text x="133" y="78" fontSize="12" className="dgm-ink" textAnchor="middle">cell</text>
+  <rect x="361" y="115" width="131" height="117" className="dgm-padding" strokeWidth="1.5" rx="3" />
+  <text x="426" y="177" fontSize="12" className="dgm-ink" textAnchor="middle">area</text>
+  <text x="60" y="32" fontSize="11" className="dgm-muted" textAnchor="middle">1</text>
+  <text x="206" y="32" fontSize="11" className="dgm-muted" textAnchor="middle">2</text>
+  <text x="353" y="32" fontSize="11" className="dgm-muted" textAnchor="middle">3</text>
+  <text x="500" y="32" fontSize="11" className="dgm-muted" textAnchor="middle">4</text>
+  <text x="48" y="44" fontSize="11" className="dgm-muted" textAnchor="end">1</text>
+  <text x="48" y="111" fontSize="11" className="dgm-muted" textAnchor="end">2</text>
+  <text x="48" y="178" fontSize="11" className="dgm-muted" textAnchor="end">3</text>
+  <text x="48" y="240" fontSize="11" className="dgm-muted" textAnchor="end">4</text>
+  <text x="280" y="266" fontSize="12" className="dgm-muted" textAnchor="middle">column lines 1–4 (top), row lines 1–4 (side)</text>
+</svg>
+
+<figcaption>المسارات هي الأعمدة والصفوف؛ والأسطر هي الحواف المرقّمة حولها (شبكة من 3 أعمدة لها 4 أسطر أعمدة). الخلية عمود واحد × صف واحد؛ والمنطقة تمتد عبر عدة خلايا.</figcaption>
+
+</figure>
+
+## وحدة `fr`: تقسيم المساحة المتبقية
+
+أكثر أفكار Grid فائدة هي **وحدة الكسر** `fr`. تمثّل حصة من المساحة *المتاحة* بعد طرح الأحجام الثابتة — وهي جواب Grid عن `flex-grow`.
+
+```css
+grid-template-columns: 1fr 1fr 1fr;   /* ثلاثة أعمدة متساوية */
+grid-template-columns: 2fr 1fr;       /* العمود الأول ضعف عرض الثاني */
+grid-template-columns: 200px 1fr;     /* شريط جانبي ثابت + محتوى سائل */
+```
+
+في `200px 1fr`، يُحجز الـ 200px الثابت أولا، ويأخذ عمود `1fr` كل ما تبقى. امزج المسارات الثابتة (px، rem) ومسارات المحتوى (`auto`، `max-content`، `min-content`) والمسارات المرنة (`fr`) بحرية.
+
+## `repeat()` و`minmax()` والشبكة المتجاوبة
+
+كتابة `1fr 1fr 1fr 1fr` تصبح مملّة. `repeat()` تختصرها، و`minmax()` تعطي المسار حدا أدنى وحدا أقصى:
+
+```css
+grid-template-columns: repeat(4, 1fr);              /* أربعة أعمدة متساوية */
+grid-template-columns: repeat(3, minmax(0, 1fr));   /* متساوية، يُسمح لها بالتقلص */
+grid-template-columns: 200px repeat(2, 1fr);        /* مزج صريح + repeat */
+```
+
+اجمعها مع `auto-fit`/`auto-fill` لتحصل على **الشبكة المتجاوبة الشهيرة بلا media queries** — تُنشأ الأعمدة تلقائيا بناء على العرض المتاح:
+
+```css
+.gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+```
+
+اقرأها هكذا: "اصنع أكبر عدد من الأعمدة يتسع، كل منها 220px على الأقل، تتقاسم المساحة المتبقية بالتساوي." الشبكة تعيد التدفق من عمود واحد على الهاتف إلى أعمدة كثيرة على الشاشة العريضة، وحدها.
+
+### `auto-fit` مقابل `auto-fill` — الفرق الوحيد
+
+كلاهما يصنع أكبر عدد من المسارات يتسع. ويختلفان فقط عندما يكون عدد العناصر **أقل من عدد الأعمدة التي يمكن أن تتسع**:
+
+- **`auto-fill`** تبقي الأعمدة الفارغة، فتبقى العناصر الموجودة بحجم `minmax` وتظهر فجوات على الجانب.
+- **`auto-fit`** *تطوي* الأعمدة الفارغة إلى صفر، فتتمدد العناصر الموجودة لتملأ الصف كله.
+
+معظم المعارض تريد `auto-fit` (تنمو العناصر لتملأ الصف)؛ استخدم `auto-fill` حين تريد أن تبقى العناصر بحجم ثابت ولا تتمدد في الفراغ.
+
+## توضيع العناصر: بالأسطر
+
+افتراضيا تتدفق العناصر تلقائيا إلى الخلية التالية المتاحة. ولوضع عنصر عمدا، سمِّ الأسطر التي يجب أن يمتد بينها:
+
+```css
+.item {
+  grid-column: 1 / 3;        /* من سطر العمود 1 إلى السطر 3 ← يمتد عمودين */
+  grid-row: 2 / 4;           /* من سطر الصف 2 إلى السطر 4 ← يمتد صفّين */
+
+  grid-column: 1 / span 2;   /* نفس الامتداد: "ابدأ، ثم امتد بمقدار 2" */
+  grid-column: -1;           /* الأسطر السالبة تُعدّ من النهاية (آخر سطر) */
+}
+```
+
+تُرقَّم الأسطر من 1 عند البداية. والأرقام السالبة تُعدّ رجوعا من النهاية، فـ `grid-column: 1 / -1` هي الطريقة الموثوقة لقول "امتد بكامل العرض" مهما كان عدد الأعمدة.
+
+## توضيع العناصر: مناطق القوالب المسمّاة
+
+لتخطيط الصفحة، لا يُضاهى `grid-template-areas` في وضوح القراءة — ترسم التخطيط حرفيا كرسم ASCII:
+
+```css
+.page {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  grid-template-rows: auto 1fr auto;
+  grid-template-areas:
+    "header header"
+    "sidebar main"
+    "footer footer";
+  min-height: 100vh;
+  gap: 16px;
+}
+.page header  { grid-area: header; }
+.page .side   { grid-area: sidebar; }
+.page main    { grid-area: main; }
+.page footer  { grid-area: footer; }
+```
+
+<figure>
+
+<svg viewBox="0 0 560 300" role="img" aria-label="تخطيط صفحة مبني من مناطق مسمّاة: header في الأعلى، sidebar وmain في الوسط، footer في الأسفل" style={{ width: "100%", height: "auto" }}>
+  <rect x="40" y="20" width="480" height="50" className="dgm-content" strokeWidth="1.5" rx="3" />
+  <text x="280" y="50" fontSize="13" className="dgm-ink" textAnchor="middle">header</text>
+  <rect x="40" y="82" width="150" height="136" className="dgm-content" strokeWidth="1.5" rx="3" />
+  <text x="115" y="154" fontSize="13" className="dgm-ink" textAnchor="middle">sidebar</text>
+  <rect x="202" y="82" width="318" height="136" className="dgm-content" strokeWidth="1.5" rx="3" />
+  <text x="361" y="154" fontSize="13" className="dgm-ink" textAnchor="middle">main</text>
+  <rect x="40" y="230" width="480" height="50" className="dgm-content" strokeWidth="1.5" rx="3" />
+  <text x="280" y="260" fontSize="13" className="dgm-ink" textAnchor="middle">footer</text>
+</svg>
+
+<figcaption>نصوص <code>grid-template-areas</code> <em>هي</em> التخطيط: تكرار اسم عبر خلايا يجعل المنطقة تمتد عليها. وإعادة تنظيم الصفحة مجرد إعادة ترتيب للنصوص.</figcaption>
+
+</figure>
+
+لإعادة ترتيب الصفحة كاملة للهاتف، تكفي إعادة كتابة نصوص المناطق داخل media query — بلا تغييرات على مستوى العنصر. هذه القابلية للصيانة هي سبب كون مناطق القوالب الخيار الأول لهياكل التطبيقات.
+
+## `gap`: الفواصل بين المسارات
+
+```css
+.container {
+  gap: 16px;           /* فجوات الصفوف والأعمدة */
+  gap: 24px 16px;      /* row-gap | column-gap */
+  column-gap: 16px;
+  row-gap: 24px;
+}
+```
+
+تضيف `gap` مسافة *بين* المسارات فقط، لا على الحافة الخارجية أبدا، ولا تنهار أبدا — نفس النموذج النظيف الموجود في flexbox. وقد حلّت محل مناورات الـ margin القديمة تماما.
+
+## المحاذاة: محوران، زوجان من الخصائص
+
+للـ Grid نظام محاذاة كامل. والحيلة هي معرفة أي كلمة تتحكم بأي محور:
+
+- **`justify-*`** تعمل على **محور الصف (inline)** — يمين/يسار.
+- **`align-*`** تعمل على **محور العمود (block)** — أعلى/أسفل.
+- **`*-items`** تحاذي العناصر **داخل خلاياها**؛ و**`*-content`** تحاذي **الشبكة كلها** حين لا تملأ المسارات الحاوية.
+
+```css
+.container {
+  justify-items: center;   /* كل عنصر، أفقيا داخل خليته */
+  align-items: center;     /* كل عنصر، عموديا داخل خليته */
+  place-items: center;     /* اختصار للاثنين ← توسيط تام لكل شيء */
+
+  justify-content: space-between;  /* مجموعة المسارات، أفقيا */
+  align-content: center;           /* مجموعة المسارات، عموديا */
+}
+.item {
+  justify-self: end;       /* تجاوز لعنصر واحد، أفقيا */
+  align-self: start;       /* تجاوز لعنصر واحد، عموديا */
+}
+```
+
+`place-items: center` هي أقصر وصفة توسيط مثالي في كل CSS: كلمتان على الحاوية، فيجلس الابن في المنتصف تماما.
+
+## الشبكة الضمنية و`grid-auto-*`
+
+تعرّف الشبكة **الصريحة** بـ `grid-template-*`. وحين تقع العناصر خارجها — صفوف أكثر مما أعلنت مثلا — تنشئ Grid مسارات **ضمنية** لاحتوائها. وأنت تتحكم بحجمها وتدفقها:
+
+```css
+.container {
+  grid-template-columns: repeat(3, 1fr);
+  grid-auto-rows: 120px;            /* حجم الصفوف التي تضطر Grid لاختراعها */
+  grid-auto-flow: row;             /* الافتراضي: املأ صفا صفا */
+  grid-auto-flow: column;          /* املأ عمودا عمودا بدلا من ذلك */
+  grid-auto-flow: dense;           /* أعد ملء الفجوات السابقة متى أمكن */
+}
+```
+
+هذا ما يجعل المعرض "يعمل من تلقاء نفسه": تعلن الأعمدة، وتضبط `grid-auto-rows`، فيُنشئ كل عنصر جديد صفا جديدا بالارتفاع الصحيح دون أن تلمس قالب الصفوف.
+
+## Subgrid (حين يجب أن تتحاذى الأبناء مع شبكة الأب)
+
+الشبكة المتداخلة لها عادة مساراتها المستقلة. يتيح `subgrid` للابن أن يتبنى أسطر مسارات أبيه، فتتحاذى أشياء كعناوين البطاقات وتذييلاتها عبر بطاقات منفصلة:
+
+```css
+.card {
+  display: grid;
+  grid-row: span 3;
+  grid-template-rows: subgrid;   /* يرث أسطر صفوف الأب */
+}
+```
+
+إنه الحل النظيف لـ "صفوف بطاقات يجب أن تتحاذى عناوينها/أزرارها" — بلا ارتفاعات ثابتة ولا JavaScript. وهو مدعوم جيدا في المتصفحات الحالية؛ أبقِ بديلا لائقا إن كنت تدعم متصفحات قديمة جدا.
+
+## أخطاء شائعة
+
+- اللجوء إلى Grid بينما التخطيط أحادي البُعد فعلا — صف أزرار بسيط مهمة flexbox.
+- نسيان أن `1fr` له حد أدنى مبني على المحتوى؛ استخدم `minmax(0, 1fr)` حين يجب السماح للمسار بالتقلص (نفس عائلة `min-width: 0` في flexbox).
+- الخلط بين المحاور: `justify-*` محور الصف (أفقي)، و`align-*` محور العمود (عمودي).
+- الخلط بين `*-items` (محاذاة العناصر في خلاياها) و`*-content` (محاذاة مجموعة المسارات في الحاوية).
+- توقّع اختلاف `auto-fit` و`auto-fill` حين يكون الصف ممتلئا — لا يختلفان إلا مع أعمدة فارغة متبقية.
+- تثبيت `grid-column: 1 / 4` بينما `1 / -1` ("حتى آخر سطر") هو ما تقصده فعلا.
+
+## تمارين
+
+جرّب كل تمرين قبل فتح الحل. افترض مجموعة أبناء بسيطة ما لم يُذكر غير ذلك:
+
+```html
+<div class="grid">
+  <div>1</div><div>2</div><div>3</div>
+  <div>4</div><div>5</div><div>6</div>
+</div>
+```
+
+### تمرين 1 — توسيط عنصر واحد تماما
+
+وسّط ابنا واحدا في الاتجاهين داخل صندوق 300×200، باستخدام Grid.
+
+```html
+<div class="frame"><div class="badge">Centered</div></div>
+```
+
+<details>
+
+<summary>اعرض الحل</summary>
+
+```css
+.frame {
+  width: 300px;
+  height: 200px;
+  display: grid;
+  place-items: center;   /* justify-items + align-items، كلاهما center */
+}
+```
+
+كلمتان. `place-items: center` توسّط الابن في كلا المحورين.
+
+</details>
+
+### تمرين 2 — معرض بطاقات متجاوب (بلا media queries)
+
+رتّب بطاقات في أكبر عدد من الأعمدة يتسع، كل منها 240px على الأقل، تنمو لتملأ الصف، بفجوات متساوية.
+
+```html
+<div class="gallery">
+  <article>A</article><article>B</article>
+  <article>C</article><article>D</article>
+</div>
+```
+
+<details>
+
+<summary>اعرض الحل</summary>
+
+```css
+.gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+```
+
+`auto-fit` تصنع أكبر عدد من أعمدة ≥240px يتسع وتمدّد البطاقات الموجودة لتملأ المساحة المتبقية — متجاوب تماما بلا أي نقاط توقف.
+
+</details>
+
+### تمرين 3 — هيكل صفحة كلاسيكي بمناطق مسمّاة
+
+ابنِ تخطيطا بكامل الارتفاع: header في الأعلى، شريط جانبي 220px بجانب المحتوى الرئيسي، footer في الأسفل.
+
+```html
+<div class="page">
+  <header>Header</header>
+  <aside>Sidebar</aside>
+  <main>Main</main>
+  <footer>Footer</footer>
+</div>
+```
+
+<details>
+
+<summary>اعرض الحل</summary>
+
+```css
+.page {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  grid-template-rows: auto 1fr auto;
+  grid-template-areas:
+    "header header"
+    "sidebar main"
+    "footer footer";
+  gap: 16px;
+}
+.page header { grid-area: header; }
+.page aside  { grid-area: sidebar; }
+.page main   { grid-area: main; }
+.page footer { grid-area: footer; }
+```
+
+صف الوسط `1fr` يجعل الجسم يمتص الارتفاع المتبقي (تذييل ملتصق مجانا)، ونصوص المناطق تجعل البنية واضحة بنظرة واحدة.
+
+</details>
+
+### تمرين 4 — عنصر مميّز يمتد عبر الشبكة
+
+في شبكة من 3 أعمدة، اجعل العنصر الأول يمتد بكامل العرض (hero)، وتتدفق البقية تحته بشكل طبيعي.
+
+```html
+<div class="grid">
+  <div class="hero">Featured</div>
+  <div>1</div><div>2</div><div>3</div>
+</div>
+```
+
+<details>
+
+<summary>اعرض الحل</summary>
+
+```css
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+.grid .hero {
+  grid-column: 1 / -1;   /* من أول سطر إلى آخر سطر ← كامل العرض */
+}
+```
+
+`1 / -1` تعني دائما "من حافة إلى حافة" مهما كان عدد الأعمدة — أمتن من تثبيت `1 / 4`.
+
+</details>
+
+### تمرين 5 — معرض شبيه بالـ masonry بتعبئة كثيفة
+
+ضع صورا في شبكة من 4 أعمدة حيث تمتد بعض العناصر عمودين، وأعد ملء الفجوات التي تتركها العناصر العريضة خلفها.
+
+```html
+<div class="masonry">
+  <img class="wide" /><img /><img />
+  <img /><img class="wide" /><img />
+</div>
+```
+
+<details>
+
+<summary>اعرض الحل</summary>
+
+```css
+.masonry {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-auto-rows: 140px;
+  grid-auto-flow: dense;   /* اسحب العناصر اللاحقة لملء الفجوات السابقة */
+  gap: 12px;
+}
+.masonry .wide { grid-column: span 2; }
+```
+
+`grid-auto-flow: dense` يتيح للعناصر الضيقة أن تقفز للخلف إلى الفجوات التي تتركها العريضة، فتُحزم الشبكة بإحكام. (ملاحظة: dense قد يعيد ترتيب العناصر بصريا بعيدا عن ترتيب المصدر — جيد للمعارض، تجنّبه حيث يهم ترتيب القراءة.)
+
+</details>
+
+## النموذج الذهني الذي تحتفظ به
+
+الـ Grid **ثنائي البُعد**: تعرّف الأعمدة والصفوف على الحاوية، ثم تضع العناصر بأرقام الأسطر أو الامتدادات أو المناطق المسمّاة. استخدم `fr` لتقسيم المساحة المتبقية، و`repeat(auto-fit, minmax(…, 1fr))` للتجاوب بلا media queries، و`grid-template-areas` لهياكل صفحات واضحة. تذكّر أن `justify-*` محور الصف و`align-*` محور العمود، وأن `*-items` تحاذي داخل الخلايا بينما `*-content` تحاذي مجموعة المسارات كلها، وأن المسارات الضمنية (`grid-auto-rows`) تتولى كل ما لم تعلنه صراحة. الجأ إلى Grid حين يكون لديك شبكة حقيقية — وإلى Flexbox حين يكون لديك مجرد سطر.

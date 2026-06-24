@@ -1,0 +1,319 @@
+---
+title: "Responsive Design & Media Queries: Building Interfaces That Fit Every Screen"
+description: "A complete, practical guide to responsive design — the viewport meta tag, mobile-first media queries, min/max-width and ranges, breakpoints that follow content, fluid type with clamp(), responsive images, prefers-* feature queries, and container queries — with hands-on exercises."
+publishedAt: "2026-06-25"
+translationKey: "responsive-media-queries"
+tags: ["CSS", "Responsive", "Media Queries", "Frontend"]
+---
+
+A web page has no fixed size. The same HTML lands on a 360px phone, a 1440px laptop, and everything between — plus print, dark mode, and users who'd rather not see motion. Responsive design is the craft of writing one layout that adapts to all of them, and **media queries** are the main switch for "apply these styles only under these conditions."
+
+> A media query asks the browser a yes/no question about the environment — "is the viewport at least 768px wide?" — and applies a block of CSS only when the answer is yes.
+
+## First, the Foundation: The Viewport Meta Tag
+
+Before any media query works on a phone, you need this in your `<head>`:
+
+```html
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+```
+
+Without it, mobile browsers pretend to be ~980px wide and shrink the whole page to fit — so your carefully written `max-width: 600px` query never matches. This one line tells the browser "use the real device width." It is the single most common reason "my responsive CSS isn't doing anything on mobile."
+
+## Anatomy of a Media Query
+
+```css
+@media (min-width: 768px) {
+  .layout {
+    grid-template-columns: 220px 1fr;
+  }
+}
+```
+
+- `@media` — the at-rule.
+- `(min-width: 768px)` — the **condition** (a media feature and value).
+- The block inside applies **only** when the condition is true.
+
+You can combine conditions with `and`, list alternatives with a comma (which means "or"), and negate with `not`:
+
+```css
+@media (min-width: 768px) and (max-width: 1199px) { /* tablet range */ }
+@media (max-width: 600px), (orientation: portrait) { /* either one */ }
+@media (prefers-color-scheme: dark) { /* dark mode */ }
+```
+
+## Mobile-First: Write the Small Screen, Then Enhance
+
+The default, no-query styles should target the **smallest** screen; media queries then *add* complexity as space allows. This "mobile-first" approach uses `min-width` queries that layer on top of each other:
+
+```css
+/* Base: phone — single column, the default */
+.cards { display: grid; grid-template-columns: 1fr; gap: 16px; }
+
+/* Tablet and up: two columns */
+@media (min-width: 768px) {
+  .cards { grid-template-columns: 1fr 1fr; }
+}
+
+/* Desktop and up: four columns */
+@media (min-width: 1200px) {
+  .cards { grid-template-columns: repeat(4, 1fr); }
+}
+```
+
+<figure>
+
+<svg viewBox="0 0 560 230" role="img" aria-label="The same card layout shown as one column on a phone, two columns on a tablet, and four columns on a desktop" style={{ width: "100%", height: "auto" }}>
+  <text x="70" y="24" fontSize="12" className="dgm-muted" textAnchor="middle">phone</text>
+  <rect x="30" y="34" width="80" height="160" className="dgm-margin" strokeWidth="1.5" rx="6" />
+  <rect x="40" y="44" width="60" height="30" className="dgm-content" strokeWidth="1" rx="2" />
+  <rect x="40" y="80" width="60" height="30" className="dgm-content" strokeWidth="1" rx="2" />
+  <rect x="40" y="116" width="60" height="30" className="dgm-content" strokeWidth="1" rx="2" />
+  <rect x="40" y="152" width="60" height="30" className="dgm-content" strokeWidth="1" rx="2" />
+
+  <text x="245" y="24" fontSize="12" className="dgm-muted" textAnchor="middle">tablet</text>
+  <rect x="150" y="34" width="190" height="160" className="dgm-margin" strokeWidth="1.5" rx="6" />
+  <rect x="160" y="44" width="80" height="64" className="dgm-content" strokeWidth="1" rx="2" />
+  <rect x="250" y="44" width="80" height="64" className="dgm-content" strokeWidth="1" rx="2" />
+  <rect x="160" y="118" width="80" height="64" className="dgm-content" strokeWidth="1" rx="2" />
+  <rect x="250" y="118" width="80" height="64" className="dgm-content" strokeWidth="1" rx="2" />
+
+  <text x="450" y="24" fontSize="12" className="dgm-muted" textAnchor="middle">desktop</text>
+  <rect x="380" y="34" width="150" height="160" className="dgm-margin" strokeWidth="1.5" rx="6" />
+  <rect x="388" y="80" width="30" height="68" className="dgm-content" strokeWidth="1" rx="2" />
+  <rect x="423" y="80" width="30" height="68" className="dgm-content" strokeWidth="1" rx="2" />
+  <rect x="458" y="80" width="30" height="68" className="dgm-content" strokeWidth="1" rx="2" />
+  <rect x="493" y="80" width="30" height="68" className="dgm-content" strokeWidth="1" rx="2" />
+</svg>
+
+<figcaption>Mobile-first means the base styles are the phone layout; each <code>min-width</code> query adds columns as the screen grows. Styles accumulate upward instead of being overridden downward.</figcaption>
+
+</figure>
+
+Mobile-first wins because the simplest layout is the default (good for the most constrained devices), and each query is purely additive — easier to reason about than `max-width` queries that subtract from a desktop baseline.
+
+## `min-width`, `max-width`, and Range Syntax
+
+- **`min-width: X`** — applies when the viewport is **X or wider** (mobile-first, building up).
+- **`max-width: X`** — applies when the viewport is **X or narrower** (desktop-first, scaling down).
+
+A subtle trap: overlapping `max-width` and `min-width` at the same pixel both match at exactly that width. Pick one direction (usually `min-width`) and stay consistent. Modern browsers also support cleaner **range syntax**:
+
+```css
+@media (width >= 768px) { /* same as min-width: 768px */ }
+@media (768px <= width < 1200px) { /* a clean, unambiguous band */ }
+```
+
+## Breakpoints Should Follow Content, Not Devices
+
+There is no canonical list of "correct" breakpoints, and chasing specific device widths (iPhone this, iPad that) is a losing game — devices change constantly. **Add a breakpoint where your layout starts to look bad**, not where a popular phone happens to be. Resize the browser slowly; the moment a line of text gets too long or cards get too cramped is your breakpoint. Common starting points like ~600px, ~900px, and ~1200px are fine as defaults, but let the content move them.
+
+## Beyond Width: Other Media Features
+
+Width is the headline, but media queries can ask about much more:
+
+```css
+@media (orientation: landscape) { /* wider than tall */ }
+@media (prefers-color-scheme: dark) { /* user wants dark UI */ }
+@media (prefers-reduced-motion: reduce) { /* user dislikes animation */ }
+@media (hover: hover) and (pointer: fine) { /* has a real mouse */ }
+@media print { /* printed / PDF output */ }
+```
+
+Two of these matter for every serious site:
+
+- **`prefers-reduced-motion: reduce`** — wrap non-essential animations so motion-sensitive users get a calm experience. It's an accessibility baseline, not a nicety.
+- **`prefers-color-scheme`** — respect the OS light/dark setting instead of forcing one theme.
+
+```css
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+```
+
+## Fluid Sizing: Often You Don't Need a Query At All
+
+The modern instinct is to make things scale *continuously* and reserve media queries for genuine layout changes. Three tools do most of this:
+
+- **`clamp(min, preferred, max)`** — fluid type and spacing that grow with the viewport but never overflow their bounds.
+- **`min()` / `max()`** — pick the smaller/larger of two values inline.
+- **Fluid units** — `vw`, `vh`, and `%` scale with the viewport; `rem` scales with the user's font setting.
+
+```css
+h1 {
+  /* never smaller than 1.75rem, never bigger than 3rem, fluid between */
+  font-size: clamp(1.75rem, 1rem + 3vw, 3rem);
+}
+.container {
+  /* full width until it hits 1100px, then capped — no media query needed */
+  width: min(100% - 2rem, 1100px);
+  margin-inline: auto;
+}
+```
+
+A `clamp()` headline replaces three or four font-size media queries with one line. Reach for queries when the *structure* must change (one column → three); reach for `clamp()`/`min()` when a *value* just needs to scale.
+
+## Responsive Images
+
+Layout isn't the whole story — images need to adapt too:
+
+```css
+img { max-width: 100%; height: auto; }   /* the baseline: never overflow */
+```
+
+For serving differently sized files, `srcset` lets the browser pick the right resolution, and `<picture>` lets you swap images (or art-direct) per condition:
+
+```html
+<img
+  src="photo-800.jpg"
+  srcset="photo-400.jpg 400w, photo-800.jpg 800w, photo-1600.jpg 1600w"
+  sizes="(min-width: 768px) 50vw, 100vw"
+  alt="..."
+/>
+```
+
+The browser reads `sizes`, figures out how wide the image will render, and downloads the smallest file that still looks sharp — saving bandwidth on phones automatically.
+
+## Container Queries: Responding to the Parent, Not the Page
+
+Media queries ask about the **viewport**. But a component often cares about the width of its **container**, not the whole window — a card in a narrow sidebar and the same card in a wide main column should look different even though the viewport is identical. **Container queries** solve exactly this:
+
+```css
+.card-list { container-type: inline-size; }
+
+/* style the card based on how wide ITS CONTAINER is */
+@container (min-width: 400px) {
+  .card { display: grid; grid-template-columns: 120px 1fr; }
+}
+```
+
+This is the biggest shift in responsive design since media queries: components become truly self-contained, styling themselves by the space they're given rather than by the size of the page. Container queries are well supported in current browsers — use them for reusable components and keep media queries for page-level structure.
+
+## Common Mistakes
+
+- Forgetting the viewport meta tag, then wondering why mobile ignores your queries.
+- Mixing `min-width` and `max-width` styles until overrides fight each other — pick mobile-first and stay consistent.
+- Chasing exact device widths instead of letting the content dictate breakpoints.
+- Writing four font-size queries when one `clamp()` would do.
+- Animating freely without honoring `prefers-reduced-motion`.
+- Using a viewport media query when the component really needed a container query.
+- Forgetting `img { max-width: 100% }`, letting a large image blow out the layout.
+
+## Exercises
+
+Resize the browser (or DevTools' device toolbar) to test each. Try before revealing the solution.
+
+### Exercise 1 — The viewport tag and a first breakpoint
+
+A two-column layout should collapse to one column below 700px. Include the markup line that makes mobile honor it.
+
+<details>
+
+<summary>Show solution</summary>
+
+```html
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+```
+
+```css
+.layout { display: grid; grid-template-columns: 1fr; gap: 16px; } /* base: one column */
+@media (min-width: 700px) {
+  .layout { grid-template-columns: 1fr 1fr; } /* 700px and up: two columns */
+}
+```
+
+Mobile-first: one column is the default, the query *adds* the second column for wider screens. Without the meta tag the query would never fire on a phone.
+
+</details>
+
+### Exercise 2 — Fluid heading without a single query
+
+Make an `h1` scale smoothly from 28px on small screens to 48px on large ones, never going outside that range.
+
+<details>
+
+<summary>Show solution</summary>
+
+```css
+h1 {
+  font-size: clamp(1.75rem, 1.1rem + 3.2vw, 3rem); /* 28px → 48px, fluid */
+}
+```
+
+`clamp()` floors at `1.75rem` (28px), grows with the viewport via the `vw` term, and caps at `3rem` (48px) — replacing several breakpoints with one declaration.
+
+</details>
+
+### Exercise 3 — Responsive container without media queries
+
+Center a content column that is full-width (minus 2rem gutters) on small screens but never exceeds 1100px on large ones.
+
+<details>
+
+<summary>Show solution</summary>
+
+```css
+.container {
+  width: min(100% - 2rem, 1100px);
+  margin-inline: auto;
+}
+```
+
+`min()` picks whichever is smaller: the fluid `100% - 2rem` on phones, or the `1100px` cap on desktops. No `@media` required.
+
+</details>
+
+### Exercise 4 — Respect reduced motion
+
+You have a button with a 300ms transform transition. Disable the motion for users who asked for less of it.
+
+<details>
+
+<summary>Show solution</summary>
+
+```css
+.btn { transition: transform 300ms ease; }
+
+@media (prefers-reduced-motion: reduce) {
+  .btn { transition: none; }
+}
+```
+
+The base style keeps the animation for everyone else; the feature query removes it only for users with the OS "reduce motion" setting on. An accessibility baseline, not an extra.
+
+</details>
+
+### Exercise 5 — Container query for a reusable card
+
+A `.card` should stack its image above its text by default, but switch to image-beside-text when **its own container** is at least 380px wide — regardless of the page width.
+
+```html
+<div class="card-host">
+  <article class="card"><img /><div class="body">…</div></article>
+</div>
+```
+
+<details>
+
+<summary>Show solution</summary>
+
+```css
+.card-host { container-type: inline-size; }
+
+.card { display: grid; grid-template-columns: 1fr; gap: 12px; } /* stacked */
+
+@container (min-width: 380px) {
+  .card { grid-template-columns: 140px 1fr; } /* side by side */
+}
+```
+
+Because it's a `@container` query, the same card adapts correctly whether it sits in a narrow sidebar or a wide main area — true component-level responsiveness that a viewport media query can't express.
+
+</details>
+
+## The Mental Model to Keep
+
+Start with the viewport meta tag, then design **mobile-first**: the no-query styles are the small screen, and `min-width` media queries add structure as space appears. Put breakpoints where the *content* breaks, not where a device sits. Prefer fluid tools — `clamp()`, `min()`, `%`, `rem` — for things that should *scale*, and save media queries for real *structural* changes. Honor `prefers-reduced-motion` and `prefers-color-scheme`, keep images fluid with `max-width: 100%` and `srcset`, and reach for **container queries** when a component should respond to its own box rather than the whole page. Do that, and one codebase fits every screen.

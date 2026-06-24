@@ -185,6 +185,7 @@
           { "key": "flexbox", "title": "Flexbox" },
           { "key": "grid", "title": "Grid" },
           { "key": "responsive-media-queries", "title": "Responsive media queries" },
+          { "key": "modern-css", "title": "Modern CSS features" },
           { "key": "javascript-fundamentals", "title": "JavaScript fundamentals" },
           { "key": "dom", "title": "DOM" },
           { "key": "forms", "title": "Forms" },
