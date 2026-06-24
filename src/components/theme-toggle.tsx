@@ -1,6 +1,12 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useLayoutEffect } from "react";
+
+// Runs before the browser paints on the client, but falls back to useEffect on
+// the server (useLayoutEffect is a no-op there and would warn). Used to re-apply
+// the theme on remount without a one-frame light flash.
+const useIsomorphicLayoutEffect =
+  typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
 // Which icon shows is driven purely by [data-theme] in CSS, so there's no
 // hydration mismatch — the button just flips the attribute + persists it.
@@ -24,7 +30,8 @@ export function ThemeToggle({
 }) {
   // Re-apply the theme on mount: switching locale remounts the root layout,
   // and React drops the data-theme attribute the inline <script> set on <html>.
-  useEffect(() => {
+  // useLayoutEffect re-applies it before paint, so the remount shows no flash.
+  useIsomorphicLayoutEffect(() => {
     let theme: string | null = null;
     try {
       theme = localStorage.getItem("theme");

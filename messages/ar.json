@@ -200,6 +200,7 @@
           { "key": "flexbox", "title": "Flexbox" },
           { "key": "grid", "title": "Grid" },
           { "key": "responsive-media-queries", "title": "Media Queries والتجاوب" },
+          { "key": "modern-css", "title": "ميزات CSS الحديثة" },
           { "key": "javascript-fundamentals", "title": "أساسيات JavaScript" },
           { "key": "dom", "title": "DOM" },
           { "key": "forms", "title": "النماذج (Forms)" },

@@ -128,10 +128,13 @@ export default async function LocaleLayout({ children, params }: Props) {
       suppressHydrationWarning
     >
       <body>
-        {/* Set the theme before paint to avoid a flash of the wrong theme. */}
+        {/* Set the theme before paint to avoid a flash of the wrong theme.
+            color-scheme keeps the native canvas/scrollbars in sync from the
+            first frame; theme-ready is flipped on after paint so the body's
+            color transition never animates the initial dark→light→dark fade. */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('theme');if(t!=='light'&&t!=='dark'){t=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}document.documentElement.setAttribute('data-theme',t);}catch(e){}})();`,
+            __html: `(function(){try{var d=document.documentElement;var t=localStorage.getItem('theme');if(t!=='light'&&t!=='dark'){t=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}d.setAttribute('data-theme',t);d.style.colorScheme=t;requestAnimationFrame(function(){requestAnimationFrame(function(){d.classList.add('theme-ready');});});}catch(e){}})();`,
           }}
         />
         <NextIntlClientProvider locale={locale} messages={{}}>

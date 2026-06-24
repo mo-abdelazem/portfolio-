@@ -100,6 +100,15 @@
   box-sizing: border-box;
 }
 
+/* Until the inline theme script flags the theme as settled, kill every
+   transition so the initial paint can't animate a light→dark fade (the
+   white flicker on load in dark mode). Re-enabled on the next frame. */
+html:not(.theme-ready) *,
+html:not(.theme-ready) *::before,
+html:not(.theme-ready) *::after {
+  transition: none !important;
+}
+
 html {
   scroll-behavior: smooth;
   -webkit-text-size-adjust: 100%;
@@ -1687,6 +1696,48 @@ button {
   color: var(--text);
   font-weight: 500;
   background: var(--bg-secondary);
+}
+
+/* Exercise solution disclosures (<details> inside post body) */
+
+.blog-content details {
+  margin-top: 16px;
+  padding: 0 18px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  background: var(--bg-secondary);
+}
+
+.blog-content details[open] {
+  padding-bottom: 6px;
+}
+
+.blog-content summary {
+  padding: 14px 0;
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  list-style: none;
+}
+
+.blog-content summary::-webkit-details-marker {
+  display: none;
+}
+
+.blog-content summary::before {
+  content: "▸";
+  display: inline-block;
+  margin-inline-end: 10px;
+  color: var(--text-muted);
+}
+
+[dir="rtl"] .blog-content summary::before {
+  content: "◂";
+}
+
+.blog-content details[open] summary::before {
+  content: "▾";
 }
 
 /* Post layout: reading column + side rail for the table of contents */
