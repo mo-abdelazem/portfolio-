@@ -1826,7 +1826,9 @@ button {
 
 .blog-post__nav {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  /* minmax(0, 1fr) — not 1fr — so a long nowrap title can't force the track
+     wider than its half and overflow into the sticky TOC sidebar. */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 16px;
   margin-top: 64px;
   padding-top: 32px;
@@ -1837,6 +1839,8 @@ button {
   display: flex;
   align-items: center;
   gap: 14px;
+  /* Allow the link to shrink below its content so the title can truncate. */
+  min-width: 0;
   padding: 18px 22px;
   border-radius: 16px;
   box-shadow: var(--shadow-card);
@@ -2519,7 +2523,7 @@ button {
   }
 
   .blog-post__nav {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
