@@ -1,0 +1,222 @@
+---
+title: "CSS Positioning & Stacking: static, relative, absolute, fixed, sticky, and z-index"
+description: "A complete, practical guide to CSS positioning — the position values and how each one moves an element, the offset properties, containing blocks, sticky positioning, z-index and stacking contexts (and why z-index sometimes does nothing), plus common mistakes and hands-on exercises with solutions."
+publishedAt: "2026-05-23"
+translationKey: "css-positioning"
+tags: ["CSS", "Positioning", "Layout", "Frontend"]
+---
+
+Positioning is where a lot of CSS confidence quietly breaks. You set `position: absolute` and the element flies somewhere unexpected; you set `z-index: 9999` and it *still* sits behind a menu. Both have clean explanations once you understand two ideas: the **containing block** an element positions against, and the **stacking context** that decides what's drawn on top. This post builds both. (Positioning sits alongside the normal flow you already know from [the box model](/blog/css-box-model) and the layout modes in [Flexbox](/blog/flexbox) and [Grid](/blog/grid) — it's the tool for taking an element *out* of that flow.)
+
+> Two rules unlock all of positioning. First: an absolutely-positioned element is offset from its **nearest positioned ancestor**, not the page. Second: `z-index` only compares elements **within the same stacking context** — which is why a huge value can still lose.
+
+## The Normal Flow (What You're Opting Out Of)
+
+By default every element is `position: static` — it sits in the **normal flow**, stacking top-to-bottom (block) or left-to-right (inline), each pushing the next along. The `top`/`right`/`bottom`/`left` and `z-index` properties do **nothing** on a static element. Positioning is the act of opting an element *out* of this flow so you can place it deliberately.
+
+```css
+.el { position: static; }  /* the default — offsets are ignored */
+```
+
+## `relative`: Nudge Without Leaving the Flow
+
+`position: relative` keeps the element in the flow (its original space is preserved) but lets you nudge it from where it *would* have been, using the offset properties:
+
+```css
+.badge {
+  position: relative;
+  top: -4px;     /* move up 4px from its normal spot */
+  left: 8px;     /* move right 8px */
+}
+```
+
+Two things to know: the gap it left behind stays reserved (siblings don't move up to fill it), and — far more importantly — **`relative` makes the element a *positioning context*** for any absolutely-positioned descendants. That second job is what it's used for 90% of the time.
+
+## `absolute`: Removed From Flow, Positioned to an Ancestor
+
+`position: absolute` **removes** the element from the normal flow entirely (its space collapses, siblings close up) and positions it relative to its **nearest *positioned* ancestor** — the closest ancestor whose `position` is anything other than `static`. If there is none, it falls back to the viewport.
+
+```css
+.card { position: relative; }     /* establishes the containing block */
+.card .tag {
+  position: absolute;
+  top: 8px;
+  right: 8px;                       /* pinned to the card's top-right corner */
+}
+```
+
+This `relative` parent + `absolute` child pairing is the single most common positioning pattern — badges, close buttons, dropdowns, tooltips. The classic bug is forgetting the parent's `position: relative`, so the child positions against the *page* instead of the card and ends up in the wrong corner.
+
+With both `left` and `right` set (or `top` and `bottom`), the element stretches between them — a handy way to size by anchoring:
+
+```css
+.overlay {
+  position: absolute;
+  inset: 0;        /* shorthand for top/right/bottom/left: 0 — fill the parent */
+}
+```
+
+## `fixed`: Pinned to the Viewport
+
+`position: fixed` also leaves the flow, but it's positioned against the **viewport** and stays put as the page scrolls — perfect for sticky headers, back-to-top buttons, and modals:
+
+```css
+.navbar {
+  position: fixed;
+  top: 0;
+  inset-inline: 0;   /* left:0; right:0 — full width, logical for RTL */
+}
+```
+
+One caveat: if any ancestor has a `transform`, `filter`, or `will-change`, that ancestor becomes the containing block *instead* of the viewport — a surprising way `fixed` can "break". (More on that under stacking contexts.)
+
+## `sticky`: Hybrid of relative and fixed
+
+`position: sticky` behaves like `relative` until the element hits a scroll threshold you set, then "sticks" like `fixed` while its container is still in view:
+
+```css
+.section-heading {
+  position: sticky;
+  top: 0;          /* sticks once it reaches the top of the scroll area */
+}
+```
+
+Sticky is brilliant for section headers and table headings, but it has two gotchas that trip everyone:
+
+- It needs a **threshold** (`top`, `bottom`, etc.) — without one it never sticks.
+- It sticks **within its parent's box**. If an ancestor has `overflow: hidden` (or `auto`/`scroll`), sticky often silently does nothing because it's clipped to the wrong scroll container.
+
+## The Offset Properties and `inset`
+
+`top`/`right`/`bottom`/`left` only do something on a *positioned* element (anything but `static`). Modern shorthands save repetition:
+
+```css
+inset: 0;                  /* all four sides = 0 */
+inset: 10px 20px;          /* block (top/bottom) 10, inline (left/right) 20 */
+inset-block: 0;            /* top + bottom */
+inset-inline-start: 1rem;  /* logical "left" in LTR, flips in RTL */
+```
+
+Prefer the logical (`inset-inline-*`) forms on bidirectional sites, the same way you would with logical margins and padding.
+
+## `z-index` and Stacking Contexts
+
+Here's the part that confuses everyone. When elements overlap, `z-index` controls who's on top — but **only among siblings inside the same stacking context.** A *stacking context* is a self-contained layer; `z-index` values are compared *within* a context, never across them.
+
+A new stacking context is created by, among others:
+
+- the root `<html>` element,
+- a positioned element (`relative`/`absolute`/`fixed`/`sticky`) with a `z-index` other than `auto`,
+- any element with `opacity` less than 1, a `transform`, `filter`, `will-change`, `mix-blend-mode`, or `isolation: isolate`,
+- flex/grid *children* with a `z-index` set.
+
+The consequence that bites: if element A lives in a stacking context whose *parent* sits below element B's context, then **no `z-index` on A — not even `999999` — can lift it above B.** It's trapped inside its parent's layer.
+
+```css
+/* .modal won't appear above .header, despite the huge z-index... */
+.header { position: relative; z-index: 10; }   /* a stacking context at level 10 */
+.content { position: relative; z-index: 1;
+           transform: translateZ(0); }          /* ← creates a context at level 1 */
+.modal  { position: fixed; z-index: 99999; }    /* trapped inside .content's level-1 layer */
+```
+
+The fix is almost never a bigger number — it's **moving the element out** of the trapping context (e.g. rendering the modal as a direct child of `<body>`, which is exactly why UI libraries use "portals"), or removing the property that created the unwanted context.
+
+The mental model: think of stacking contexts as **nested boxes**. You can reorder things *inside* a box freely with `z-index`, but you can never make something in one box jump over the box next to it — the boxes themselves are ordered by their own context.
+
+## Common Mistakes
+
+- Setting `top`/`left` on a `static` element and seeing nothing — offsets need a positioned element.
+- Forgetting `position: relative` on the parent, so an `absolute` child anchors to the page instead.
+- Cranking `z-index` to `9999` when the real problem is a trapping stacking context — the number can't escape it.
+- A `transform` or `opacity` on an ancestor silently creating a stacking context (or re-anchoring a `fixed` child) and breaking layering.
+- `position: sticky` with no threshold (`top`/`bottom`) set — it never sticks.
+- `sticky` clipped by an ancestor's `overflow: hidden`/`auto` and appearing to do nothing.
+- Using `absolute` for whole-page layout where Flexbox or Grid would be simpler and more robust.
+- Assuming `fixed` is always relative to the viewport — an ancestor `transform` changes that.
+
+## Exercises
+
+Try each before opening the solution.
+
+### Exercise 1 — Pin a badge
+
+Place a small `.badge` in the **top-right corner** of a `.card`, overlapping its edge slightly.
+
+<details>
+
+<summary>Show solution</summary>
+
+```css
+.card  { position: relative; }     /* the containing block */
+.badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;                       /* negative offsets push it over the corner */
+}
+```
+
+The parent's `position: relative` is what makes the badge anchor to the card; without it the badge would jump to the page's corner.
+
+</details>
+
+### Exercise 2 — Full-bleed overlay
+
+Cover a `.hero` entirely with a semi-transparent `.scrim` for a text overlay, using a single property for the offsets.
+
+<details>
+
+<summary>Show solution</summary>
+
+```css
+.hero  { position: relative; }
+.scrim {
+  position: absolute;
+  inset: 0;                          /* top/right/bottom/left all 0 — fills the parent */
+  background: rgb(0 0 0 / 0.4);
+}
+```
+
+With all four offsets at `0`, the absolutely-positioned scrim stretches to every edge of its positioned parent.
+
+</details>
+
+### Exercise 3 — A sticky section header
+
+Make `<h2 class="section-title">` stick to the top of the viewport while its section scrolls past.
+
+<details>
+
+<summary>Show solution</summary>
+
+```css
+.section-title {
+  position: sticky;
+  top: 0;            /* the required threshold */
+}
+```
+
+It behaves like normal flow until it reaches the top, then sticks there until its parent section scrolls out of view. If it doesn't stick, check that no ancestor has `overflow: hidden`.
+
+</details>
+
+### Exercise 4 — Why won't z-index work?
+
+```css
+.panel  { position: relative; z-index: 1; opacity: 0.95; }
+.tooltip{ position: absolute; z-index: 9999; }   /* inside .panel */
+```
+
+The `.tooltip` still appears under a sibling `.toolbar` (`z-index: 5`) that lives outside `.panel`. Why, and how do you fix it?
+
+<details>
+
+<summary>Show solution</summary>
+
+`opacity: 0.95` on `.panel` creates a **stacking context** at `z-index: 1`. The tooltip's `9999` only competes *inside* that context, so the whole `.panel` layer sits at level 1 — below `.toolbar`'s level 5. Fix: remove the `opacity` from `.panel` (or raise `.panel`'s own `z-index` above 5), or render `.tooltip` outside `.panel` so it's no longer trapped.
+
+</details>
+
+## The Mental Model to Keep
+
+Positioning is about **opting out of normal flow** to place an element deliberately. `relative` nudges in place *and* — its real job — sets a positioning context; `absolute` removes the element and anchors it to the **nearest positioned ancestor** (so pair it with a `relative` parent); `fixed` anchors to the viewport; `sticky` is relative-until-a-threshold-then-fixed (and needs both a threshold and an un-clipped ancestor). For layering, remember `z-index` only compares **within one stacking context** — picture stacking contexts as nested boxes, and when a big `z-index` "does nothing," the element is trapped in a box, so move it out rather than reaching for a bigger number. Reserve positioning for overlays and pinned UI; for page structure, [Flexbox](/blog/flexbox) and [Grid](/blog/grid) are the right tools.

@@ -1,0 +1,448 @@
+---
+title: "DOM: من الصفر إلى الاحتراف"
+description: "دليل عملي كامل لنموذج كائن المستند (DOM) — ما هو DOM حقًّا، واختيار العقد والتنقّل بينها، وقراءة المحتوى وتغييره، والسمات مقابل الخصائص، والأصناف والأنماط، وإنشاء العناصر وإدراجها وحذفها، ونموذج الأحداث (الفقاعة، والتفويض، وpreventDefault)، والنماذج، والأداء (إعادة التدفّق/الرسم، والأجزاء، وdebounce)، والأخطاء الشائعة، وتمارين عملية مع حلولها."
+publishedAt: "2026-06-08"
+translationKey: "dom-manipulation"
+tags: ["JavaScript", "DOM", "Browser", "Frontend"]
+---
+
+DOM هو المكان الذي تلتقي فيه JavaScript بالصفحة. يتعلّم معظم المطوّرين حفنة من التعويذات — `querySelector`، و`addEventListener`، و`innerHTML` — ويتوقّفون عندها، دون أن يروا الشجرة تحتها التي تجعل كل شيء متماسكًا. هذه هي تلك الصورة، مبنيّة من الأساس. وحالما ترى DOM كـ *شجرة حيّة من الكائنات* والأحداث كـ *أشياء تسافر خلالها*، يتوقّف التعامل مع الصفحة عن كونه خليطًا من التوابع ويصبح شيئًا تستطيع التفكير فيه. (هذا يبني مباشرةً على [أساسيات JavaScript](/blog/javascript-fundamentals) — إن كانت `this` أو الإغلاقات أو ردود النداء غير راسخة، فابدأ من هناك.)
+
+> DOM **ليس** ملف HTML الخاص بك. إنه **شجرة حيّة من الكائنات** في الذاكرة يبنيها المتصفح *من* HTML — ويستطيع جافاسكربتك قراءتها وإعادة كتابتها في أي لحظة. وكل تغيير تُجريه على تلك الشجرة، يعيد المتصفح رسمه.
+
+## ما هو DOM فعلًا
+
+حين يحمّل المتصفح صفحة، يحلّل [HTML](/blog/html-semantic) إلى شجرة من **العقد (nodes)**. كل وسم يصير *عقدة عنصر*، والنصّ يصير *عقدة نصّ*، وتتداخل تمامًا كما تتداخل علاماتك:
+
+```html
+<body>
+  <h1>Hello</h1>
+  <p>World</p>
+</body>
+```
+
+تصبح شجرة:
+
+```
+document
+└── <html>
+    └── <body>
+        ├── <h1>  → "Hello" (عقدة نص)
+        └── <p>   → "World" (عقدة نص)
+```
+
+`document` هو الكائن الجذر الذي تبدأ منه شيفرتك. كل شيء — الاختيار، والتغيير، والاستماع — هو تنقّل وتحرير في هذه الشجرة. والأهم أنها **حيّة**: يُقرأ ملف HTML مرّة واحدة، لكن DOM هو الحالة الجارية للصفحة، وجافاسكربت تحرّرها في مكانها.
+
+## اختيار العناصر
+
+التابعان اللذان ستستخدمهما في 95% من الوقت يأخذان **محدّدات CSS**:
+
+```js
+document.querySelector(".card");          // أول تطابق (أو null)
+document.querySelectorAll(".card");       // كل التطابقات (NodeList ساكنة)
+
+// أي محدّد CSS يعمل
+document.querySelector("nav a.active");
+document.querySelector("input[type='email']");
+document.querySelector("ul > li:first-child");
+```
+
+التوابع الأقدم الأكثر تخصّصًا ما زالت موجودة وأسرع قليلًا، لكنها نادرًا ما تستحقّ فقدان المرونة:
+
+```js
+document.getElementById("main");          // بالمعرّف (بلا # في البداية)
+document.getElementsByClassName("card");  // HTMLCollection حيّة
+document.getElementsByTagName("li");      // HTMLCollection حيّة
+```
+
+يمكنك أيضًا حصر البحث في شجرة فرعية — استدعِ التوابع نفسها *على عنصر*، لا على `document` فقط:
+
+```js
+const card = document.querySelector(".card");
+const title = card.querySelector("h2");   // يبحث داخل card فقط
+```
+
+تمييز مهم: `querySelectorAll` تُرجِع `NodeList` **ساكنة** (لقطة — لا تتحدّث إذا تغيّر DOM)، بينما `getElementsBy*` تُرجِع مجموعات **حيّة** (تتحدّث تلقائيًّا). اللقطة عادةً هي ما تريد.
+
+## NodeList ليست مصفوفة
+
+`querySelectorAll` تُرجِع `NodeList`، التي *تبدو* كمصفوفة لكنها ليست كذلك. تستطيع `forEach` عليها، لكن `map`/`filter`/`reduce` غير موجودة فيها. حوّلها أولًا:
+
+```js
+const items = document.querySelectorAll("li");
+
+items.forEach(li => li.classList.add("seen"));  // ✅ NodeList لها forEach
+
+[...items].map(li => li.textContent);           // ✅ انشرها إلى مصفوفة حقيقية
+Array.from(items).filter(li => li.dataset.active); // ✅ نفس الفكرة
+```
+
+## التنقّل في الشجرة
+
+حالما تملك عنصرًا واحدًا، تستطيع المشي إلى أقاربه. فضّل خصائص **العناصر فقط** (تتخطّى عقد النصّ/المسافات):
+
+```js
+const el = document.querySelector(".card");
+
+el.parentElement;            // مستوى للأعلى
+el.children;                 // عناصر الأبناء (HTMLCollection)
+el.firstElementChild;        // أول عنصر ابن
+el.lastElementChild;
+el.nextElementSibling;       // العنصر الذي يليه
+el.previousElementSibling;
+
+el.closest(".container");    // أقرب سلف يطابق محدّدًا (شاملًا نفسه)
+el.matches(".card");         // هل يطابق هذا العنصر المحدّد؟ → boolean
+```
+
+`closest()` مفيد بشكل خاص في معالجة الأحداث — من زر مضغوط، امشِ للأعلى إلى الصفّ أو البطاقة التي تحتويه.
+
+## قراءة المحتوى وتغييره
+
+ثلاث خصائص، وثلاثة سلوكيات — والفرق مهمّ للأمان:
+
+```js
+el.textContent = "Hello";    // يضبط/يقرأ النصّ فقط — آمن وسريع
+el.innerHTML = "<b>Hi</b>";  // يحلّل سلسلة كـ HTML — قويّ وخطير
+el.innerText  = "Hello";     // مثل textContent لكنه واعٍ بالتخطيط (أبطأ)
+```
+
+**`textContent`** هو خيارك الافتراضي — يعامل كل شيء كنصّ صِرف، فلا يمكن لمدخلات المستخدم أن تحقن علامات أبدًا. **`innerHTML`** يحلّل سلسلته كـ HTML، وهكذا تبني علامات بسرعة — لكن لا تطعمه أبدًا مدخلات غير موثوقة، لأن `<img src=x onerror=...>` يصبح هجومًا حقيقيًّا (XSS):
+
+```js
+// ❌ ثغرة XSS إذا كان `name` من مستخدم
+el.innerHTML = `Hello, ${name}`;
+
+// ✅ آمن — لا يُحلَّل النصّ أبدًا كـ HTML
+el.textContent = `Hello, ${name}`;
+```
+
+## السمات مقابل الخصائص
+
+هذا يربك الجميع. **السمة (attribute)** هي ما هو مكتوب في HTML؛ و**الخاصية (property)** هي القيمة الحيّة على كائن DOM. تبدآن متزامنتين لكنهما قد تنحرفان:
+
+```js
+// السمات — سلاسل نصّية، تعكس HTML
+el.getAttribute("href");
+el.setAttribute("aria-expanded", "true");
+el.hasAttribute("disabled");
+el.removeAttribute("disabled");
+
+// الخصائص — مُنمَّطة، الحالة الحيّة
+input.value;          // القيمة الحالية التي كتبها المستخدم (السمة تبقى الأصلية)
+checkbox.checked;     // boolean، لا سلسلة نصّية
+link.href;            // عنوان URL مطلق محلول (السمة هي ما كتبته)
+el.id;                // خاصية مختصرة
+```
+
+الفخّ الكلاسيكي: بعد أن يكتب المستخدم في حقل، لا يزال `input.getAttribute("value")` يُظهر القيمة *الأصلية* من HTML، بينما `input.value` يُظهر ما كتبه فعلًا. **لحالة النماذج، استخدم الخاصية دائمًا (`.value`، `.checked`).**
+
+سمات **`data-*`** هي الطريقة المباركة لإرفاق بيانات مخصّصة، تُقرأ عبر خاصية `dataset` (بصيغة camelCase):
+
+```html
+<button data-user-id="42" data-role="admin">Edit</button>
+```
+
+```js
+btn.dataset.userId;   // "42"  (data-user-id → userId)
+btn.dataset.role;     // "admin"
+btn.dataset.role = "viewer";  // يكتب عائدًا إلى السمة
+```
+
+## الأصناف والأنماط
+
+للتنسيق، **غيّر الأصناف لا الأنماط السطرية** — أبقِ المظهر في CSS وبدّل الحالة من JavaScript. `classList` هي الواجهة النظيفة:
+
+```js
+el.classList.add("active");
+el.classList.remove("hidden");
+el.classList.toggle("open");          // أضف إن غاب، احذف إن وُجد
+el.classList.toggle("open", isOpen);  // فرض التشغيل/الإيقاف بقيمة boolean
+el.classList.contains("active");      // → boolean
+el.classList.replace("old", "new");
+```
+
+الأنماط السطرية المباشرة موجودة للديناميكي فعلًا (قيمة تحسبها)، لكن الجأ إليها بقلّة:
+
+```js
+el.style.transform = `translateX(${x}px)`;  // قيمة ديناميكية محسوبة — استخدام مقبول
+el.style.setProperty("--accent", "tomato"); // ضبط خاصية CSS مخصّصة
+
+// قراءة النمط النهائي المطبّق (من أي مصدر) مختلفة:
+getComputedStyle(el).color;   // القيمة المحلولة المرسومة
+```
+
+`el.style.color` يقرأ الأنماط *السطرية* فقط؛ ولمعرفة ما يرسمه العنصر فعلًا (شاملًا من أوراق الأنماط)، تحتاج `getComputedStyle`.
+
+## إنشاء العقد وإدراجها وحذفها
+
+بناء DOM من الصفر — البديل الآمن لدمج السلاسل في `innerHTML`:
+
+```js
+const li = document.createElement("li");
+li.textContent = "New item";
+li.classList.add("item");
+
+// إدراج (حديث ومرن — يقبل عقدًا أو سلاسل)
+list.append(li);          // كآخر ابن
+list.prepend(li);         // كأول ابن
+ref.before(li);           // كشقيق سابق
+ref.after(li);            // كشقيق لاحق
+ref.replaceWith(li);      // استبدال عقدة بأخرى
+
+// حذف / استنساخ
+li.remove();              // احذفه
+const copy = li.cloneNode(true);  // true = استنساخ عميق (مع الأبناء)
+```
+
+عند إدراج عقد **كثيرة**، لا تلمس DOM الحيّ في حلقة (كل إدراج قد يفعّل عمل تخطيط). ابنِها خارج الشاشة في **`DocumentFragment`** وأدرِجها مرّة واحدة:
+
+```js
+const frag = document.createDocumentFragment();
+for (const name of names) {
+  const li = document.createElement("li");
+  li.textContent = name;
+  frag.append(li);          // الإضافة إلى الجزء لا تلمس أي تخطيط حيّ
+}
+list.append(frag);          // إدراج واحد في الصفحة
+```
+
+## نموذج الأحداث
+
+الأحداث هي كيف تردّ الصفحة. تسجّل مستمعًا، فيستدعي المتصفح دالتك مع **كائن حدث (event object)** يصف ما جرى:
+
+```js
+button.addEventListener("click", (event) => {
+  console.log(event.type);     // "click"
+  console.log(event.target);   // العنصر المضغوط فعلًا
+  console.log(event.currentTarget); // العنصر الذي عليه المستمع
+});
+```
+
+`addEventListener` هي الأداة الصحيحة (لا `onclick =`، التي تسمح بمعالج واحد فقط). للفصل لاحقًا، مرّر **دالة مسمّاة** — المجهولة لا يمكن إزالتها:
+
+```js
+function onClick(e) { /* ... */ }
+button.addEventListener("click", onClick);
+button.removeEventListener("click", onClick);  // يحتاج المرجع نفسه
+```
+
+أحداث شائعة: `click`، و`input`، و`change`، و`submit`، و`keydown`، و`pointerdown`، و`focus`/`blur`، و`scroll`، و`DOMContentLoaded` (بنية الصفحة جاهزة).
+
+### الفقاعة والتفويض
+
+حين تضغط عنصرًا، **يتفقّع (bubbles)** الحدث صعودًا عبر كل سلف — فالضغط على `<span>` داخل `<button>` داخل `<li>` يفعّل المستمعين على الثلاثة. هذه أنفع حقيقة عن الأحداث، لأنها تتيح **التفويض (delegation)**: ضع مستمعًا *واحدًا* على الأب وحدّد الهدف الحقيقي بـ `closest()`:
+
+```js
+// بدل مستمع لكل <li>، واحد على القائمة:
+list.addEventListener("click", (e) => {
+  const item = e.target.closest("li");
+  if (!item) return;                  // ضُغطت الفجوة، تجاهل
+  console.log("clicked item", item.dataset.id);
+});
+```
+
+التفويض يتوسّع إلى آلاف العناصر، والأهم أنه **يعمل للعناصر المضافة لاحقًا**، لأن المستمع يعيش على الأب لا على الأبناء.
+
+### `preventDefault` و`stopPropagation`
+
+تحكّمان مختلفان، يُخلَط بينهما كثيرًا:
+
+```js
+form.addEventListener("submit", (e) => {
+  e.preventDefault();      // أوقف السلوك الافتراضي للمتصفح (هنا: إعادة تحميل كاملة)
+  // ...عالِج بـ JavaScript بدلًا منه
+});
+
+inner.addEventListener("click", (e) => {
+  e.stopPropagation();     // أوقف تفقّع الحدث إلى الأسلاف
+});
+```
+
+`preventDefault()` يلغي ردّ المتصفح المدمج (إرسال نموذج، انتقال رابط، تبديل خانة). `stopPropagation()` يوقف الفقاعة. وهما مستقلّان — قد تريد أحدهما أو كليهما أو لا شيء.
+
+## النماذج والإدخال
+
+```js
+const form = document.querySelector("form");
+
+form.addEventListener("submit", (e) => {
+  e.preventDefault();
+  const data = new FormData(form);     // اجمع كل الحقول المسمّاة دفعة واحدة
+  const values = Object.fromEntries(data); // → { email: "...", name: "..." }
+  console.log(values);
+});
+
+// تفاعَل مع الكتابة مقابل عند الالتزام
+input.addEventListener("input",  e => console.log(e.target.value)); // كل ضغطة مفتاح
+input.addEventListener("change", e => console.log(e.target.value)); // عند المغادرة/الالتزام
+```
+
+`FormData` + `Object.fromEntries` هي الطريقة الموجزة لقراءة نموذج كامل؛ `input` يُطلَق باستمرار بينما `change` يُطلَق مرّة عند انتهاء المستخدم.
+
+## الأداء: إعادة التدفّق والرسم والتجميع
+
+كلّما غيّرت DOM بطريقة تؤثّر على الهندسة، قد **يعيد المتصفح التدفّق (reflow)** (يعيد حساب التخطيط) و**يعيد الرسم (repaint)**. افعل ذلك في حلقة ضيّقة وستتقطّع الصفحة. قاعدتان تغطّيان معظم الحالات:
+
+```js
+// ❌ جلد التخطيط: الكتابة ثم القراءة في حلقة تفرض إعادات تدفّق متزامنة
+for (const el of els) {
+  el.style.width = el.offsetWidth + 10 + "px"; // قراءة (offsetWidth) + كتابة، مرارًا
+}
+
+// ✅ جمّع القراءات، ثم جمّع الكتابات
+const widths = els.map(el => el.offsetWidth);   // كل القراءات أولًا
+els.forEach((el, i) => el.style.width = widths[i] + 10 + "px"); // ثم كل الكتابات
+```
+
+- **جمّع إدراجات DOM** بـ `DocumentFragment` (أعلاه) بدل الإدراج في حلقة.
+- **لا تمزج القراءات والكتابات** — قراءة خاصية تخطيط (`offsetWidth`، `getBoundingClientRect`) بعد كتابة تفرض إعادة تدفّق فورية.
+
+للأحداث عالية التردّد (`scroll`، `input`، `resize`)، **استخدم debounce أو throttle** كي لا يعمل معالِجك في كل نبضة:
+
+```js
+function debounce(fn, ms) {
+  let t;
+  return (...args) => {
+    clearTimeout(t);
+    t = setTimeout(() => fn(...args), ms);  // يُطلَق فقط بعد توقّف النشاط
+  };
+}
+input.addEventListener("input", debounce(search, 300));
+```
+
+## الأخطاء الشائعة
+
+- معاملة `NodeList` كمصفوفة — `querySelectorAll(...).map(...)` يرمي خطأ؛ انشرها أولًا.
+- استخدام `innerHTML` مع مدخلات المستخدم — ثغرة XSS؛ استخدم `textContent` للنصّ.
+- قراءة `getAttribute("value")` لحالة النموذج بدل خاصية `.value` الحيّة.
+- تشغيل شيفرة الاختيار قبل وجود العنصر — سكربت في `<head>` بلا `defer`، أو قبل `DOMContentLoaded`.
+- إضافة مستمع لكل عنصر بدل **تفويض** واحد للأب (وتفويت العناصر المضافة ديناميكيًّا).
+- تمرير دالة مجهولة إلى `removeEventListener` — لا يمكن أن تطابق أبدًا؛ استخدم مرجعًا مسمّى.
+- الخلط بين `preventDefault()` (إلغاء السلوك الافتراضي) و`stopPropagation()` (إيقاف الفقاعة).
+- إدراج العقد واحدة تلو الأخرى في حلقة بدل بناء `DocumentFragment` والإدراج مرّة.
+- مزج قراءات وكتابات التخطيط، ما يسبّب جلد التخطيط.
+- نسيان `e.target` (ما ضُغط) مقابل `e.currentTarget` (ما عليه المستمع) في المعالِجات المفوَّضة.
+
+## تمارين
+
+جرّب كلًّا منها قبل فتح الحل.
+
+### تمرين 1 — اختر وعُدّ
+
+بمعطى صفحة فيها عدّة عناصر `<li class="task">`، سجّل كم منها معلّم كمنجَز (`data-done="true"`)، باستخدام `querySelectorAll`.
+
+<details>
+
+<summary>إظهار الحل</summary>
+
+```js
+const done = document.querySelectorAll('li.task[data-done="true"]');
+console.log(done.length);
+```
+
+محدّد CSS يقوم بالترشيح مباشرةً — بلا حلقة. `NodeList` لها `length`، تمامًا كمصفوفة.
+
+</details>
+
+### تمرين 2 — تحية آمنة
+
+متغيّر `name` يأتي من حقل نصّي. ضع `Hello, <name>` في `#greeting` بلا أي خطر XSS.
+
+<details>
+
+<summary>إظهار الحل</summary>
+
+```js
+document.querySelector("#greeting").textContent = `Hello, ${name}`;
+```
+
+`textContent` لا يحلّل HTML أبدًا، فحتى `name = "<img onerror=...>"` يُعرَض كنصّ حرفي. استخدام `innerHTML` هنا سيكون الخطأ.
+
+</details>
+
+### تمرين 3 — ابنِ قائمة بكفاءة
+
+بمعطى `const fruits = ["apple", "pear", "plum"]`، اعرضها كـ `<li>` داخل `#list` بإدراج DOM واحد.
+
+<details>
+
+<summary>إظهار الحل</summary>
+
+```js
+const frag = document.createDocumentFragment();
+for (const f of fruits) {
+  const li = document.createElement("li");
+  li.textContent = f;
+  frag.append(li);
+}
+document.querySelector("#list").append(frag);
+```
+
+كل `<li>` تُجمَّع في الجزء خارج الشاشة؛ ولا يلمس الصفحة الحيّة سوى `append` الأخير، فيعمل التخطيط مرّة بدل ثلاث.
+
+</details>
+
+### تمرين 4 — تفويض الأحداث
+
+`<ul id="todos">` تكسب وتفقد عناصر `<li>` عبر الزمن. سجّل نصّ أي `<li>` يُضغط — بمستمع واحد بالضبط.
+
+<details>
+
+<summary>إظهار الحل</summary>
+
+```js
+document.querySelector("#todos").addEventListener("click", (e) => {
+  const li = e.target.closest("li");
+  if (!li) return;                 // تجاهل النقرات خارج <li>
+  console.log(li.textContent);
+});
+```
+
+المستمع يعيش على الأب وينجو من أي عدد من الأبناء المضافين/المحذوفين. `closest("li")` يجد العنصر حتى لو وقعت النقرة على شيء متداخل داخله.
+
+</details>
+
+### تمرين 5 — أوقف إعادة التحميل
+
+نموذج دخول `<form>` يرسل إلى الخادم ويعيد تحميل الصفحة. عالِجه في JavaScript بدلًا من ذلك واقرأ حقل البريد.
+
+<details>
+
+<summary>إظهار الحل</summary>
+
+```js
+form.addEventListener("submit", (e) => {
+  e.preventDefault();                    // أوقف إعادة التحميل الكاملة
+  const email = new FormData(form).get("email");
+  console.log(email);
+});
+```
+
+`preventDefault()` يلغي إرسال المتصفح الأصلي؛ و`FormData` يقرأ الحقل بسمة `name` دون اختيار الحقل يدويًّا.
+
+</details>
+
+### تمرين 6 — debounce لبحث
+
+حقل بحث `<input>` يستدعي `search(value)` عند كل ضغطة مفتاح، فيُرهق الخادم. اجعله يُطلَق فقط بعد توقّف المستخدم 300 مللي ثانية.
+
+<details>
+
+<summary>إظهار الحل</summary>
+
+```js
+function debounce(fn, ms) {
+  let t;
+  return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
+}
+input.addEventListener("input", debounce((e) => search(e.target.value), 300));
+```
+
+كل ضغطة تمسح المؤقّت المعلّق وتبدأ آخر، فيعمل `search` مرّة واحدة فقط حين تتوقّف الكتابة 300 مللي ثانية — [الإغلاق](/blog/javascript-fundamentals) يُبقي `t` حيًّا بين الاستدعاءات.
+
+</details>
+
+## النموذج الذهني الذي تحتفظ به
+
+DOM **شجرة حيّة من الكائنات** يبنيها المتصفح من HTML ويعيد رسمها عند كل تغيير. تختار بمحدّدات CSS (`querySelector`/`All`)، وتتنقّل بخصائص العناصر فقط (`closest`، `children`، `nextElementSibling`)، وتحرّر بـ `textContent` (آمن) قبل `innerHTML` (يحلّل HTML — خطر XSS). تذكّر أن **السمات هي HTML والخصائص هي الحالة الحيّة** — اقرأ `.value`/`.checked` لا `getAttribute`. نسّق بـ **تبديل الأصناف** لا الأنماط السطرية. ابنِ العقد بـ `createElement` وجمّع الإدراجات عبر **`DocumentFragment`**. والأهم، افهم الأحداث: إنها **تتفقّع** صعودًا في الشجرة، ولهذا يتفوّق **مستمع مفوَّض واحد** على المئات ويعالج العناصر المضافة لاحقًا؛ `preventDefault` يلغي افتراضي المتصفح، و`stopPropagation` يوقف الفقاعة. أبقِ الصفحة سريعة بـ **تجميع القراءات والكتابات** و**debounce** للمعالِجات عالية التردّد. تمسّك بهذه الأفكار، ويتوقّف DOM عن كونه كومة توابع ويصبح شجرة تمشي فيها وتحرّرها ببساطة.

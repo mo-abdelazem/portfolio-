@@ -1,0 +1,448 @@
+---
+title: "The DOM: From Zero to Hero"
+description: "A complete, practical guide to the Document Object Model — what the DOM really is, selecting and traversing nodes, reading and changing content, attributes vs properties, classes and styles, creating/inserting/removing elements, the event model (bubbling, delegation, preventDefault), forms, performance (reflow/repaint, fragments, debouncing), common mistakes, and hands-on exercises with solutions."
+publishedAt: "2026-06-08"
+translationKey: "dom-manipulation"
+tags: ["JavaScript", "DOM", "Browser", "Frontend"]
+---
+
+The DOM is where JavaScript meets the page. Most developers learn a handful of incantations — `querySelector`, `addEventListener`, `innerHTML` — and stop there, never seeing the tree underneath that makes it all coherent. This is that picture, built from the ground up. Once you see the DOM as a *live tree of objects* and events as *things that travel through it*, manipulating the page stops being a grab-bag of methods and becomes something you can reason about. (This builds directly on [JavaScript fundamentals](/blog/javascript-fundamentals) — if `this`, closures, or callbacks are shaky, start there.)
+
+> The DOM is **not** your HTML file. It's a live, in-memory **tree of objects** the browser builds *from* your HTML — and which your JavaScript can read and rewrite at any moment. Every change you make to that tree, the browser re-renders.
+
+## What the DOM Actually Is
+
+When the browser loads a page, it parses your [HTML](/blog/html-semantic) into a tree of **nodes**. Each tag becomes an *element node*, text becomes a *text node*, and they nest exactly as your markup does:
+
+```html
+<body>
+  <h1>Hello</h1>
+  <p>World</p>
+</body>
+```
+
+becomes a tree:
+
+```
+document
+└── <html>
+    └── <body>
+        ├── <h1>  → "Hello" (text node)
+        └── <p>   → "World" (text node)
+```
+
+`document` is the root object your code starts from. Everything — selecting, changing, listening — is navigating and editing this tree. Crucially it's **live**: the HTML file is read once, but the DOM is the running state of the page, and JavaScript edits it in place.
+
+## Selecting Elements
+
+The two methods you'll use 95% of the time take **CSS selectors**:
+
+```js
+document.querySelector(".card");          // first match (or null)
+document.querySelectorAll(".card");       // ALL matches (a static NodeList)
+
+// any CSS selector works
+document.querySelector("nav a.active");
+document.querySelector("input[type='email']");
+document.querySelector("ul > li:first-child");
+```
+
+The older, more specific methods are still around and slightly faster, but rarely worth the loss of flexibility:
+
+```js
+document.getElementById("main");          // by id (no # prefix)
+document.getElementsByClassName("card");  // LIVE HTMLCollection
+document.getElementsByTagName("li");      // LIVE HTMLCollection
+```
+
+You can also scope a search to a subtree — call the same methods *on an element*, not just `document`:
+
+```js
+const card = document.querySelector(".card");
+const title = card.querySelector("h2");   // searches inside card only
+```
+
+A key distinction: `querySelectorAll` returns a **static** `NodeList` (a snapshot — doesn't update if the DOM changes), while `getElementsBy*` return **live** collections (they auto-update). The snapshot is usually what you want.
+
+## NodeList Is Not an Array
+
+`querySelectorAll` returns a `NodeList`, which *looks* like an array but isn't one. You can `forEach` over it, but `map`/`filter`/`reduce` don't exist on it. Convert it first:
+
+```js
+const items = document.querySelectorAll("li");
+
+items.forEach(li => li.classList.add("seen"));  // ✅ NodeList has forEach
+
+[...items].map(li => li.textContent);           // ✅ spread to a real array
+Array.from(items).filter(li => li.dataset.active); // ✅ same idea
+```
+
+## Traversing the Tree
+
+Once you have one element, you can walk to its relatives. Prefer the **element-only** properties (they skip text/whitespace nodes):
+
+```js
+const el = document.querySelector(".card");
+
+el.parentElement;            // up one level
+el.children;                 // element children (an HTMLCollection)
+el.firstElementChild;        // first child element
+el.lastElementChild;
+el.nextElementSibling;       // the element after it
+el.previousElementSibling;
+
+el.closest(".container");    // nearest ancestor matching a selector (incl. itself)
+el.matches(".card");         // does this element match the selector? → boolean
+```
+
+`closest()` is especially useful in event handling — from a clicked button, walk up to the row or card that contains it.
+
+## Reading and Changing Content
+
+Three properties, three behaviours — and the difference matters for safety:
+
+```js
+el.textContent = "Hello";    // sets/reads TEXT only — safe, fast
+el.innerHTML = "<b>Hi</b>";  // parses a STRING as HTML — powerful, dangerous
+el.innerText  = "Hello";     // like textContent but layout-aware (slower)
+```
+
+**`textContent`** is your default — it treats everything as plain text, so user input can never inject markup. **`innerHTML`** parses its string as HTML, which is how you'd build markup quickly — but never feed it untrusted input, because `<img src=x onerror=...>` becomes a real attack (XSS):
+
+```js
+// ❌ XSS hole if `name` comes from a user
+el.innerHTML = `Hello, ${name}`;
+
+// ✅ safe — text is never parsed as HTML
+el.textContent = `Hello, ${name}`;
+```
+
+## Attributes vs Properties
+
+This trips everyone up. An **attribute** is what's written in the HTML; a **property** is the live value on the DOM object. They start in sync but can drift:
+
+```js
+// Attributes — strings, mirror the HTML
+el.getAttribute("href");
+el.setAttribute("aria-expanded", "true");
+el.hasAttribute("disabled");
+el.removeAttribute("disabled");
+
+// Properties — typed, the live state
+input.value;          // the CURRENT value the user typed (attribute stays the original)
+checkbox.checked;     // boolean, not a string
+link.href;            // resolved absolute URL (attribute is what you wrote)
+el.id;                // shortcut property
+```
+
+The classic gotcha: after a user types into a field, `input.getAttribute("value")` still shows the *original* HTML value, while `input.value` shows what they actually typed. **For form state, always use the property (`.value`, `.checked`).**
+
+**`data-*` attributes** are the blessed way to attach custom data, read via the `dataset` property (camelCased):
+
+```html
+<button data-user-id="42" data-role="admin">Edit</button>
+```
+
+```js
+btn.dataset.userId;   // "42"  (data-user-id → userId)
+btn.dataset.role;     // "admin"
+btn.dataset.role = "viewer";  // writes back to the attribute
+```
+
+## Classes and Styles
+
+For styling, **change classes, not inline styles** — keep the look in your CSS and toggle state from JavaScript. `classList` is the clean API:
+
+```js
+el.classList.add("active");
+el.classList.remove("hidden");
+el.classList.toggle("open");          // add if absent, remove if present
+el.classList.toggle("open", isOpen);  // force on/off by a boolean
+el.classList.contains("active");      // → boolean
+el.classList.replace("old", "new");
+```
+
+Direct inline styles exist for the genuinely dynamic (a value you compute), but reach for them sparingly:
+
+```js
+el.style.transform = `translateX(${x}px)`;  // dynamic, computed value — fair use
+el.style.setProperty("--accent", "tomato"); // set a CSS custom property
+
+// reading the FINAL applied style (from any source) is different:
+getComputedStyle(el).color;   // the resolved, rendered value
+```
+
+`el.style.color` only reads *inline* styles; to know what the element actually renders (including from stylesheets), you need `getComputedStyle`.
+
+## Creating, Inserting, and Removing Nodes
+
+Building DOM from scratch — the safe alternative to string-concatenating `innerHTML`:
+
+```js
+const li = document.createElement("li");
+li.textContent = "New item";
+li.classList.add("item");
+
+// Insert (modern, flexible — accept nodes OR strings)
+list.append(li);          // as last child
+list.prepend(li);         // as first child
+ref.before(li);           // as previous sibling
+ref.after(li);            // as next sibling
+ref.replaceWith(li);      // swap one node for another
+
+// Remove / clone
+li.remove();              // delete it
+const copy = li.cloneNode(true);  // true = deep clone (with descendants)
+```
+
+When inserting **many** nodes, don't touch the live DOM in a loop (each insert can trigger layout work). Build them off-screen in a **`DocumentFragment`** and insert once:
+
+```js
+const frag = document.createDocumentFragment();
+for (const name of names) {
+  const li = document.createElement("li");
+  li.textContent = name;
+  frag.append(li);          // appending to the fragment touches no live layout
+}
+list.append(frag);          // ONE insertion into the page
+```
+
+## The Event Model
+
+Events are how the page talks back. You register a listener, and the browser calls your function with an **event object** describing what happened:
+
+```js
+button.addEventListener("click", (event) => {
+  console.log(event.type);     // "click"
+  console.log(event.target);   // the element actually clicked
+  console.log(event.currentTarget); // the element the listener is on
+});
+```
+
+`addEventListener` is the right tool (not `onclick =`, which allows only one handler). To detach later, pass a **named function** — an anonymous one can't be removed:
+
+```js
+function onClick(e) { /* ... */ }
+button.addEventListener("click", onClick);
+button.removeEventListener("click", onClick);  // needs the SAME reference
+```
+
+Common events: `click`, `input`, `change`, `submit`, `keydown`, `pointerdown`, `focus`/`blur`, `scroll`, and `DOMContentLoaded` (the page's structure is ready).
+
+### Bubbling and Delegation
+
+When you click an element, the event **bubbles** up through every ancestor — the click on a `<span>` inside a `<button>` inside a `<li>` fires listeners on all three. This is the single most useful event fact, because it enables **delegation**: put *one* listener on a parent and identify the real target with `closest()`:
+
+```js
+// Instead of a listener per <li>, one on the list:
+list.addEventListener("click", (e) => {
+  const item = e.target.closest("li");
+  if (!item) return;                  // clicked the gap, ignore
+  console.log("clicked item", item.dataset.id);
+});
+```
+
+Delegation scales to thousands of items, and — crucially — **works for elements added later**, because the listener lives on the parent, not the children.
+
+### `preventDefault` and `stopPropagation`
+
+Two different controls, often confused:
+
+```js
+form.addEventListener("submit", (e) => {
+  e.preventDefault();      // stop the browser's default (here: full page reload)
+  // ...handle with JavaScript instead
+});
+
+inner.addEventListener("click", (e) => {
+  e.stopPropagation();     // stop the event bubbling to ancestors
+});
+```
+
+`preventDefault()` cancels the browser's built-in reaction (form submit, link navigation, checkbox toggle). `stopPropagation()` halts the bubble. They're independent — you might want one, both, or neither.
+
+## Forms and Input
+
+```js
+const form = document.querySelector("form");
+
+form.addEventListener("submit", (e) => {
+  e.preventDefault();
+  const data = new FormData(form);     // gather all named fields at once
+  const values = Object.fromEntries(data); // → { email: "...", name: "..." }
+  console.log(values);
+});
+
+// React as the user types vs. when they commit
+input.addEventListener("input",  e => console.log(e.target.value)); // every keystroke
+input.addEventListener("change", e => console.log(e.target.value)); // on blur/commit
+```
+
+`FormData` + `Object.fromEntries` is the concise way to read a whole form; `input` fires continuously while `change` fires once the user is done.
+
+## Performance: Reflow, Repaint, and Batching
+
+Every time you change the DOM in a way that affects geometry, the browser may **reflow** (recalculate layout) and **repaint**. Do that in a tight loop and the page janks. Two rules cover most cases:
+
+```js
+// ❌ Layout thrashing: writing then reading in a loop forces sync reflows
+for (const el of els) {
+  el.style.width = el.offsetWidth + 10 + "px"; // read (offsetWidth) + write, repeatedly
+}
+
+// ✅ Batch reads, then batch writes
+const widths = els.map(el => el.offsetWidth);   // all reads first
+els.forEach((el, i) => el.style.width = widths[i] + 10 + "px"); // then all writes
+```
+
+- **Batch DOM insertions** with a `DocumentFragment` (above) instead of inserting in a loop.
+- **Don't interleave reads and writes** — reading a layout property (`offsetWidth`, `getBoundingClientRect`) after a write forces an immediate reflow.
+
+For high-frequency events (`scroll`, `input`, `resize`), **debounce or throttle** so your handler doesn't run on every single tick:
+
+```js
+function debounce(fn, ms) {
+  let t;
+  return (...args) => {
+    clearTimeout(t);
+    t = setTimeout(() => fn(...args), ms);  // only fires after activity stops
+  };
+}
+input.addEventListener("input", debounce(search, 300));
+```
+
+## Common Mistakes
+
+- Treating a `NodeList` like an array — `querySelectorAll(...).map(...)` throws; spread it first.
+- Using `innerHTML` with user input — an XSS hole; use `textContent` for text.
+- Reading `getAttribute("value")` for form state instead of the live `.value` property.
+- Running selection code before the element exists — script in `<head>` without `defer`, or before `DOMContentLoaded`.
+- Adding a listener per item instead of **delegating** one to the parent (and missing dynamically-added elements).
+- Passing an anonymous function to `removeEventListener` — it can never match; use a named reference.
+- Confusing `preventDefault()` (cancel the default action) with `stopPropagation()` (stop bubbling).
+- Inserting nodes one-by-one in a loop instead of building a `DocumentFragment` and inserting once.
+- Interleaving layout reads and writes, causing layout thrashing.
+- Forgetting `e.target` (what was clicked) vs `e.currentTarget` (what the listener is on) in delegated handlers.
+
+## Exercises
+
+Try each before opening the solution.
+
+### Exercise 1 — Select and count
+
+Given a page with several `<li class="task">` items, log how many are marked done (`data-done="true"`), using `querySelectorAll`.
+
+<details>
+
+<summary>Show solution</summary>
+
+```js
+const done = document.querySelectorAll('li.task[data-done="true"]');
+console.log(done.length);
+```
+
+The CSS selector does the filtering directly — no loop needed. `NodeList` has a `length`, just like an array.
+
+</details>
+
+### Exercise 2 — Safe greeting
+
+A variable `name` comes from a text input. Put `Hello, <name>` into `#greeting` without any XSS risk.
+
+<details>
+
+<summary>Show solution</summary>
+
+```js
+document.querySelector("#greeting").textContent = `Hello, ${name}`;
+```
+
+`textContent` never parses HTML, so even `name = "<img onerror=...>"` is shown as literal text. Using `innerHTML` here would be the bug.
+
+</details>
+
+### Exercise 3 — Build a list efficiently
+
+Given `const fruits = ["apple", "pear", "plum"]`, render them as `<li>`s inside `#list` with a single DOM insertion.
+
+<details>
+
+<summary>Show solution</summary>
+
+```js
+const frag = document.createDocumentFragment();
+for (const f of fruits) {
+  const li = document.createElement("li");
+  li.textContent = f;
+  frag.append(li);
+}
+document.querySelector("#list").append(frag);
+```
+
+All the `<li>`s are assembled in the off-screen fragment; only the final `append` touches the live page, so layout runs once instead of three times.
+
+</details>
+
+### Exercise 4 — Event delegation
+
+A `<ul id="todos">` gains and loses `<li>` items over time. Log the text of whichever `<li>` is clicked — with exactly one listener.
+
+<details>
+
+<summary>Show solution</summary>
+
+```js
+document.querySelector("#todos").addEventListener("click", (e) => {
+  const li = e.target.closest("li");
+  if (!li) return;                 // ignore clicks outside an <li>
+  console.log(li.textContent);
+});
+```
+
+The listener lives on the parent and survives any number of added/removed children. `closest("li")` finds the item even if the click landed on something nested inside it.
+
+</details>
+
+### Exercise 5 — Stop the reload
+
+A login `<form>` posts to the server and reloads the page. Handle it in JavaScript instead and read the email field.
+
+<details>
+
+<summary>Show solution</summary>
+
+```js
+form.addEventListener("submit", (e) => {
+  e.preventDefault();                    // stop the full-page reload
+  const email = new FormData(form).get("email");
+  console.log(email);
+});
+```
+
+`preventDefault()` cancels the browser's native submit; `FormData` reads the field by its `name` attribute without selecting the input manually.
+
+</details>
+
+### Exercise 6 — Debounce a search
+
+A search `<input>` calls `search(value)` on every keystroke, hammering the server. Make it fire only after the user pauses for 300ms.
+
+<details>
+
+<summary>Show solution</summary>
+
+```js
+function debounce(fn, ms) {
+  let t;
+  return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
+}
+input.addEventListener("input", debounce((e) => search(e.target.value), 300));
+```
+
+Each keystroke clears the pending timer and starts a new one, so `search` runs only once the typing stops for 300ms — a [closure](/blog/javascript-fundamentals) keeps `t` alive between calls.
+
+</details>
+
+## The Mental Model to Keep
+
+The DOM is a **live tree of objects** the browser builds from your HTML and re-renders on every change. You **select** with CSS selectors (`querySelector`/`All`), **traverse** with element-only properties (`closest`, `children`, `nextElementSibling`), and **edit** with `textContent` (safe) over `innerHTML` (parses HTML — XSS risk). Remember **attributes are the HTML, properties are the live state** — read `.value`/`.checked`, not `getAttribute`. Style by **toggling classes**, not inline styles. Build nodes with `createElement` and batch insertions through a **`DocumentFragment`**. Above all, understand events: they **bubble** up the tree, which is why **one delegated listener** beats hundreds and handles elements added later; `preventDefault` cancels the browser's default, `stopPropagation` halts the bubble. Keep the page fast by **batching reads and writes** and **debouncing** high-frequency handlers. Hold those ideas and the DOM stops being a pile of methods and becomes a tree you simply walk and edit.
