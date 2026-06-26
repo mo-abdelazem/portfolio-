@@ -1,0 +1,255 @@
+---
+title: "CSS Typography & Web Fonts: Text That's a Pleasure to Read"
+description: "A complete, practical guide to styling text on the web — the font stack and system fonts, @font-face and web fonts, font-display and loading performance, variable fonts, sizing with rem and fluid clamp(), line-height and measure, letter-spacing, text wrapping and truncation, text-wrap balance/pretty, vertical rhythm, accessibility, common mistakes, and hands-on exercises with solutions."
+publishedAt: "2026-06-20"
+translationKey: "css-typography"
+tags: ["CSS", "Typography", "Web Fonts", "Frontend"]
+---
+
+Most of a web page is text, yet typography is the part of CSS people tune last and understand least. Good type isn't about picking a pretty font — it's about *readability*: the right size, comfortable line length, generous line spacing, and fonts that load fast without flashing. This is the full toolkit, from the font stack up through variable fonts and loading performance. Get it right and a plain page of text feels professional before you've added a single colour. (Type properties **inherit** down the tree — see [the cascade](/blog/css-selectors-specificity-cascade) — which is why you set them once high up and let them flow.)
+
+> The two decisions that matter most aren't fonts at all: **set body text around 16–18px with a line-height near 1.5**, and **cap line length near 60–75 characters**. Almost every "this is hard to read" page violates one of those.
+
+## The Font Stack
+
+`font-family` takes a *list*, tried left to right until one is available, ending in a generic family as a guaranteed fallback:
+
+```css
+body {
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+code {
+  font-family: ui-monospace, "Cascadia Code", Menlo, Consolas, monospace;
+}
+```
+
+The five generic families — `serif`, `sans-serif`, `monospace`, `cursive`, `fantasy` — must always be the last entry so the browser has something to fall back to. Quote any family name that contains spaces.
+
+**System font stacks** like `system-ui` use the operating system's native UI font (San Francisco on Apple, Segoe on Windows, Roboto on Android). They cost zero bytes, render instantly, and look native — an excellent default before you reach for a downloaded font at all.
+
+## Web Fonts with `@font-face`
+
+To use a custom font, declare it with `@font-face`, then reference its `font-family` name normally:
+
+```css
+@font-face {
+  font-family: "Inter";
+  src: url("/fonts/inter-var.woff2") format("woff2");
+  font-weight: 100 900;     /* a range = a variable font */
+  font-style: normal;
+  font-display: swap;        /* show fallback text immediately, swap when ready */
+}
+
+body { font-family: "Inter", sans-serif; }
+```
+
+Three rules for fast, non-janky fonts:
+
+- **Use `woff2`** — it's the smallest format and supported everywhere that matters.
+- **Set `font-display: swap`** so text renders immediately in the fallback font and swaps when the web font loads — avoiding invisible text (FOIT). `optional` is even stricter (skip the swap if the font is slow).
+- **Preload the critical font** in your HTML so the browser fetches it early:
+
+```html
+<link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
+```
+
+## Variable Fonts
+
+A **variable font** packs an entire family — every weight, often width and slant too — into one file, interpolating any value along an axis. One download replaces the six or eight static weight files you used to ship:
+
+```css
+@font-face {
+  font-family: "Inter";
+  src: url("/fonts/inter-var.woff2") format("woff2");
+  font-weight: 100 900;          /* the supported weight axis */
+}
+
+h1     { font-weight: 800; }      /* any value in range, not just 400/700 */
+.lead  { font-weight: 350; }      /* in-between weights are now possible */
+```
+
+Beyond weight, variable fonts can expose custom axes via `font-variation-settings` (optical size, width, grade), but the weight axis alone usually justifies the switch.
+
+## Sizing: `rem`, `em`, and Fluid Type
+
+Use **`rem`** for font sizes. `1rem` equals the root font size (16px by default), so sizing in `rem` respects the user's browser zoom and font-size preference — an accessibility win that `px` throws away:
+
+```css
+:root { font-size: 100%; }   /* respects the user's setting — don't hard-code 16px */
+body   { font-size: 1.125rem; }  /* 18px */
+small  { font-size: 0.875rem; }  /* 14px */
+```
+
+`em` is relative to the *element's own* font size — handy for things that should scale with their context (icon next to text, padding inside a button), but it compounds when nested, which surprises people.
+
+For headings that scale with the viewport, **`clamp()`** gives fluid type with no media queries — a minimum, a preferred value, and a maximum:
+
+```css
+h1 { font-size: clamp(2rem, 1.2rem + 3vw, 3.5rem); }  /* 32px → 56px, fluid */
+```
+
+## Line Height, Measure, and Spacing
+
+Three settings do most of the work for readability:
+
+```css
+body {
+  line-height: 1.5;        /* unitless — scales with font-size; ~1.4–1.6 for body */
+  max-width: 65ch;          /* the "measure" — ~60–75 chars is the sweet spot */
+}
+h1 { line-height: 1.1; }    /* tighter for large display text */
+```
+
+- **`line-height`** — keep it *unitless* (`1.5`, not `24px`) so it scales proportionally with the font size of each element. Body copy wants ~1.5; large headings want tighter (~1.1).
+- **Measure** — line length. The `ch` unit (≈ width of a "0") makes `max-width: 65ch` a direct way to cap lines near the readable 60–75 character range. Lines that run the full width of a wide screen are genuinely tiring to read.
+
+Finer adjustments:
+
+```css
+.heading { letter-spacing: -0.02em; }   /* tighten large text slightly */
+.caps    { letter-spacing: 0.05em; text-transform: uppercase; } /* space out all-caps */
+```
+
+Tracking (`letter-spacing`) in `em` scales with the text. Large headings often benefit from a touch *negative*; all-caps and small text from a touch *positive*.
+
+## Wrapping, Truncation, and Balance
+
+Controlling how text breaks:
+
+```css
+/* Truncate one line with an ellipsis */
+.title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Clamp to N lines with an ellipsis */
+.excerpt {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Break long unbroken strings (URLs, tokens) instead of overflowing */
+.code-ish { overflow-wrap: break-word; }
+```
+
+And two modern niceties that improve type for free:
+
+```css
+h1, h2 { text-wrap: balance; }   /* even line lengths in headings — no lone short last line */
+p      { text-wrap: pretty; }    /* avoids orphans (a single word on the last line) */
+```
+
+`text-wrap: balance` is best on short text like headings (it's capped to a few lines); `pretty` is for body paragraphs.
+
+## Vertical Rhythm
+
+Consistent spacing between text blocks makes a page feel composed. Drive it from a single scale rather than ad-hoc margins:
+
+```css
+:root { --flow: 1.5rem; }
+.prose > * + * { margin-block-start: var(--flow); }  /* space only BETWEEN siblings */
+```
+
+The `* + *` ("lobotomized owl") applies top margin to every element that follows another — so blocks are evenly spaced without a stray margin at the very top. Pair it with a consistent heading scale and the page reads as a rhythm, not a pile.
+
+## Common Mistakes
+
+- Sizing fonts in `px`, which ignores the user's browser font-size/zoom preference — use `rem`.
+- Letting lines run the full width of a wide screen — cap the measure near `65ch`.
+- A line-height that's too tight (1.0–1.2) on body text — aim for ~1.5.
+- Setting `line-height` with a unit (`24px`), so it stops scaling with font size — keep it unitless.
+- Shipping web fonts without `font-display: swap`, causing invisible text while they load (FOIT).
+- Loading many static weight files when one variable font would be smaller.
+- Using `.woff`/`.ttf` instead of `woff2`, shipping bigger downloads for no benefit.
+- Forgetting a generic family (`sans-serif`) at the end of the font stack.
+- Reaching for `&nbsp;` and manual line breaks instead of `text-wrap: balance`/`pretty`.
+
+## Exercises
+
+Try each before opening the solution.
+
+### Exercise 1 — Readable body defaults
+
+Set a sensible reading experience on `body`: 18px text, comfortable line spacing, and a capped line length — using accessibility-friendly units.
+
+<details>
+
+<summary>Show solution</summary>
+
+```css
+body {
+  font-size: 1.125rem;   /* 18px, but respects user zoom because it's rem */
+  line-height: 1.5;
+  max-width: 65ch;
+  margin-inline: auto;
+}
+```
+
+`rem` keeps the size responsive to the user's preference, `1.5` line-height is the readable default, and `65ch` caps the measure in the 60–75 character sweet spot.
+
+</details>
+
+### Exercise 2 — A self-hosted font that doesn't flash
+
+Declare a web font that shows fallback text immediately and swaps in when ready, in the most efficient format.
+
+<details>
+
+<summary>Show solution</summary>
+
+```css
+@font-face {
+  font-family: "Inter";
+  src: url("/fonts/inter-var.woff2") format("woff2");
+  font-weight: 100 900;
+  font-display: swap;
+}
+```
+
+`woff2` is the smallest format, `font-display: swap` prevents invisible text, and the `100 900` weight range marks it as a single variable font covering every weight.
+
+</details>
+
+### Exercise 3 — Fluid heading
+
+Make an `<h1>` scale smoothly from 28px on phones to 48px on desktop, with no media queries.
+
+<details>
+
+<summary>Show solution</summary>
+
+```css
+h1 { font-size: clamp(1.75rem, 1rem + 3vw, 3rem); }
+```
+
+`clamp(min, preferred, max)` floors at 28px, scales with the viewport via the `vw` term in the middle, and caps at 48px — one line replacing a stack of breakpoints.
+
+</details>
+
+### Exercise 4 — Truncate a card title
+
+Keep a `.card-title` to a single line, adding an ellipsis when it's too long.
+
+<details>
+
+<summary>Show solution</summary>
+
+```css
+.card-title {
+  white-space: nowrap;     /* don't wrap to a second line */
+  overflow: hidden;        /* clip the overflow */
+  text-overflow: ellipsis; /* show … at the cut */
+}
+```
+
+All three are required: `nowrap` forces one line, `overflow: hidden` enables clipping, and `text-overflow: ellipsis` renders the `…`.
+
+</details>
+
+## The Mental Model to Keep
+
+Typography is readability first. Anchor it with two numbers — **~16–18px body text at ~1.5 line-height**, and a **measure capped near 65ch** — and most of the work is done. Size in **`rem`** so users keep control of scale, reach for **`clamp()`** when headings should be fluid, and keep **`line-height` unitless** so it scales. Build your stack on **system fonts** for free, instant, native type, and when you add a web font use **`woff2` + `font-display: swap`** (and preload the critical one), preferring a single **variable font** over many static weights. Finish with **`text-wrap: balance`** on headings and **`pretty`** on paragraphs, and drive spacing from one **vertical rhythm** scale. Colour and contrast — the other half of legibility — come next in [CSS color & gradients](/blog/css-color-gradients).

@@ -1,7 +1,7 @@
 ---
 title: "CSS Box Model: كل ما يهم فعليا"
 description: "دليل بصري كامل لـ CSS box model — content وpadding وborder وmargin وbox-sizing وانهيار الـ margins والخصائص المنطقية، مع الأخطاء التي تظهر في التخطيطات الحقيقية."
-publishedAt: "2026-06-05"
+publishedAt: "2026-05-06"
 translationKey: "css-box-model"
 tags: ["CSS", "Box Model", "Layout", "Frontend"]
 ---
@@ -202,4 +202,4 @@ padding-inline-end: 8px;
 
 ## النموذج الذهني الذي تحتفظ به
 
-الصندوق هو **content ← padding ← border ← margin**، يُقاس وفق `box-sizing`. اضبط `border-box` عالميا ليكون الرقم الذي تكتبه هو الرقم الذي تحصل عليه. استخدم `gap` والخصائص المنطقية للمسافات، والجأ إلى مخطط الصندوق في DevTools عند وجود خلل، وستختفي معظم ألغاز التخطيط.
+الصندوق هو **content ← padding ← border ← margin**، يُقاس وفق `box-sizing`. اضبط `border-box` عالميا ليكون الرقم الذي تكتبه هو الرقم الذي تحصل عليه. استخدم `gap` والخصائص المنطقية للمسافات، والجأ إلى مخطط الصندوق في DevTools عند وجود خلل، وستختفي معظم ألغاز التخطيط. وكل صندوق هنا يجلس في **التدفّق العادي**؛ وحين تحتاج إلى رفع أحدها منه — شارة، ترويسة لاصقة، نافذة منبثقة — فذلك [تموضع CSS](/blog/css-positioning).

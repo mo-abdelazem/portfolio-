@@ -1,7 +1,7 @@
 ---
 title: "Modern CSS: The Features That Changed How We Write Styles"
 description: "A tour of the modern CSS features now shipping in browsers — container queries, :has(), nesting, cascade layers, subgrid, custom properties, color-mix() and modern color, logical properties, clamp(), aspect-ratio, scroll-driven animations, view transitions, and :is()/:where() — with hands-on exercises."
-publishedAt: "2026-06-25"
+publishedAt: "2026-05-02"
 translationKey: "modern-css"
 tags: ["CSS", "Modern CSS", "Frontend"]
 ---
@@ -69,7 +69,7 @@ The `&` references the parent rule. It removes one of the most common reasons pr
 
 ## Cascade Layers (`@layer`)
 
-Specificity wars — where you bump a selector or add `!important` just to win — get solved structurally by **cascade layers**. You declare an explicit order, and later layers beat earlier ones regardless of specificity:
+[Specificity wars](/blog/css-selectors-specificity-cascade) — where you bump a selector or add `!important` just to win — get solved structurally by **cascade layers**. You declare an explicit order, and later layers beat earlier ones regardless of specificity:
 
 ```css
 @layer reset, framework, components, utilities;
@@ -113,7 +113,7 @@ CSS color grew up. `oklch()` describes color in a perceptually uniform space (li
 }
 ```
 
-Together they let you derive a whole palette (hovers, tints, shades, borders) from a single base color — the kind of thing that used to require Sass color functions.
+Together they let you derive a whole palette (hovers, tints, shades, borders) from a single base color — the kind of thing that used to require Sass color functions. (Full treatment, including gradients, dark mode, and contrast, in [CSS color & gradients](/blog/css-color-gradients).)
 
 ## Logical Properties
 
@@ -163,7 +163,7 @@ A nested grid can now align to its parent's tracks with `grid-template-rows: sub
 
 ## Scroll-Driven Animations
 
-Animations can now be tied to scroll position **without JavaScript**, running on the compositor for smoothness:
+Building on regular [transitions and keyframe animations](/blog/css-transitions-animations), animations can now be tied to scroll position **without JavaScript**, running on the compositor for smoothness:
 
 ```css
 @keyframes fade-in {
@@ -335,4 +335,4 @@ Fade-and-rise each `.section` into view as it scrolls into the viewport, using a
 
 ## The Mental Model to Keep
 
-Modern CSS pulls work back into the platform. Build theming on **custom properties**, derive palettes with **`oklch()`** and **`color-mix()`**, and organize the cascade with **`@layer`** instead of `!important`. Style relationally with **`:has()`**, group with **`:is()`/`:where()`**, and nest natively. Make things *scale* with **`clamp()`/`min()`/`aspect-ratio`**, make components self-responsive with **container queries** and **subgrid**, and write direction-agnostic CSS with **logical properties**. For motion and navigation, reach for **scroll-driven animations** and **view transitions** before a JavaScript library. The throughline: if you last learned CSS a few years ago, a surprising number of your old workarounds now have a one-line native answer.
+Modern CSS pulls work back into the platform. Build theming on **custom properties**, derive palettes with **`oklch()`** and **`color-mix()`**, and organize the cascade with **`@layer`** instead of `!important`. Style relationally with **`:has()`**, group with **`:is()`/`:where()`**, and nest natively. Make things *scale* with **`clamp()`/`min()`/`aspect-ratio`**, make components self-responsive with **container queries** and **subgrid**, and write direction-agnostic CSS with **logical properties**. For motion and navigation, reach for **scroll-driven animations** and **view transitions** before a [JavaScript](/blog/javascript-fundamentals) library. The throughline: if you last learned CSS a few years ago, a surprising number of your old workarounds now have a one-line native answer.

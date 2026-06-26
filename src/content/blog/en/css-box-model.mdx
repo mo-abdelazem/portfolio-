@@ -1,7 +1,7 @@
 ---
 title: "The CSS Box Model: Everything That Actually Matters"
 description: "A complete, visual guide to the CSS box model — content, padding, border, margin, box-sizing, margin collapsing, logical properties, and the gotchas that bite in real layouts."
-publishedAt: "2026-06-05"
+publishedAt: "2026-05-06"
 translationKey: "css-box-model"
 tags: ["CSS", "Box Model", "Layout", "Frontend"]
 ---
@@ -202,4 +202,4 @@ Open the element inspector and look at the **Computed** tab's box-model diagram.
 
 ## The Mental Model to Keep
 
-The box is **content → padding → border → margin**, measured according to `box-sizing`. Set `border-box` globally so the number you write is the number you get. Use `gap` and logical properties for spacing, reach for DevTools' box diagram when something is off, and most layout mysteries disappear.
+The box is **content → padding → border → margin**, measured according to `box-sizing`. Set `border-box` globally so the number you write is the number you get. Use `gap` and logical properties for spacing, reach for DevTools' box diagram when something is off, and most layout mysteries disappear. Every box here sits in the **normal flow**; when you need to lift one out of it — a badge, a sticky header, a modal — that's [CSS positioning](/blog/css-positioning).

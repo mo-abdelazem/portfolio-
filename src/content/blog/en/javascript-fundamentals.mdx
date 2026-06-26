@@ -1,0 +1,622 @@
+---
+title: "JavaScript Fundamentals: From Zero to Hero"
+description: "A complete, practical guide to the JavaScript every developer needs — how it runs, variables and scope, types and coercion, functions and closures, this, objects and arrays, destructuring, the event loop, promises and async/await, modules, the DOM, error handling, common mistakes, and hands-on exercises with solutions."
+publishedAt: "2026-05-08"
+translationKey: "javascript-fundamentals"
+tags: ["JavaScript", "Fundamentals", "Programming", "Frontend"]
+---
+
+JavaScript is the language of the web, but most people learn it in fragments — a loop here, a `fetch` there — and never assemble the mental model that makes the hard parts (`this`, closures, the event loop) feel obvious. This is that model, built from the ground up. By the end you should be able to read almost any JavaScript and predict what it does, not guess.
+
+> The single most useful thing to internalize: JavaScript is **single-threaded**, runs on an **event loop**, and treats **functions as values**. Almost every "weird" behavior — hoisting, closures, async ordering, `this` — falls out of those three facts.
+
+## How JavaScript Actually Runs
+
+JavaScript runs inside an *engine* (V8 in Chrome and Node, SpiderMonkey in Firefox). Your code is parsed, compiled just-in-time, and executed on a **single thread** — one thing at a time. There is no parallel line of execution in your script; concurrency comes from the *host* (the browser or Node) handing work back to you via the event loop, which we'll get to.
+
+Two environments matter:
+
+- **The browser** — JavaScript can touch the page (the DOM), respond to clicks, and call the network.
+- **Node.js** — the same language with access to files, servers, and the OS instead of a page.
+
+Same core language, different toolboxes bolted on.
+
+## Variables: `let`, `const`, and the Ghost of `var`
+
+```js
+const name = "Ada";   // can't be reassigned
+let age = 36;         // can be reassigned
+age = 37;             // fine
+
+var legacy = true;    // old keyword — avoid in new code
+```
+
+Use **`const` by default**, `let` only when you actually reassign, and **never `var`** in new code. The reason is *scope*:
+
+- `let` and `const` are **block-scoped** — they exist only inside the nearest `{ }`.
+- `var` is **function-scoped** and **hoisted**, which leaks it out of blocks and causes classic bugs.
+
+```js
+{
+  let a = 1;
+  var b = 2;
+}
+console.log(b); // 2  — var leaked out of the block
+console.log(a); // ReferenceError — let stayed put
+```
+
+`const` means the *binding* can't be reassigned — it does **not** make objects immutable:
+
+```js
+const user = { name: "Ada" };
+user.name = "Grace";   // allowed — we mutated the object, didn't reassign the binding
+user = {};             // TypeError — reassigning the binding is what's blocked
+```
+
+## The Type System: Primitives vs Objects
+
+JavaScript has exactly **seven primitive types** and one umbrella for everything else (objects):
+
+```js
+typeof "hi"        // "string"
+typeof 42          // "number"   — one number type for ints and floats
+typeof 10n         // "bigint"   — arbitrarily large integers
+typeof true        // "boolean"
+typeof undefined   // "undefined" — a variable with no value yet
+typeof null        // "object"   — a historic bug, but null means "intentionally empty"
+typeof Symbol()    // "symbol"   — unique identifiers
+typeof {}          // "object"
+typeof []          // "object"   — arrays are objects
+typeof function(){} // "function" — callable objects
+```
+
+The deep divide: **primitives are copied by value, objects are shared by reference.**
+
+```js
+let a = 1;
+let b = a;     // b gets a copy
+b = 2;
+console.log(a); // 1  — unaffected
+
+let x = { n: 1 };
+let y = x;     // y points to the SAME object
+y.n = 2;
+console.log(x.n); // 2  — both names see the same thing
+```
+
+This one fact explains most "why did my array change?" surprises.
+
+## Equality and Coercion: Use `===`
+
+`==` performs **type coercion** — it converts operands to make them match, with rules nobody memorizes correctly:
+
+```js
+0 == ""        // true  😱
+0 == "0"       // true
+"" == "0"      // false
+null == undefined // true
+[] == false    // true  😱😱
+```
+
+The fix is simple: **always use `===` and `!==`** (strict, no coercion). The only common exception is `x == null`, a deliberate shorthand for "`null` or `undefined`".
+
+Understanding *truthiness* matters separately. These eight values are **falsy**; everything else is truthy:
+
+```js
+false, 0, -0, 0n, "", null, undefined, NaN
+// note: "0", [], {} are all TRUTHY
+```
+
+That's why `if (array.length)` works and `if (user)` guards against `null`.
+
+## Strings, Template Literals, and Numbers
+
+```js
+const who = "world";
+const greeting = `Hello, ${who}!`;        // interpolation
+const multi = `line one
+line two`;                                 // real newlines
+
+"  trim me  ".trim();                       // "trim me"
+"a,b,c".split(",");                         // ["a", "b", "c"]
+"hello".toUpperCase();                      // "HELLO"
+"hello".includes("ell");                    // true
+"hello".slice(1, 3);                        // "el"
+```
+
+Numbers are all IEEE-754 doubles, which leads to the famous:
+
+```js
+0.1 + 0.2 === 0.3   // false! it's 0.30000000000000004
+(0.1 + 0.2).toFixed(2) // "0.30" — format for display
+
+Number("42")    // 42
+parseInt("42px", 10) // 42 — stops at non-digits
+Number.isNaN(NaN)    // true — the reliable NaN check
+Math.round(4.5)      // 5
+```
+
+For money, work in integer cents or use a decimal library — never trust floating-point sums.
+
+## Functions Are Values
+
+This is the heart of JavaScript. A function is just a value you can store, pass, and return.
+
+```js
+// declaration — hoisted, usable before its line
+function add(a, b) { return a + b; }
+
+// expression — assigned to a variable
+const sub = function (a, b) { return a - b; };
+
+// arrow function — shortest, no own `this`
+const mul = (a, b) => a * b;
+const square = n => n * n;              // single param, no parens needed
+const make = () => ({ ok: true });      // return an object: wrap in parens
+```
+
+Functions take flexible arguments:
+
+```js
+function greet(name = "friend", ...rest) {  // default + rest params
+  console.log(name, rest);
+}
+greet();              // "friend" []
+greet("Ada", 1, 2);   // "Ada" [1, 2]
+```
+
+Because functions are values, you pass them around constantly — this is what makes array methods, callbacks, and event handlers work:
+
+```js
+[1, 2, 3].map(n => n * 2);            // [2, 4, 6]
+button.addEventListener("click", () => console.log("clicked"));
+```
+
+## Scope and Closures
+
+A **closure** is a function that remembers the variables from where it was *defined*, even after that outer function has returned. It's the mechanism behind private state, factories, and most React hooks.
+
+```js
+function counter() {
+  let count = 0;                  // private to this closure
+  return () => ++count;           // the returned function "closes over" count
+}
+
+const next = counter();
+next(); // 1
+next(); // 2  — count persists, but nothing else can touch it
+```
+
+Each call to `counter()` creates a fresh `count`. The returned function keeps it alive. That's a closure: **data privately bundled with the function that uses it.**
+
+A classic interview trap, now solved by `let`:
+
+```js
+for (let i = 0; i < 3; i++) {
+  setTimeout(() => console.log(i), 0);  // 0, 1, 2  ✅ (let = new binding per iteration)
+}
+// with var you'd get 3, 3, 3 — one shared binding
+```
+
+## `this` — Decided by How You Call
+
+`this` is the single most misunderstood keyword, because in a regular function it's set by **how the function is called**, not where it's defined:
+
+```js
+const obj = {
+  name: "Ada",
+  regular() { return this.name; },        // `this` = the object before the dot
+  arrow: () => this,                       // arrow has NO own `this` — inherits from outside
+};
+
+obj.regular();          // "Ada"  — called as obj.method()
+const fn = obj.regular;
+fn();                   // undefined / error — called "bare", lost its `this`
+```
+
+The rules in order:
+
+1. **Arrow functions** have no own `this` — they use the surrounding scope's. This is why arrows are perfect for callbacks inside methods.
+2. **`obj.method()`** — `this` is `obj` (whatever's left of the dot).
+3. **Bare call `fn()`** — `this` is `undefined` (strict mode) or the global object.
+4. **`call`/`apply`/`bind`** — you set `this` explicitly.
+
+```js
+const greet = function () { return `Hi ${this.name}`; };
+greet.call({ name: "Ada" });    // "Hi Ada" — `this` forced
+const bound = greet.bind({ name: "Grace" });
+bound();                         // "Hi Grace" — permanently bound
+```
+
+Rule of thumb: use **arrow functions for callbacks** so `this` flows through, and regular functions/methods when you *want* a dynamic `this`.
+
+## Objects
+
+```js
+const user = {
+  name: "Ada",
+  age: 36,
+  greet() { return `Hi, I'm ${this.name}`; },  // method shorthand
+  ["dynamic" + "Key"]: true,                    // computed key
+};
+
+user.name;          // dot access
+user["name"];       // bracket access (needed for dynamic keys)
+user.email ?? "—";  // nullish: "—" only if email is null/undefined
+
+// Useful object operations
+Object.keys(user);     // ["name", "age", ...]
+Object.values(user);
+Object.entries(user);  // [["name","Ada"], ...]
+const copy = { ...user, age: 37 };  // shallow copy with an override
+```
+
+**Optional chaining** `?.` safely reads deep paths that might not exist:
+
+```js
+const city = user?.address?.city;   // undefined instead of throwing
+user.save?.();                       // calls save only if it exists
+```
+
+## Arrays and Their Essential Methods
+
+Arrays are ordered lists, and their methods are the workhorses of everyday JavaScript. The key distinction: **transforming methods return a new array** (don't mutate), while a few **mutate in place**.
+
+```js
+const nums = [1, 2, 3, 4, 5];
+
+// Transform (return new arrays — prefer these)
+nums.map(n => n * 2);          // [2, 4, 6, 8, 10]
+nums.filter(n => n % 2 === 0); // [2, 4]
+nums.reduce((sum, n) => sum + n, 0); // 15 — fold into one value
+nums.slice(1, 3);              // [2, 3] — a copy of a range
+
+// Search / test
+nums.find(n => n > 3);         // 4 (first match)
+nums.some(n => n > 4);         // true
+nums.every(n => n > 0);        // true
+nums.includes(3);              // true
+nums.indexOf(3);               // 2
+
+// Iterate
+nums.forEach(n => console.log(n));
+
+// Mutate in place (change the original — use deliberately)
+nums.push(6);    // add to end
+nums.pop();      // remove from end
+nums.shift();    // remove from front
+nums.sort((a, b) => a - b);  // sort numerically (default sort is alphabetical!)
+```
+
+`map`, `filter`, and `reduce` chain naturally and cover an enormous range of work:
+
+```js
+const total = orders
+  .filter(o => o.paid)
+  .map(o => o.amount)
+  .reduce((sum, a) => sum + a, 0);
+```
+
+## Destructuring, Spread, and Rest
+
+Three of the most-used pieces of modern syntax — learn them and your code shrinks dramatically.
+
+```js
+// Array destructuring
+const [first, second, ...others] = [1, 2, 3, 4];
+// first=1, second=2, others=[3,4]
+
+// Object destructuring (with rename + default)
+const { name, role = "user" } = { name: "Ada" };
+// name="Ada", role="user"
+
+// In function params — extremely common
+function render({ title, items = [] }) { /* ... */ }
+
+// Spread — expand into a new array/object (shallow copy)
+const merged = [...arr1, ...arr2];
+const updated = { ...state, loading: false };
+
+// Rest — collect the leftovers
+function sum(...nums) { return nums.reduce((a, b) => a + b, 0); }
+```
+
+Spread is the idiomatic way to copy-and-update immutably — the pattern React state relies on.
+
+## Control Flow and Loops
+
+```js
+// Conditionals
+if (x > 0) { /* ... */ } else if (x < 0) { /* ... */ } else { /* ... */ }
+
+const label = x > 0 ? "positive" : "non-positive";  // ternary
+
+switch (status) {
+  case "loading": return spinner();
+  case "error":   return message();
+  default:        return content();
+}
+
+// Loops
+for (let i = 0; i < 3; i++) { /* classic */ }
+for (const item of array) { /* values — use this for arrays */ }
+for (const key in object) { /* keys — use this for objects */ }
+
+// Short-circuit logic doubles as control flow
+isReady && doThing();          // run only if isReady
+const port = config.port || 3000;  // fallback (careful: 0 is falsy)
+const port2 = config.port ?? 3000; // fallback only on null/undefined
+```
+
+Prefer `for...of` for arrays and array methods for transformations; reach for the classic `for` only when you need the index or unusual stepping.
+
+## The Event Loop: How Async Works
+
+Here's the model that makes asynchronous JavaScript click. The engine runs your code on one thread until it's done — the **call stack**. Slow things (timers, network, file reads) are handed to the *host*, which calls you back later by placing a function in a **queue**. The **event loop** moves queued callbacks onto the stack *only when the stack is empty*.
+
+```js
+console.log("1");
+setTimeout(() => console.log("2"), 0);  // deferred, even at 0ms
+Promise.resolve().then(() => console.log("3"));  // microtask — higher priority
+console.log("4");
+
+// Output: 1, 4, 3, 2
+```
+
+Why that order? Synchronous code (`1`, `4`) runs first. Then **microtasks** (promise callbacks → `3`) drain before **macrotasks** (timers → `2`). The takeaway: *`setTimeout(fn, 0)` doesn't run "now" — it runs after the current code and all pending promises finish.*
+
+This is also why a long synchronous loop **freezes the page**: nothing else — clicks, rendering, timers — can run until the stack clears.
+
+## Promises and `async`/`await`
+
+A **Promise** represents a value that will exist later. It's in one of three states: pending → fulfilled (with a value) or rejected (with an error).
+
+```js
+fetch("/api/user")
+  .then(res => res.json())        // each .then passes its result onward
+  .then(user => console.log(user))
+  .catch(err => console.error(err)) // one catch handles any failure above
+  .finally(() => stopSpinner());
+```
+
+`async`/`await` is syntactic sugar over promises that lets you write asynchronous code that *reads* synchronously:
+
+```js
+async function loadUser(id) {
+  try {
+    const res = await fetch(`/api/user/${id}`);  // pause here until resolved
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const user = await res.json();
+    return user;
+  } catch (err) {
+    console.error("Failed to load user:", err);
+    throw err;  // re-throw if the caller should know
+  }
+}
+
+const user = await loadUser(1);  // any async function returns a Promise
+```
+
+Key facts:
+
+- `await` only works inside an `async` function (or at the top level of a module).
+- An `async` function **always returns a Promise**.
+- To run things **in parallel**, don't `await` in a loop — fire them all and await together:
+
+```js
+// Slow: each waits for the previous (sequential)
+const a = await getA();
+const b = await getB();
+
+// Fast: both start immediately, then await both
+const [a2, b2] = await Promise.all([getA(), getB()]);
+```
+
+## Modules: `import` / `export`
+
+Modern JavaScript splits code into files (modules), each with its own scope. Nothing is global unless you export it.
+
+```js
+// math.js
+export const PI = 3.14159;
+export function add(a, b) { return a + b; }
+export default function multiply(a, b) { return a * b; }
+
+// app.js
+import multiply, { PI, add } from "./math.js";
+import * as math from "./math.js";  // namespace import
+```
+
+`export default` is the file's main export (imported without braces, name of your choosing); named exports are imported by their exact name in braces. Modules also run in strict mode and load asynchronously.
+
+## Touching the Page: DOM Basics
+
+In the browser, the **DOM** is the live object representation of the HTML — so the cleaner and more [semantic your HTML](/blog/html-semantic), the easier it is to select and reason about. You select elements, read or change them, and react to events. This is a quick tour; for the full picture — traversal, the event model, delegation, and performance — see [the DOM, from zero to hero](/blog/dom-manipulation).
+
+```js
+// Select
+const btn = document.querySelector(".submit");        // first match (CSS selector)
+const items = document.querySelectorAll("li");        // all matches (a NodeList)
+
+// Read / change
+btn.textContent = "Saving…";        // text only (safe)
+btn.classList.add("is-loading");    // toggle classes
+btn.setAttribute("disabled", "");   // attributes
+el.innerHTML = "<b>hi</b>";         // parses HTML — never with untrusted input (XSS)
+
+// Create and insert
+const li = document.createElement("li");
+li.textContent = "New item";
+list.append(li);
+
+// React to events
+btn.addEventListener("click", (event) => {
+  event.preventDefault();           // stop the default (e.g. form submit)
+  console.log("clicked", event.target);
+});
+```
+
+Because clicks can fire on thousands of elements, **event delegation** — one listener on a parent that inspects `event.target` — is the scalable pattern.
+
+## Error Handling
+
+```js
+try {
+  const data = JSON.parse(input);   // throws on bad JSON
+  process(data);
+} catch (err) {
+  console.error(err.message);
+} finally {
+  cleanup();                        // runs whether or not it threw
+}
+
+// Throw your own — always throw Error objects, not strings
+function withdraw(amount) {
+  if (amount <= 0) throw new Error("Amount must be positive");
+}
+```
+
+For async code, `try/catch` works *with* `await`; with raw promises you use `.catch()`. An unhandled rejection will crash Node and warn loudly in the browser — handle the failure path deliberately.
+
+## Common Mistakes
+
+- Using `==` instead of `===` and getting bitten by coercion (`0 == ""` is `true`).
+- Thinking `const` makes objects immutable — it only freezes the *binding*.
+- Mutating an array/object you didn't mean to share, forgetting objects are by-reference.
+- Expecting `setTimeout(fn, 0)` to run immediately — it runs after current code and microtasks.
+- `await`-ing in a loop when the calls are independent — use `Promise.all` for parallelism.
+- Losing `this` by passing `obj.method` as a bare callback — use an arrow or `.bind`.
+- Default `[].sort()` sorting numbers as strings (`[10, 2].sort()` → `[10, 2]`) — pass a comparator.
+- Using `for...in` on arrays — it iterates keys (and inherited ones); use `for...of`.
+- Building HTML strings from user input with `innerHTML` — an XSS hole; use `textContent`.
+- Forgetting an `async` function returns a Promise, then using its value as if it were sync.
+
+## Exercises
+
+Try each before opening the solution.
+
+### Exercise 1 — Predict the output (references)
+
+```js
+const a = [1, 2, 3];
+const b = a;
+b.push(4);
+console.log(a.length);
+```
+
+<details>
+
+<summary>Show solution</summary>
+
+`4`. Arrays are objects, copied **by reference** — `b` and `a` point at the same array, so pushing through `b` is visible through `a`. To get an independent copy: `const b = [...a]`.
+
+</details>
+
+### Exercise 2 — Sum with `reduce`
+
+Given `const prices = [9.99, 4.5, 12, 3.25]`, compute the total using `reduce`.
+
+<details>
+
+<summary>Show solution</summary>
+
+```js
+const total = prices.reduce((sum, p) => sum + p, 0);  // 29.74
+```
+
+The second argument `0` is the starting accumulator — without it, `reduce` uses the first element and can misbehave on empty arrays.
+
+</details>
+
+### Exercise 3 — Make a closure counter
+
+Write `makeCounter()` that returns a function; each call returns the next integer starting at 1, with the count fully private.
+
+<details>
+
+<summary>Show solution</summary>
+
+```js
+function makeCounter() {
+  let count = 0;
+  return () => ++count;
+}
+const next = makeCounter();
+next(); // 1
+next(); // 2
+```
+
+`count` lives in the closure — reachable only through the returned function, never from outside.
+
+</details>
+
+### Exercise 4 — Predict the async order
+
+```js
+console.log("A");
+setTimeout(() => console.log("B"), 0);
+Promise.resolve().then(() => console.log("C"));
+console.log("D");
+```
+
+<details>
+
+<summary>Show solution</summary>
+
+`A, D, C, B`. Synchronous lines run first (`A`, `D`). Then the microtask queue (the promise → `C`) drains before the macrotask queue (the timer → `B`), even though the timeout is `0`.
+
+</details>
+
+### Exercise 5 — Fix the lost `this`
+
+```js
+const timer = {
+  seconds: 0,
+  start() {
+    setInterval(function () {
+      this.seconds++;            // broken — `this` isn't `timer` here
+    }, 1000);
+  },
+};
+```
+
+<details>
+
+<summary>Show solution</summary>
+
+```js
+start() {
+  setInterval(() => {
+    this.seconds++;              // arrow inherits `this` from start()
+  }, 1000);
+}
+```
+
+A regular callback is called "bare", so its `this` is `undefined`/global. An **arrow function** has no own `this` and inherits it from `start`, where `this` is the `timer` object.
+
+</details>
+
+### Exercise 6 — Parallel vs sequential `await`
+
+You must fetch two independent resources. Rewrite this to run them in parallel:
+
+```js
+const user = await getUser();
+const posts = await getPosts();
+```
+
+<details>
+
+<summary>Show solution</summary>
+
+```js
+const [user, posts] = await Promise.all([getUser(), getPosts()]);
+```
+
+Both requests start immediately; `Promise.all` waits for both and resolves to an array of results. The original version waits for `getUser` to finish *before even starting* `getPosts`.
+
+</details>
+
+## The Mental Model to Keep
+
+JavaScript is **single-threaded**, so a long synchronous task blocks everything — push slow work to promises and let the **event loop** schedule it (microtasks before macrotasks). **Functions are values**, which is what makes callbacks, array methods, and **closures** (private state bundled with a function) possible. Variables are **block-scoped** with `let`/`const`; primitives copy **by value** and objects share **by reference** — the source of most surprises. Compare with `===`, read defensively with `?.` and `??`, and reach for **`map`/`filter`/`reduce`** and **destructuring/spread** to write transformations instead of loops. Understand that **`this`** is set by *how* a function is called, and prefer arrows for callbacks so it flows through. Get those few ideas solid and the rest of the language — async/await, modules, the DOM — stops being a collection of tricks and becomes a set of things you can derive.

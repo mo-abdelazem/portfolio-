@@ -1,0 +1,272 @@
+---
+title: "CSS Transitions & Animations: Motion That Feels Right"
+description: "A complete, practical guide to CSS motion — transitions and their four parts, what's animatable and what isn't, transform and why it's the performant property, easing and cubic-bezier, keyframe animations and all the animation-* properties, performance (compositor vs main thread), prefers-reduced-motion, plus common mistakes and hands-on exercises with solutions."
+publishedAt: "2026-06-25"
+translationKey: "css-transitions-animations"
+tags: ["CSS", "Animations", "Transitions", "Frontend"]
+---
+
+Motion is what separates a page that feels static from one that feels alive. CSS gives you two tools: **transitions** for animating between two states (a hover, an open/closed toggle), and **animations** with `@keyframes` for richer, multi-step or looping sequences. Both run in the browser's rendering pipeline without a line of JavaScript — and if you animate the *right* properties, they run silky-smooth off the main thread. This is the full toolkit, plus the performance and accessibility rules that separate motion that delights from motion that janks. (This pairs with the [modern CSS](/blog/modern-css) post, which covers the newer scroll-driven and view-transition layers on top.)
+
+> The one performance rule that matters: animate **`transform`** and **`opacity`**, not `width`/`height`/`top`/`left`. The first two are handled by the compositor (cheap, off the main thread); the rest trigger layout and paint on every frame (expensive, janky).
+
+## Transitions: Animating Between Two States
+
+A transition watches a property and, when its value changes, animates *to* the new value over a duration instead of snapping. You declare it on the **base** state, and it applies both ways (in and out):
+
+```css
+.btn {
+  background: royalblue;
+  transition: background 200ms ease;
+}
+.btn:hover {
+  background: crimson;   /* the change transitions smoothly, both on hover and off */
+}
+```
+
+A transition has four parts — the `transition` shorthand is just these in order:
+
+```css
+transition: <property> <duration> <timing-function> <delay>;
+transition: transform 300ms ease-in-out 0ms;
+```
+
+- **property** — what to watch (`all` watches everything, but be specific for performance)
+- **duration** — how long (`200ms`–`300ms` feels right for most UI; longer drags)
+- **timing-function** — the easing curve (below)
+- **delay** — wait before starting
+
+You can transition several properties at once with a comma-separated list:
+
+```css
+transition: transform 250ms ease, opacity 250ms ease, box-shadow 250ms ease;
+```
+
+A subtle but important rule: declare the transition on the **resting** state, not inside `:hover`. Put it on `.btn`, and both entering *and* leaving hover animate. Put it only in `:hover`, and the element animates in but snaps back instantly.
+
+## What You Can (and Can't) Animate
+
+Not every property animates. A property is animatable if the browser can compute intermediate values — colors, lengths, opacity, transforms all interpolate smoothly. Discrete properties like `display` historically can't (you can't be "half `block`"), which is the classic reason fade-out-then-hide needs care:
+
+```css
+/* ❌ won't animate — display has no in-between */
+.menu { display: none; transition: display 200ms; }
+
+/* ✅ animate opacity + visibility instead */
+.menu {
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 200ms ease, visibility 200ms;
+}
+.menu.open { opacity: 1; visibility: visible; }
+```
+
+(Modern CSS is adding `transition-behavior: allow-discrete` and `@starting-style` to animate `display` and entry states — see [modern CSS](/blog/modern-css) — but the opacity/visibility pattern is the broadly-supported workhorse.)
+
+## `transform`: The Property You Should Animate
+
+`transform` moves, scales, rotates, and skews an element **without affecting layout** — it doesn't push siblings around, and crucially the browser can hand it to the GPU compositor. Prefer it over animating `top`/`left`/`width`/`height`:
+
+```css
+.card { transition: transform 200ms ease; }
+.card:hover { transform: translateY(-4px) scale(1.02); }
+
+/* common transforms */
+transform: translateX(20px);      /* move — use instead of left */
+transform: scale(1.1);            /* grow */
+transform: rotate(15deg);
+transform: translate(-50%, -50%); /* the classic centering trick with absolute */
+```
+
+Why it matters: animating `left` forces the browser to recompute layout and repaint every frame; animating `transform: translateX()` only *composites* an already-painted layer — far cheaper, and smooth even on weaker devices.
+
+## Easing: Making Motion Feel Natural
+
+The timing function shapes *how* the value changes over the duration. Linear motion feels robotic; real things accelerate and decelerate:
+
+```css
+transition-timing-function: ease;        /* default — gentle start and end */
+transition-timing-function: ease-out;    /* fast start, soft landing — great for UI entering */
+transition-timing-function: ease-in;     /* slow start — good for things leaving */
+transition-timing-function: linear;      /* constant — right for spinners/progress */
+transition-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);  /* custom — slight overshoot/bounce */
+transition-timing-function: steps(4, end);  /* discrete jumps — sprite animation */
+```
+
+`ease-out` is the safest default for most interface motion — things should arrive quickly and settle gently. `cubic-bezier()` lets you design any curve (including a playful overshoot past 1), and `steps()` produces frame-by-frame jumps for sprite-style effects.
+
+## Keyframe Animations
+
+When two states aren't enough — you need multiple stops, looping, or motion that runs on load without a trigger — use `@keyframes` and the `animation` properties:
+
+```css
+@keyframes pulse {
+  0%   { transform: scale(1);   opacity: 1; }
+  50%  { transform: scale(1.1); opacity: 0.7; }
+  100% { transform: scale(1);   opacity: 1; }
+}
+
+.dot {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+```
+
+The `animation` shorthand bundles up to eight properties; here they are spelled out:
+
+```css
+.spinner {
+  animation-name: spin;
+  animation-duration: 1s;
+  animation-timing-function: linear;
+  animation-delay: 0s;
+  animation-iteration-count: infinite;   /* or a number */
+  animation-direction: normal;           /* normal | reverse | alternate */
+  animation-fill-mode: forwards;         /* keep the end state after finishing */
+  animation-play-state: running;         /* pause/running — toggle with JS or :hover */
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+```
+
+Two properties people forget:
+
+- **`animation-fill-mode: forwards`** keeps the element at the final keyframe instead of snapping back to its pre-animation style — essential for "animate in and stay".
+- **`animation-direction: alternate`** plays the keyframes forward then backward each cycle — a clean way to make a pulse or float reverse smoothly instead of jumping.
+
+Use a transition when motion is a **reaction to a state change** (hover, toggle, class added); use a keyframe animation when motion is **intrinsic** (a loading spinner, a looping pulse, an on-load entrance).
+
+## Performance: Compositor vs Main Thread
+
+The browser renders in stages: **layout** (compute geometry) → **paint** (fill pixels) → **composite** (assemble layers). The cheaper the stage your animation touches, the smoother it runs:
+
+- **`transform` and `opacity`** → only **composite**. The GPU shifts an existing layer; nothing is recalculated. This is the smooth path, even at 60fps on a phone.
+- **`width`, `height`, `top`, `left`, `margin`, `padding`** → trigger **layout** every frame, then paint, then composite. On a busy page this drops frames (jank).
+- **`color`, `background`, `box-shadow`** → skip layout but still **paint** every frame — middling.
+
+So the rule "animate transform and opacity" isn't style dogma — it's literally about which rendering stages fire each frame. When you must hint the browser to promote an element to its own layer ahead of time, use `will-change: transform` *sparingly* (overusing it wastes memory):
+
+```css
+.card { will-change: transform; }   /* only on elements you're about to animate */
+```
+
+## Respect `prefers-reduced-motion`
+
+Some users get dizzy or nauseated from motion (vestibular disorders), and the OS lets them ask for less. Honour it — this is an accessibility requirement, not a nicety:
+
+```css
+.card { transition: transform 200ms ease; }
+.card:hover { transform: translateY(-4px); }
+
+@media (prefers-reduced-motion: reduce) {
+  .card { transition: none; }
+  .card:hover { transform: none; }
+  /* kill or tone down non-essential motion */
+}
+```
+
+A good pattern is to design the motion normally, then add a reduced-motion block that removes or shortens the non-essential animations. Keep motion that conveys *meaning* (a subtle state change) but drop motion that's purely decorative.
+
+## Common Mistakes
+
+- Animating `width`/`height`/`top`/`left` and getting jank — use `transform` for movement and scaling.
+- Declaring the `transition` inside `:hover` instead of the base state, so it snaps back instantly on mouse-out.
+- Using `transition: all` and accidentally animating expensive or unintended properties — name the properties.
+- Trying to transition `display: none` ↔ `block` and seeing an instant cut — animate `opacity`/`visibility` instead.
+- Forgetting `animation-fill-mode: forwards`, so an element snaps back to its start style when the animation ends.
+- Slapping `will-change` on everything — it consumes memory; use it only just before animating.
+- Durations that are too long (>400ms for UI feedback) — motion should feel responsive, not sluggish.
+- Ignoring `prefers-reduced-motion` — an accessibility miss that can genuinely make users unwell.
+
+## Exercises
+
+Try each before opening the solution.
+
+### Exercise 1 — A smooth lift on hover
+
+Make a `.card` rise 6px and gain a shadow when hovered, animating both ways, using the performant property for the movement.
+
+<details>
+
+<summary>Show solution</summary>
+
+```css
+.card {
+  transition: transform 200ms ease, box-shadow 200ms ease;
+}
+.card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 12px 24px rgb(0 0 0 / 0.15);
+}
+```
+
+The transition lives on the base state so leaving hover animates too, and `translateY` (not `top`) keeps the movement on the cheap compositor path.
+
+</details>
+
+### Exercise 2 — An infinite spinner
+
+Make a `.spinner` rotate continuously at a constant speed.
+
+<details>
+
+<summary>Show solution</summary>
+
+```css
+@keyframes spin { to { transform: rotate(360deg); } }
+.spinner {
+  animation: spin 0.8s linear infinite;
+}
+```
+
+A single `to` keyframe is enough (the start is the element's current state). `linear` keeps the rotation constant — easing would make a spinner visibly speed up and slow down.
+
+</details>
+
+### Exercise 3 — Fade-and-rise a menu in
+
+A `.menu` toggles via an `.open` class. Fade it in and slide it up 8px, and make it actually hide (not just go transparent) when closed.
+
+<details>
+
+<summary>Show solution</summary>
+
+```css
+.menu {
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(8px);
+  transition: opacity 200ms ease, transform 200ms ease, visibility 200ms;
+}
+.menu.open {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+```
+
+Transitioning `visibility` alongside `opacity` lets the element fade out *and* stop receiving clicks once hidden — `display` can't be transitioned, so `visibility` does that job.
+
+</details>
+
+### Exercise 4 — Make it accessible
+
+Take the hover-lift from Exercise 1 and disable the motion for users who prefer reduced motion.
+
+<details>
+
+<summary>Show solution</summary>
+
+```css
+@media (prefers-reduced-motion: reduce) {
+  .card { transition: none; }
+  .card:hover { transform: none; box-shadow: 0 4px 8px rgb(0 0 0 / 0.1); }
+}
+```
+
+Motion is removed, but a subtle static shadow can stay so the hover still reads as interactive — reduced motion means *less* movement, not necessarily *no* feedback.
+
+</details>
+
+## The Mental Model to Keep
+
+CSS motion comes in two shapes: **transitions** animate between two states and are declared on the resting state so they play both ways; **keyframe animations** drive multi-step, looping, or on-load motion via `@keyframes` and the `animation-*` properties (don't forget `fill-mode: forwards` to hold the end state). Shape the feel with **easing** — `ease-out` for things arriving, `linear` for spinners, `cubic-bezier()` for custom curves. The performance throughline is simple and non-negotiable: animate **`transform` and `opacity`** so the work stays on the **compositor**, and avoid animating layout properties that recalc every frame. Finally, always wrap non-essential motion in a **`prefers-reduced-motion`** guard. Get those right and your interfaces move smoothly, purposefully, and for everyone.

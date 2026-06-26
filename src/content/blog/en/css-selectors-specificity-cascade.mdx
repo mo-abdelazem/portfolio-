@@ -1,0 +1,276 @@
+---
+title: "CSS Selectors, Specificity & the Cascade: Why Your Styles Win or Lose"
+description: "The foundation under all of CSS — every selector type and combinator, pseudo-classes and pseudo-elements, how specificity is actually calculated, the cascade's full resolution order, inheritance, the inherit/initial/unset/revert keywords, escaping !important, and hands-on exercises with solutions."
+publishedAt: "2026-05-29"
+translationKey: "css-selectors-specificity-cascade"
+tags: ["CSS", "Selectors", "Specificity", "Cascade", "Frontend"]
+---
+
+Every CSS question that starts with "why isn't this style applying?" comes down to one of three things: your selector doesn't match, a more specific rule is winning, or something later in the cascade overrode it. Most people learn selectors by copying snippets and never build the model that answers those questions on sight. This is that model — the **C** in CSS, the *cascade* that decides which of the competing rules actually paints. Get this solid and the rest of CSS stops feeling random. (Layout lives in [the box model](/blog/css-box-model); this is the layer underneath all of it.)
+
+> When two rules set the same property on the same element, CSS picks a winner in a fixed order: **importance → specificity → source order**. Almost every "my CSS isn't working" moment is one of those three quietly resolving against you.
+
+## Selectors: How You Target Elements
+
+The building blocks. Each matches elements a different way:
+
+```css
+*              { }   /* universal — every element */
+p              { }   /* type — every <p> */
+.card          { }   /* class — every element with class="card" */
+#hero          { }   /* id — the element with id="hero" */
+[type="email"] { }   /* attribute — inputs of that type */
+p.card         { }   /* combined — a <p> that also has .card */
+h1, h2, h3     { }   /* grouping — applies to all three */
+```
+
+Attribute selectors are more flexible than people realize:
+
+```css
+[href]            { }  /* has the attribute at all */
+[href^="https"]   { }  /* value starts with */
+[href$=".pdf"]    { }  /* value ends with */
+[href*="docs"]    { }  /* value contains */
+[lang|="en"]      { }  /* equals "en" or starts with "en-" */
+```
+
+## Combinators: Relationships Between Elements
+
+Spaces and symbols between selectors describe *how* elements relate:
+
+```css
+.menu a       { }  /* descendant — any <a> inside .menu, at any depth */
+.menu > a     { }  /* child — only direct children */
+h2 + p        { }  /* adjacent sibling — the <p> right after an <h2> */
+h2 ~ p        { }  /* general sibling — every <p> after an <h2> (same parent) */
+```
+
+The difference between descendant (space) and child (`>`) is the one to internalize — descendant reaches all the way down, child stops at one level.
+
+## Pseudo-classes: Matching State and Position
+
+A pseudo-class (single colon) matches elements in a particular *state* or *position* — things that aren't in the HTML as attributes:
+
+```css
+a:hover, a:focus     { }  /* user interaction */
+input:checked        { }  /* form state */
+input:disabled       { }
+input:focus-visible  { }  /* focus ring only for keyboard users */
+li:first-child       { }  /* structural position */
+li:last-child        { }
+li:nth-child(odd)    { }  /* every odd item — great for zebra striping */
+li:nth-child(3n)     { }  /* every third */
+:not(.active)        { }  /* negation — everything WITHOUT .active */
+form:has(:invalid)   { }  /* relational — see the modern-css post */
+```
+
+`:nth-child()` and `:not()` alone replace a huge amount of manual class-adding. (`:has()`, `:is()`, and `:where()` get full treatment in [modern CSS](/blog/modern-css).)
+
+## Pseudo-elements: Styling Parts of an Element
+
+A pseudo-element (double colon) styles a *part* of an element, or injects generated content:
+
+```css
+.note::before  { content: "💡 "; }      /* inject content before the text */
+.note::after   { content: ""; }          /* often used for decorative shapes */
+p::first-line  { font-weight: 600; }      /* the first rendered line */
+p::first-letter{ font-size: 3em; }        /* drop-cap */
+::selection    { background: gold; }      /* highlighted text */
+input::placeholder { color: gray; }       /* placeholder text */
+```
+
+`::before`/`::after` need a `content` property to appear at all (even if empty). They're real boxes you can size and position.
+
+## Specificity: How Ties Are Broken
+
+When several rules match the same element and set the same property, the **most specific** one wins. Specificity is counted in three buckets — think of it as a three-column score `(A, B, C)`:
+
+- **A** — id selectors (`#hero`)
+- **B** — classes, attribute selectors, and pseudo-classes (`.card`, `[type]`, `:hover`)
+- **C** — type selectors and pseudo-elements (`div`, `::before`)
+
+You count how many of each the selector contains and compare left to right:
+
+```css
+#hero               /* (1,0,0) */
+.card.active        /* (0,2,0) */
+nav ul li a         /* (0,0,4) */
+a:hover             /* (0,1,1) */
+#hero .card a       /* (1,1,1) */
+```
+
+`(1,0,0)` beats `(0,2,0)` beats `(0,0,4)` — a single id outweighs *any* number of classes, which outweighs *any* number of type selectors. The columns don't "carry": 11 classes `(0,11,0)` still lose to one id `(1,0,0)`.
+
+Two things that surprise people:
+
+```css
+*            { }  /* (0,0,0) — the universal selector adds nothing */
+:where(.a.b) { }  /* (0,0,0) — :where() ALWAYS contributes zero specificity */
+:is(.a, #b)  { }  /* takes its MOST specific argument → (1,0,0) here */
+```
+
+The inline `style="..."` attribute is even higher than any selector (think of it as a fourth column to the left), and `!important` trumps everything — which is exactly why both cause maintenance pain.
+
+## The Cascade: The Full Resolution Order
+
+Specificity is only the *middle* tie-breaker. The browser actually decides a winning declaration in this order, top to bottom:
+
+1. **Origin & importance** — author `!important` > author normal > browser defaults (roughly). User-agent styles are the weakest.
+2. **Specificity** — the `(A,B,C)` score above.
+3. **Source order** — if everything above ties, **the last rule wins**.
+
+That third rule is why reordering your stylesheet, or a later rule with *equal* specificity, can change the result:
+
+```css
+.btn { color: blue; }
+.btn { color: red; }   /* same specificity → this one wins, it's later */
+```
+
+This is the whole reason link order matters, why your override "mysteriously" works after you move it down, and why utility-class frameworks care so much about the order rules ship in.
+
+## Inheritance: What Passes Down the Tree
+
+Some properties **inherit** from parent to child automatically; most don't. Text-related properties inherit (`color`, `font-family`, `font-size`, `line-height`, `text-align`); box and layout properties don't (`margin`, `padding`, `border`, `width`, `background`):
+
+```css
+body { color: #333; font-family: system-ui; }
+/* every descendant gets that color and font for free — unless overridden */
+
+.card { border: 1px solid; }
+/* the border does NOT cascade to children — layout props don't inherit */
+```
+
+This is why you set typography high up (on `body`) and let it flow down, but must set borders and spacing on each element that needs them.
+
+## `inherit`, `initial`, `unset`, `revert`
+
+Four keywords give you explicit control over any property's value:
+
+```css
+.child {
+  color: inherit;   /* force-take the parent's computed value */
+  margin: initial;  /* reset to the property's spec default (margin → 0) */
+  color: unset;     /* inherit if the property normally inherits, else initial */
+  all: revert;      /* roll back to the browser's default stylesheet value */
+}
+```
+
+`all: revert` is a handy escape hatch — it strips your author styles off an element and lets the browser defaults show through, without you listing every property.
+
+## Escaping `!important`
+
+`!important` wins by brute force, and once you use it to beat a rule, the *next* override needs an even bigger hammer — an escalating war. Reach for it almost never. The structured alternatives:
+
+- **Lower the specificity of the thing you're fighting**, or raise yours intentionally — but only as much as needed.
+- **Use `@layer`** to decide winners by *layer order* instead of specificity (covered in [modern CSS](/blog/modern-css)) — this is the modern fix for "my override won't land."
+- **Use `:where()`** to write zero-specificity base styles that are trivially easy to override later.
+
+The healthy mindset: specificity is something to keep *low and flat*, not to win by climbing.
+
+## Common Mistakes
+
+- Assuming a rule "doesn't work" when really a more specific one is winning — check the cascade in DevTools (it shows the overridden rules struck through).
+- Thinking more classes can beat an id — they can't; `(0,99,0)` still loses to `(1,0,0)`.
+- Reaching for `#id` selectors in stylesheets, then being unable to override them later — prefer classes for styling.
+- Using `!important` to fix a specificity problem, starting an escalation war.
+- Forgetting that with equal specificity, **source order** decides — so a later rule silently wins.
+- Expecting `margin`/`padding`/`border` to inherit — they don't; only set them where needed.
+- Writing `::before`/`::after` without a `content` property and wondering why nothing shows.
+- Confusing descendant (`.a .b`) with child (`.a > .b`) and matching far more (or fewer) elements than intended.
+
+## Exercises
+
+Try each before opening the solution.
+
+### Exercise 1 — Who wins?
+
+```css
+#main .btn { color: blue; }
+.btn.primary { color: red; }
+```
+
+Given `<a id="x" class="btn primary">` inside `#main`, what color is the text?
+
+<details>
+
+<summary>Show solution</summary>
+
+**Blue.** `#main .btn` scores `(1,1,0)` (one id, one class); `.btn.primary` scores `(0,2,0)` (two classes). The id in the first selector makes it win — a single id beats any number of classes, regardless of source order.
+
+</details>
+
+### Exercise 2 — Zebra striping, no extra classes
+
+Give every *even* row of a table a light-grey background, without adding any classes to the HTML.
+
+<details>
+
+<summary>Show solution</summary>
+
+```css
+tr:nth-child(even) { background: #f4f4f4; }
+```
+
+`:nth-child(even)` matches the structural position directly — no `class="odd/even"` bookkeeping, and it stays correct as rows are added or removed.
+
+</details>
+
+### Exercise 3 — Style everything *except* one
+
+Dim every `.tag` that is **not** `.tag--active`.
+
+<details>
+
+<summary>Show solution</summary>
+
+```css
+.tag:not(.tag--active) { opacity: 0.5; }
+```
+
+`:not()` inverts the match. Note it adds the specificity of its argument (a class here), so this scores `(0,2,0)`.
+
+</details>
+
+### Exercise 4 — Make an override land without `!important`
+
+A framework ships `.btn { background: blue }` and yours is `.btn-danger { background: red }`, but blue keeps winning. You can't change the framework's CSS. Fix it two different ways.
+
+<details>
+
+<summary>Show solution</summary>
+
+```css
+/* Option A — raise specificity intentionally to (0,2,0) */
+.btn.btn-danger { background: red; }
+
+/* Option B — declare a later cascade layer (preferred, scales better) */
+@layer framework, overrides;
+@layer overrides {
+  .btn-danger { background: red; }   /* later layer wins regardless of specificity */
+}
+```
+
+Option A wins because blue was likely `(0,1,0)`; doubling the class makes yours `(0,2,0)`. Option B sidesteps specificity entirely — a later `@layer` always beats an earlier one.
+
+</details>
+
+### Exercise 5 — Predict inheritance
+
+```css
+body  { color: navy; }
+.card { color: inherit; border: 1px solid; }
+```
+
+Does the `.card`'s text become navy? Does its border colour come from anywhere special?
+
+<details>
+
+<summary>Show solution</summary>
+
+The text is **navy** — `color: inherit` explicitly takes the parent's computed `color`, which cascaded from `body`. The border, written as just `1px solid` with no colour, uses **`currentColor`** by default — so it's *also* navy, because `border-color` falls back to the element's `color`.
+
+</details>
+
+## The Mental Model to Keep
+
+CSS resolves competing styles in a fixed order: **importance → specificity → source order**, then **inheritance** fills in anything you didn't set. Selectors *match* (type, class, id, attribute, combinators, pseudo-classes, pseudo-elements); specificity *breaks ties* with the three-column `(A,B,C)` score where one id beats any pile of classes, which beats any pile of types; and when specificity ties, **the last rule wins**. Keep specificity **low and flat** — favour classes over ids, avoid `!important`, and reach for `@layer` and `:where()` when you need to control winners structurally. Once you can glance at two rules and say which one paints and why, every other CSS topic — layout, theming, animation — sits on solid ground.
