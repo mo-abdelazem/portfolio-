@@ -1,6 +1,7 @@
 import type { ComponentProps, ReactElement } from "react";
 import * as runtime from "react/jsx-runtime";
 import { Link } from "@/i18n/navigation";
+import { CodeBlock } from "@/components/code-block";
 
 // Velite compiles each post to a function-body string that reads the JSX
 // runtime from arguments[0] and returns { default: MDXContent }. This runs at
@@ -35,6 +36,7 @@ const components = {
       </Link>
     );
   },
+  pre: (props: ComponentProps<"pre">) => <CodeBlock {...props} />,
 };
 
 type MDXComponent = (props: {
