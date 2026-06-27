@@ -95,7 +95,7 @@ export default async function BlogHomePage({ params }: Props) {
 
           <aside className="blog-home__sidebar">
             {categories.length > 0 && (
-              <Reveal delay={120} className="sidebar-block">
+              <Reveal delay={120} className="sidebar-block sidebar-block--paths">
                 <h2 className="sidebar-block__title">{t("pathsHeading")}</h2>
                 <div className="sidebar-paths">
                   {categories.map((category) => {
@@ -130,7 +130,7 @@ export default async function BlogHomePage({ params }: Props) {
             )}
 
             {tags.length > 0 && (
-              <Reveal delay={200} className="sidebar-block">
+              <Reveal delay={200} className="sidebar-block sidebar-block--tags">
                 <h2 className="sidebar-block__title">{t("tagsHeading")}</h2>
                 <div className="sidebar-tags">
                   {tags.map((tag) => (

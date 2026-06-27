@@ -2050,10 +2050,24 @@ button {
   font-size: 16px;
 }
 
+/* Mobile-first: the sidebar's blocks join the single-column grid so the
+   learning paths can sit above the post list. `order` puts them in
+   paths → posts → tags order. The desktop media query below restores the
+   real two-column sidebar. */
 .blog-home__sidebar {
-  display: flex;
-  flex-direction: column;
-  gap: 36px;
+  display: contents;
+}
+
+.sidebar-block--paths {
+  order: 1;
+}
+
+.blog-home__main {
+  order: 2;
+}
+
+.sidebar-block--tags {
+  order: 3;
 }
 
 /* Article card / list row */
@@ -2305,9 +2319,19 @@ button {
   }
 
   .blog-home__sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 36px;
     position: sticky;
     top: 110px;
     align-self: start;
+  }
+
+  /* Restore natural source order in the two-column layout. */
+  .blog-home__main,
+  .sidebar-block--paths,
+  .sidebar-block--tags {
+    order: 0;
   }
 }
 
