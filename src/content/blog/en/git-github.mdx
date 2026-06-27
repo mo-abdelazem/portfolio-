@@ -1,0 +1,217 @@
+---
+title: "Git & GitHub: Version Control Every Developer Needs"
+description: "A practical guide to Git and GitHub — what version control is, the three areas (working directory, staging, repository), staging and committing, branches and merging, conflicts, .gitignore, remotes and push/pull, the GitHub pull-request workflow, and common mistakes — with hands-on exercises and solutions."
+publishedAt: "2026-06-11"
+translationKey: "git-github"
+tags: ["Git", "GitHub", "Tooling", "Workflow"]
+---
+
+Git is the tool every developer uses every day, and the one most people learn just enough of to get by — until a bad day with a lost change or a tangled branch. Understanding the *model* underneath the commands turns Git from a set of scary incantations into something you can reason about. This post builds that model — the three areas, branches, remotes — and the GitHub workflow built on top of it. (Pairs naturally with [ES modules & tooling](/blog/es-modules), since `package.json` and your repo live together.)
+
+> Git's whole model is **snapshots over time**. A commit is a snapshot of your project you can always return to; a branch is a movable pointer to a line of snapshots. Once you see commits as save-points and branches as parallel timelines, the commands stop being magic.
+
+## What Version Control Is
+
+Version control records the history of your project — every change, who made it, and why — so you can review it, undo mistakes, and collaborate without overwriting each other. **Git** is the version-control system (it runs locally); **GitHub** is a service that hosts Git repositories online for sharing and collaboration. They're related but distinct: you can use Git with no GitHub at all.
+
+## The Three Areas
+
+This is the mental model that makes Git click. A file moves through three places:
+
+- **Working directory** — your actual files, where you edit.
+- **Staging area (index)** — a holding zone for the changes you want in your *next* commit.
+- **Repository** — the committed history, the permanent snapshots.
+
+```bash
+git init              # start tracking a project (creates the repo)
+# ...edit files in the working directory...
+git add file.js       # stage a change (working dir → staging)
+git commit -m "msg"   # record staged changes (staging → repository)
+```
+
+The two-step `add` then `commit` is deliberate: staging lets you craft a commit from exactly the changes you choose, rather than everything at once.
+
+## Staging and Committing
+
+The everyday loop. Check what changed, stage it, commit it with a clear message:
+
+```bash
+git status            # what's changed, what's staged
+git diff              # the exact line changes (unstaged)
+git add .             # stage everything changed
+git add file.js       # or stage one file
+git commit -m "Add login validation"
+git log --oneline     # browse the history
+```
+
+A good commit is **small and focused**, with a message that says *why*, in the imperative ("Fix overflow bug", not "fixed stuff"). Commit often — each commit is a save-point you can return to.
+
+## Branches
+
+A **branch** is a movable pointer to a line of commits — it lets you work on a feature without disturbing the main code, then merge it back when ready:
+
+```bash
+git branch                    # list branches
+git switch -c feature/login   # create and switch to a new branch
+# ...commit work on the branch...
+git switch main               # back to main
+git merge feature/login       # bring the feature's commits into main
+git branch -d feature/login   # delete the merged branch
+```
+
+Branching is cheap and fast in Git, which is why the normal workflow is **one branch per feature or fix** — main stays stable, work happens on branches, and finished work merges in.
+
+## Merge Conflicts
+
+When two branches change the *same lines*, Git can't decide automatically and reports a **conflict**. It marks the spot in the file:
+
+```text
+<<<<<<< HEAD
+const timeout = 3000;
+=======
+const timeout = 5000;
+>>>>>>> feature/login
+```
+
+You resolve it by editing the file to the version you want (removing the `<<<`/`===`/`>>>` markers), then staging and committing:
+
+```bash
+# edit the file to keep the right code
+git add file.js
+git commit            # completes the merge
+```
+
+Conflicts feel scary but are routine — they just mean two people touched the same lines, and Git is asking *you* to choose.
+
+## `.gitignore`
+
+Some files shouldn't be tracked — dependencies, build output, secrets, OS junk. A **`.gitignore`** file lists patterns Git should skip:
+
+```text
+node_modules/
+dist/
+.env
+.DS_Store
+*.log
+```
+
+Never commit `node_modules/` (it's reinstallable from `package.json`) or `.env` files (they hold secrets). Add the ignore rules *before* the first commit where possible — once a file is tracked, ignoring it later takes an extra step.
+
+## Remotes: Push and Pull
+
+A **remote** is a copy of your repo hosted elsewhere (usually on GitHub). You sync your local commits with it:
+
+```bash
+git clone https://github.com/user/repo.git   # copy a remote repo locally
+git remote add origin <url>                    # link an existing local repo to a remote
+git push origin main                           # send your commits up
+git pull origin main                           # fetch others' commits and merge them
+git fetch                                       # download remote changes WITHOUT merging
+```
+
+`origin` is the conventional name for your main remote. **Push** uploads your commits; **pull** downloads and merges others'. Pull before you start work so you're building on the latest, and push when you've got something worth sharing.
+
+## The GitHub Pull-Request Workflow
+
+This is how teams (and open source) collaborate. The cycle:
+
+1. **Branch** off main for your change (`git switch -c fix/typo`).
+2. **Commit** your work and **push** the branch to GitHub.
+3. Open a **pull request (PR)** — a proposal to merge your branch into main, where others review the diff, comment, and approve.
+4. Once approved (and checks pass), **merge** the PR; the branch is deleted.
+
+For repos you don't have write access to, you **fork** (your own copy on GitHub), push to your fork, and open a PR from it. The PR is where code review, discussion, and automated tests happen before code reaches main — the heart of collaborative development.
+
+## Common Mistakes
+
+- Committing `node_modules/`, build output, or `.env` secrets — add a `.gitignore` first.
+- Vague commit messages ("update", "fix") that say nothing about *why* — write intent.
+- Huge commits mixing many unrelated changes — keep them small and focused.
+- Working directly on `main` instead of a branch, making changes hard to review and revert.
+- Forgetting to `pull` before starting, then hitting avoidable conflicts.
+- Panicking at a merge conflict — it's routine; just edit, stage, and commit.
+- Force-pushing (`git push --force`) to a shared branch, overwriting others' work.
+- Confusing Git (the local tool) with GitHub (the host) — you can use Git entirely offline.
+
+## Exercises
+
+Try each before opening the solution.
+
+### Exercise 1 — Start and save
+
+You have a new project folder. Initialize Git and make a first commit.
+
+<details>
+
+<summary>Show solution</summary>
+
+```bash
+git init
+git add .
+git commit -m "Initial commit"
+```
+
+`init` creates the repository, `add .` stages all current files into the staging area, and `commit` records them as the first snapshot.
+
+</details>
+
+### Exercise 2 — Feature branch
+
+Create a branch for a new feature, knowing you'll merge it later.
+
+<details>
+
+<summary>Show solution</summary>
+
+```bash
+git switch -c feature/search
+# ...edit, git add, git commit...
+git switch main
+git merge feature/search
+```
+
+`switch -c` creates and moves to the branch; you commit work there, then merge it back into `main` — main stays clean while you build.
+
+</details>
+
+### Exercise 3 — Ignore the right things
+
+What belongs in a `.gitignore` for a typical Node/web project, and why?
+
+<details>
+
+<summary>Show solution</summary>
+
+```text
+node_modules/   # reinstallable from package.json — huge and pointless to track
+dist/           # build output — generated, not source
+.env            # secrets — never commit these
+.DS_Store       # OS junk
+```
+
+The rule: ignore anything generated, reinstallable, or secret. Source files and `package.json` are what you track; everything derivable from them is not.
+
+</details>
+
+### Exercise 4 — Share your work
+
+You've committed locally and want it on GitHub for a teammate to review. What's the flow?
+
+<details>
+
+<summary>Show solution</summary>
+
+```bash
+git switch -c fix/header        # branch
+# ...commit your work...
+git push origin fix/header      # push the branch to GitHub
+# then open a Pull Request on GitHub for review
+```
+
+Push the branch (not directly to main), then open a PR so the change can be reviewed and discussed before merging — the standard collaboration flow.
+
+</details>
+
+## The Mental Model to Keep
+
+Git is **snapshots over time**. Files flow through three areas — **working directory → staging (`add`) → repository (`commit`)** — and each commit is a save-point you can return to. A **branch** is a movable pointer to a line of commits, so the everyday workflow is *branch per feature, commit small and often, merge back* — and a **conflict** is just Git asking you to choose when two branches touched the same lines. A **remote** (GitHub) is a hosted copy you **push** to and **pull** from, and the **pull request** is where collaboration happens: branch, push, open a PR, review, merge. Keep secrets and generated files out with **`.gitignore`**, write commit messages that explain *why*, and Git stops being a source of dread and becomes the safety net that lets you work fearlessly.
