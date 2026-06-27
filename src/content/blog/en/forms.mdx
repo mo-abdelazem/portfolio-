@@ -1,0 +1,253 @@
+---
+title: "HTML Forms: Collecting Input the Right Way"
+description: "A complete, practical guide to web forms — the form element and submission, input types, labels and accessibility, the name attribute, HTML5 validation, the Constraint Validation API, handling submit in JavaScript with FormData, select/textarea/fieldset, and common mistakes — with hands-on exercises and solutions."
+publishedAt: "2026-05-18"
+translationKey: "forms"
+tags: ["HTML", "Forms", "Accessibility", "Frontend"]
+---
+
+Forms are how the web collects everything — logins, searches, checkouts, comments. They sit exactly where [semantic HTML](/blog/html-semantic) meets [JavaScript](/blog/javascript-fundamentals): get the markup right and the browser hands you validation, accessibility, and keyboard support for free; get it wrong and you reinvent all of it badly. This post covers building forms that are accessible, validate well, and are easy to read in JavaScript. (The submit handling builds on the [DOM](/blog/dom-manipulation) post.)
+
+> The browser already knows how to do most of forms — labels, validation, keyboard navigation, autofill — *if* you use the right elements and the `name` attribute. Most "form bugs" are really the result of fighting the platform instead of leaning on it.
+
+## The `<form>` Element
+
+A `<form>` groups controls and defines what happens on submit. By default, submitting sends the data to a URL and reloads the page — in a JavaScript app you usually intercept that:
+
+```html
+<form action="/login" method="post">
+  <!-- controls go here -->
+  <button type="submit">Log in</button>
+</form>
+```
+
+`action` is where it submits, `method` is the HTTP verb (`get` puts data in the URL, `post` in the body). A `<button type="submit">` (or pressing Enter in a field) triggers submission. Use `type="button"` for buttons that *aren't* meant to submit.
+
+## Input Types
+
+The `type` attribute picks the right control and keyboard, and unlocks built-in validation and mobile keyboards:
+
+```html
+<input type="text">
+<input type="email">      <!-- validates email format, email keyboard on mobile -->
+<input type="password">
+<input type="number" min="0" max="100">
+<input type="tel">
+<input type="url">
+<input type="date">
+<input type="checkbox">
+<input type="radio" name="plan" value="pro">
+<input type="file">
+<input type="search">
+```
+
+Choosing the right `type` is the cheapest win in forms: `type="email"` alone gives you format validation, an appropriate mobile keyboard, and autofill — none of which you'd have to build.
+
+## Labels and Accessibility
+
+Every input needs a **`<label>`**. It's not decoration — it tells screen readers what the field is, and clicking it focuses the input (a bigger tap target). Associate them by matching `for` to the input's `id`:
+
+```html
+<label for="email">Email address</label>
+<input id="email" type="email" name="email">
+
+<!-- or wrap the input -->
+<label>
+  Email address
+  <input type="email" name="email">
+</label>
+```
+
+A placeholder is **not** a label — it disappears when typing and fails accessibility. Always use a real `<label>`. Group related controls (like a set of radios) in a `<fieldset>` with a `<legend>`:
+
+```html
+<fieldset>
+  <legend>Choose a plan</legend>
+  <label><input type="radio" name="plan" value="free"> Free</label>
+  <label><input type="radio" name="plan" value="pro"> Pro</label>
+</fieldset>
+```
+
+## The `name` Attribute Is Essential
+
+The **`name`** attribute is what makes a control's value submit — it's the *key* under which the data is sent. A field without a `name` is invisible to form submission and to `FormData`:
+
+```html
+<input type="email" name="email">   <!-- submits as email=...  -->
+<input type="email">                 <!-- value is NOT submitted -->
+```
+
+For radio buttons, a shared `name` is what groups them into one choice; each option's `value` is what gets submitted.
+
+## Built-in HTML5 Validation
+
+Add validation attributes and the browser enforces them before submit, showing native messages — no JavaScript required:
+
+```html
+<input type="email" required>             <!-- must be filled and a valid email -->
+<input type="text" minlength="3" maxlength="20">
+<input type="number" min="1" max="10">
+<input type="text" pattern="[A-Za-z]+" title="Letters only">
+```
+
+`required`, `min`/`max`, `minlength`/`maxlength`, `pattern`, and the type itself all participate. The browser blocks submission and focuses the first invalid field automatically. You can style validity states with the `:valid`, `:invalid`, and `:user-invalid` CSS pseudo-classes (the last only kicks in after the user interacts — far less aggressive).
+
+## The Constraint Validation API
+
+For custom rules or custom messages, JavaScript can read and control validity:
+
+```js
+const input = form.querySelector("#username");
+
+input.validity.valid;          // boolean — does it pass all constraints?
+input.checkValidity();          // true/false, and fires an 'invalid' event if false
+form.checkValidity();           // validates the whole form
+
+// a custom rule with a custom message
+input.addEventListener("input", () => {
+  if (input.value.includes(" ")) {
+    input.setCustomValidity("No spaces allowed");
+  } else {
+    input.setCustomValidity("");   // empty string = valid
+  }
+});
+```
+
+`setCustomValidity("")` clears the error — you *must* reset it, or the field stays permanently invalid. This API lets you add domain rules while still using the browser's native error UI.
+
+## Handling Submit in JavaScript
+
+In an app you usually take over submission: prevent the reload, read the data, and send it yourself. **`FormData`** reads every named field at once, and `Object.fromEntries` turns it into a plain object:
+
+```js
+form.addEventListener("submit", (e) => {
+  e.preventDefault();                       // stop the full-page reload
+
+  if (!form.checkValidity()) {              // let the browser validate first
+    form.reportValidity();                  // show the native messages
+    return;
+  }
+
+  const data = Object.fromEntries(new FormData(form));
+  // → { email: "ada@x.com", plan: "pro" }
+
+  fetch("/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+});
+```
+
+`FormData` is the clean way to gather a form — it picks up every control with a `name`, so you don't query each input individually. (For file uploads, pass the `FormData` object directly as the `body` and skip the `Content-Type` header.)
+
+## Other Controls
+
+```html
+<!-- multi-line text -->
+<textarea name="bio" rows="4"></textarea>
+
+<!-- dropdown -->
+<select name="country">
+  <option value="">Choose…</option>
+  <option value="eg">Egypt</option>
+  <option value="us">United States</option>
+</select>
+```
+
+`<select>` submits the chosen option's `value`; `<textarea>` submits its content. Both work with labels and `FormData` exactly like inputs.
+
+## Common Mistakes
+
+- Using a **placeholder instead of a `<label>`** — it vanishes on input and breaks accessibility.
+- Forgetting the **`name`** attribute, so the field's value never submits and `FormData` misses it.
+- Not associating `<label>` with its input (`for`/`id`), losing the click-to-focus and screen-reader link.
+- Re-implementing validation in JavaScript instead of starting with `required`/`type`/`pattern`.
+- Forgetting `e.preventDefault()`, so the page reloads and your JS handler never finishes.
+- Forgetting to reset `setCustomValidity("")`, leaving a field stuck invalid forever.
+- Using `<button>` without `type` inside a form — it defaults to `submit` and triggers submission unexpectedly.
+- Trusting client-side validation alone — always validate on the server too; the client can be bypassed.
+
+## Exercises
+
+Try each before opening the solution.
+
+### Exercise 1 — An accessible field
+
+Write an email field that's properly labelled and required.
+
+<details>
+
+<summary>Show solution</summary>
+
+```html
+<label for="email">Email</label>
+<input id="email" name="email" type="email" required>
+```
+
+`for`/`id` links the label to the input, `type="email"` validates format and shows the email keyboard, `required` blocks empty submission, and `name` makes the value submit.
+
+</details>
+
+### Exercise 2 — Read a form in JS
+
+Intercept a form's submit, prevent the reload, and log all fields as an object.
+
+<details>
+
+<summary>Show solution</summary>
+
+```js
+form.addEventListener("submit", (e) => {
+  e.preventDefault();
+  const data = Object.fromEntries(new FormData(form));
+  console.log(data);
+});
+```
+
+`preventDefault` stops the navigation; `FormData` gathers every named control, and `Object.fromEntries` converts it into a readable object.
+
+</details>
+
+### Exercise 3 — A custom validation rule
+
+Make a username field invalid (with the message "Taken") if its value equals `"admin"`.
+
+<details>
+
+<summary>Show solution</summary>
+
+```js
+username.addEventListener("input", () => {
+  username.setCustomValidity(username.value === "admin" ? "Taken" : "");
+});
+```
+
+`setCustomValidity` with a non-empty string marks the field invalid and supplies the message; resetting to `""` when it's fine is essential, or it would stay invalid.
+
+</details>
+
+### Exercise 4 — Group radio buttons
+
+Create a "size" choice of Small/Medium/Large where only one can be selected and the value submits.
+
+<details>
+
+<summary>Show solution</summary>
+
+```html
+<fieldset>
+  <legend>Size</legend>
+  <label><input type="radio" name="size" value="s"> Small</label>
+  <label><input type="radio" name="size" value="m"> Medium</label>
+  <label><input type="radio" name="size" value="l"> Large</label>
+</fieldset>
+```
+
+The shared `name="size"` makes them mutually exclusive and submits as a single `size` value; `<fieldset>`/`<legend>` group them accessibly.
+
+</details>
+
+## The Mental Model to Keep
+
+Forms work best when you let the platform do the heavy lifting. Pick the right **`input type`**, give every field a real **`<label>`** and a **`name`** (no name, no data), and group choices with **`<fieldset>`**. Reach for **HTML5 validation** (`required`, `pattern`, `min`/`max`) first, extend it with the **Constraint Validation API** only when you need custom rules, and style states with `:user-invalid`. To handle submission in an app, **`preventDefault()`**, validate with `checkValidity()`/`reportValidity()`, then read everything at once with **`FormData`** + `Object.fromEntries`. And never trust the client alone — validate on the server too. Build on the browser's built-in form machinery and you get accessibility, validation, and autofill almost for free.

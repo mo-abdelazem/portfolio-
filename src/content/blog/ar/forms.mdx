@@ -1,0 +1,253 @@
+---
+title: "نماذج HTML: جمع المُدخَلات بالطريقة الصحيحة"
+description: "دليل عملي كامل لنماذج الويب — عنصر form والإرسال، وأنواع الإدخال، والتسميات والوصولية، وسمة name، وتحقّق HTML5، وواجهة التحقّق من القيود، ومعالجة الإرسال بـ JavaScript وFormData، وselect/textarea/fieldset، والأخطاء الشائعة — مع تمارين عملية وحلولها."
+publishedAt: "2026-05-18"
+translationKey: "forms"
+tags: ["HTML", "Forms", "Accessibility", "Frontend"]
+---
+
+النماذج هي كيف يجمع الويب كل شيء — تسجيلات الدخول، والبحث، والدفع، والتعليقات. تقع بالضبط حيث يلتقي [HTML الدلالي](/blog/html-semantic) بـ [JavaScript](/blog/javascript-fundamentals): اضبط العلامات بشكل صحيح فيسلّمك المتصفح التحقّق والوصولية ودعم لوحة المفاتيح مجّانًا؛ أخطئها فتعيد اختراع كل ذلك بشكل سيّئ. هذا المقال يغطّي بناء نماذج وصولية، تتحقّق جيّدًا، وسهلة القراءة في JavaScript. (معالجة الإرسال تبني على مقال [DOM](/blog/dom-manipulation).)
+
+> المتصفح يعرف أصلًا كيف يفعل معظم النماذج — التسميات، والتحقّق، والتنقّل بلوحة المفاتيح، والملء التلقائي — *إن* استخدمت العناصر الصحيحة وسمة `name`. معظم "علل النماذج" حقيقةً نتيجة محاربة المنصّة بدل الاتكاء عليها.
+
+## عنصر `<form>`
+
+`<form>` يجمّع عناصر التحكّم ويعرّف ما يحدث عند الإرسال. افتراضيًّا، الإرسال يبعث البيانات إلى عنوان URL ويعيد تحميل الصفحة — في تطبيق JavaScript تعترض ذلك عادةً:
+
+```html
+<form action="/login" method="post">
+  <!-- عناصر التحكّم هنا -->
+  <button type="submit">Log in</button>
+</form>
+```
+
+`action` حيث يُرسِل، و`method` فعل HTTP (`get` يضع البيانات في الرابط، و`post` في الجسم). و`<button type="submit">` (أو ضغط Enter في حقل) يفعّل الإرسال. استخدم `type="button"` للأزرار التي *ليس* مقصودًا بها الإرسال.
+
+## أنواع الإدخال
+
+سمة `type` تختار عنصر التحكّم ولوحة المفاتيح الصحيحة، وتفتح التحقّق المدمج ولوحات الجوّال:
+
+```html
+<input type="text">
+<input type="email">      <!-- يتحقّق من صيغة البريد، ولوحة بريد على الجوّال -->
+<input type="password">
+<input type="number" min="0" max="100">
+<input type="tel">
+<input type="url">
+<input type="date">
+<input type="checkbox">
+<input type="radio" name="plan" value="pro">
+<input type="file">
+<input type="search">
+```
+
+اختيار `type` الصحيح أرخص مكسب في النماذج: `type="email"` وحده يمنحك التحقّق من الصيغة، ولوحة جوّال مناسبة، وملءًا تلقائيًّا — لا شيء منها كنت ستبنيه.
+
+## التسميات والوصولية
+
+كل إدخال يحتاج **`<label>`**. إنها ليست زخرفة — تخبر قارئات الشاشة ما الحقل، والنقر عليها يركّز الإدخال (هدف لمس أكبر). اربطها بمطابقة `for` مع `id` الإدخال:
+
+```html
+<label for="email">Email address</label>
+<input id="email" type="email" name="email">
+
+<!-- أو لُفّ الإدخال -->
+<label>
+  Email address
+  <input type="email" name="email">
+</label>
+```
+
+العنصر النائب (placeholder) **ليس** تسمية — يختفي عند الكتابة ويفشل في الوصولية. استخدم دائمًا `<label>` حقيقية. جمّع عناصر التحكّم المترابطة (كمجموعة أزرار راديو) في `<fieldset>` بـ `<legend>`:
+
+```html
+<fieldset>
+  <legend>Choose a plan</legend>
+  <label><input type="radio" name="plan" value="free"> Free</label>
+  <label><input type="radio" name="plan" value="pro"> Pro</label>
+</fieldset>
+```
+
+## سمة `name` أساسية
+
+سمة **`name`** هي ما يجعل قيمة عنصر تحكّم تُرسَل — إنها *المفتاح* الذي تُرسَل البيانات تحته. حقل بلا `name` غير مرئيّ لإرسال النموذج ولـ `FormData`:
+
+```html
+<input type="email" name="email">   <!-- يُرسَل كـ email=...  -->
+<input type="email">                 <!-- القيمة لا تُرسَل -->
+```
+
+لأزرار الراديو، `name` مشترك هو ما يجمّعها في اختيار واحد؛ و`value` كل خيار هو ما يُرسَل.
+
+## تحقّق HTML5 المدمج
+
+أضف سمات التحقّق فيفرضها المتصفح قبل الإرسال، مُظهرًا رسائل أصلية — بلا حاجة إلى JavaScript:
+
+```html
+<input type="email" required>             <!-- يجب ملؤه وأن يكون بريدًا صالحًا -->
+<input type="text" minlength="3" maxlength="20">
+<input type="number" min="1" max="10">
+<input type="text" pattern="[A-Za-z]+" title="Letters only">
+```
+
+`required` و`min`/`max` و`minlength`/`maxlength` و`pattern` والنوع نفسه كلها تشارك. يحجب المتصفح الإرسال ويركّز أول حقل غير صالح تلقائيًّا. تستطيع تنسيق حالات الصلاحية بأصناف CSS الزائفة `:valid` و`:invalid` و`:user-invalid` (الأخيرة تعمل فقط بعد تفاعل المستخدم — أقلّ عدوانيةً بكثير).
+
+## واجهة التحقّق من القيود
+
+للقواعد المخصّصة أو الرسائل المخصّصة، تستطيع JavaScript قراءة الصلاحية والتحكّم بها:
+
+```js
+const input = form.querySelector("#username");
+
+input.validity.valid;          // boolean — هل يجتاز كل القيود؟
+input.checkValidity();          // true/false، ويُطلِق حدث 'invalid' إن false
+form.checkValidity();           // يتحقّق من النموذج كاملًا
+
+// قاعدة مخصّصة برسالة مخصّصة
+input.addEventListener("input", () => {
+  if (input.value.includes(" ")) {
+    input.setCustomValidity("No spaces allowed");
+  } else {
+    input.setCustomValidity("");   // سلسلة فارغة = صالح
+  }
+});
+```
+
+`setCustomValidity("")` يمسح الخطأ — *يجب* إعادة ضبطه، وإلا يبقى الحقل غير صالح دائمًا. هذه الواجهة تتيح إضافة قواعد المجال مع الإبقاء على واجهة الخطأ الأصلية للمتصفح.
+
+## معالجة الإرسال بـ JavaScript
+
+في تطبيق تتولّى الإرسال عادةً: امنع إعادة التحميل، اقرأ البيانات، وأرسِلها بنفسك. **`FormData`** يقرأ كل حقل مسمّى دفعة، و`Object.fromEntries` يحوّله إلى كائن عاديّ:
+
+```js
+form.addEventListener("submit", (e) => {
+  e.preventDefault();                       // أوقف إعادة التحميل الكاملة
+
+  if (!form.checkValidity()) {              // دع المتصفح يتحقّق أولًا
+    form.reportValidity();                  // أظهِر الرسائل الأصلية
+    return;
+  }
+
+  const data = Object.fromEntries(new FormData(form));
+  // → { email: "ada@x.com", plan: "pro" }
+
+  fetch("/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+});
+```
+
+`FormData` الطريقة النظيفة لجمع نموذج — يلتقط كل عنصر تحكّم له `name`، فلا تستعلم كل إدخال على حدة. (لرفع الملفّات، مرّر كائن `FormData` مباشرةً كـ `body` وتخطَّ ترويسة `Content-Type`.)
+
+## عناصر تحكّم أخرى
+
+```html
+<!-- نصّ متعدّد الأسطر -->
+<textarea name="bio" rows="4"></textarea>
+
+<!-- قائمة منسدلة -->
+<select name="country">
+  <option value="">Choose…</option>
+  <option value="eg">Egypt</option>
+  <option value="us">United States</option>
+</select>
+```
+
+`<select>` يُرسِل `value` الخيار المختار؛ و`<textarea>` يُرسِل محتواه. كلاهما يعمل مع التسميات و`FormData` تمامًا كالإدخالات.
+
+## الأخطاء الشائعة
+
+- استخدام **عنصر نائب بدل `<label>`** — يختفي عند الإدخال ويكسر الوصولية.
+- نسيان سمة **`name`**، فلا تُرسَل قيمة الحقل أبدًا ويفوّتها `FormData`.
+- عدم ربط `<label>` بإدخالها (`for`/`id`)، ففقدان النقر-للتركيز ورابط قارئة الشاشة.
+- إعادة تنفيذ التحقّق في JavaScript بدل البدء بـ `required`/`type`/`pattern`.
+- نسيان `e.preventDefault()`، فتُعاد الصفحة ولا ينتهي معالِج JS الخاص بك.
+- نسيان إعادة ضبط `setCustomValidity("")`، فيبقى حقل عالقًا غير صالح للأبد.
+- استخدام `<button>` بلا `type` داخل نموذج — يفترض `submit` ويفعّل الإرسال بشكل غير متوقّع.
+- الوثوق بالتحقّق جانب العميل وحده — تحقّق دائمًا على الخادم أيضًا؛ يمكن تجاوز العميل.
+
+## تمارين
+
+جرّب كلًّا منها قبل فتح الحل.
+
+### تمرين 1 — حقل وصوليّ
+
+اكتب حقل بريد مُسمّى بشكل صحيح ومطلوب.
+
+<details>
+
+<summary>إظهار الحل</summary>
+
+```html
+<label for="email">Email</label>
+<input id="email" name="email" type="email" required>
+```
+
+`for`/`id` يربط التسمية بالإدخال، و`type="email"` يتحقّق من الصيغة ويُظهر لوحة البريد، و`required` يحجب الإرسال الفارغ، و`name` يجعل القيمة تُرسَل.
+
+</details>
+
+### تمرين 2 — اقرأ نموذجًا في JS
+
+اعترض إرسال نموذج، امنع إعادة التحميل، وسجّل كل الحقول ككائن.
+
+<details>
+
+<summary>إظهار الحل</summary>
+
+```js
+form.addEventListener("submit", (e) => {
+  e.preventDefault();
+  const data = Object.fromEntries(new FormData(form));
+  console.log(data);
+});
+```
+
+`preventDefault` يوقف التنقّل؛ و`FormData` يجمّع كل عنصر تحكّم مسمّى، و`Object.fromEntries` يحوّله إلى كائن مقروء.
+
+</details>
+
+### تمرين 3 — قاعدة تحقّق مخصّصة
+
+اجعل حقل اسم مستخدم غير صالح (برسالة "Taken") إن ساوت قيمته `"admin"`.
+
+<details>
+
+<summary>إظهار الحل</summary>
+
+```js
+username.addEventListener("input", () => {
+  username.setCustomValidity(username.value === "admin" ? "Taken" : "");
+});
+```
+
+`setCustomValidity` بسلسلة غير فارغة يعلّم الحقل غير صالح ويوفّر الرسالة؛ وإعادة الضبط إلى `""` حين يكون سليمًا أساسيّة، وإلا سيبقى غير صالح.
+
+</details>
+
+### تمرين 4 — جمّع أزرار راديو
+
+أنشئ اختيار "حجم" صغير/متوسّط/كبير حيث يُختار واحد فقط وتُرسَل القيمة.
+
+<details>
+
+<summary>إظهار الحل</summary>
+
+```html
+<fieldset>
+  <legend>Size</legend>
+  <label><input type="radio" name="size" value="s"> Small</label>
+  <label><input type="radio" name="size" value="m"> Medium</label>
+  <label><input type="radio" name="size" value="l"> Large</label>
+</fieldset>
+```
+
+`name="size"` المشترك يجعلها متنافية ويُرسِلها كقيمة `size` واحدة؛ و`<fieldset>`/`<legend>` يجمّعانها بوصولية.
+
+</details>
+
+## النموذج الذهني الذي تحتفظ به
+
+النماذج تعمل أفضل حين تدع المنصّة تقوم بالعمل الثقيل. اختر **`input type`** الصحيح، أعطِ كل حقل **`<label>`** حقيقية و**`name`** (بلا اسم، بلا بيانات)، وجمّع الخيارات بـ **`<fieldset>`**. الجأ إلى **تحقّق HTML5** (`required`، `pattern`، `min`/`max`) أولًا، ووسّعه بـ **واجهة التحقّق من القيود** فقط حين تحتاج قواعد مخصّصة، ونسّق الحالات بـ `:user-invalid`. لمعالجة الإرسال في تطبيق، **`preventDefault()`**، تحقّق بـ `checkValidity()`/`reportValidity()`، ثم اقرأ كل شيء دفعة بـ **`FormData`** + `Object.fromEntries`. ولا تثق بالعميل وحده — تحقّق على الخادم أيضًا. ابنِ على آلية النماذج المدمجة في المتصفح فتحصل على الوصولية والتحقّق والملء التلقائي شبه مجّانًا.
