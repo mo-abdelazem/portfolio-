@@ -1,0 +1,244 @@
+---
+title: "Fetch وHTTP: التحدّث إلى واجهات API من المتصفح"
+description: "دليل عملي كامل لـ HTTP وواجهة Fetch — نموذج الطلب/الاستجابة، والطرق ورموز الحالة، والترويسات، وfetch مع GET وPOST، وإرسال JSON وتحليله، ولماذا لا يرفض fetch عند 404، ومعالجة الأخطاء، وAbortController والمهل، وCORS، والأخطاء الشائعة — مع تمارين عملية وحلولها."
+publishedAt: "2026-05-10"
+translationKey: "http-basics"
+tags: ["JavaScript", "HTTP", "Fetch", "APIs"]
+---
+
+كل تطبيق حقيقي تقريبًا يتحدّث إلى خادم: يحمّل بيانات، يرسل نموذجًا، يحفظ تغييرًا. تجري تلك المحادثة عبر **HTTP**، وفي المتصفح تقودها بـ **واجهة Fetch**. فهم كليهما — مفردات البروتوكول ومراوغات `fetch` — هو ما يحوّل "نسختُ مقتطف fetch" إلى "أستطيع التحدّث إلى أي API ومعالجة ما يردّه أيًّا كان." (هذا يتّكئ على [الوعود](/blog/promises) و[async/await](/blog/async-await)، لأن `fetch` قائم على الوعود.)
+
+> شيئان يوقعان الجميع في `fetch`. الأول: يرفض فقط **عند فشل الشبكة**، لا عند 404 أو 500 — فالوعد "الناجح" قد يكون استجابة خطأ، فعليك فحص `response.ok` بنفسك. الثاني: يصل الجسم كـ **تدفّق (stream)**، فتنتظر `response.json()` كخطوة *ثانية*.
+
+## نموذج HTTP: طلب واستجابة
+
+كل تبادل هو **طلب** واحد من العميل و**استجابة** واحدة من الخادم. للطلب **طريقة (method)** (الفعل)، و**عنوان URL**، و**ترويسات** (بيانات وصفية)، واختياريًّا **جسم (body)**. وللاستجابة **رمز حالة**، وترويسات، وعادةً جسم.
+
+الطرق الشائعة تقابل النوايا:
+
+- **GET** — قراءة بيانات (بلا جسم). الافتراضي.
+- **POST** — إنشاء شيء / إرسال بيانات (له جسم).
+- **PUT** / **PATCH** — استبدال / تحديث جزئي لمورد.
+- **DELETE** — إزالة مورد.
+
+رموز الحالة تأتي في مدًى — تعلّم العائلات، لا كل رقم:
+
+- **2xx** نجاح — `200 OK`، `201 Created`، `204 No Content`.
+- **3xx** إعادة توجيه — `301`، `304 Not Modified`.
+- **4xx** خطأ *العميل* (أرسلتَ شيئًا خاطئًا) — `400 Bad Request`، `401 Unauthorized`، `403 Forbidden`، `404 Not Found`.
+- **5xx** خطأ *الخادم* (خطؤهم) — `500 Internal Server Error`، `503 Unavailable`.
+
+## GET أساسي
+
+`fetch(url)` يُرجِع وعدًا بـ `Response`. قراءة الجسم انتظار ثانٍ، لأن الجسم يتدفّق داخلًا:
+
+```js
+const response = await fetch("https://api.example.com/users");
+const users = await response.json();   // حلّل جسم JSON
+console.log(users);
+```
+
+`response.json()` نفسه غير متزامن (يُرجِع وعدًا). قارئات جسم أخرى موجودة: `response.text()` للنصّ الصِّرف، و`response.blob()` للثنائي (صور، ملفّات)، و`response.formData()`.
+
+## فخّ `response.ok`
+
+هذه أهمّ مراوغة في `fetch`. `fetch` **يرفض فقط حين يتعذّر إجراء الطلب أصلًا** (بلا شبكة، فشل DNS، حجب CORS). أما `404` أو `500` فهي fetch *ناجح* — الخادم أجاب — فيُنجَز الوعد. عليك فحص الحالة بنفسك:
+
+```js
+const res = await fetch("/api/user/999");
+// res.ok هنا false (404)، لكن لم يُرمَ خطأ!
+
+if (!res.ok) {
+  throw new Error(`HTTP ${res.status} – ${res.statusText}`);
+}
+const user = await res.json();
+```
+
+`response.ok` يساوي `true` لأي حالة 2xx. نسيان هذا الفحص يعني أن شيفرتك تحاول بسعادة تحليل صفحة خطأ كأنها بيانات صحيحة.
+
+## إرسال بيانات بـ POST
+
+لإرسال بيانات، مرّر كائن خيارات: اضبط `method`، وترويسة `Content-Type`، و`body`. أجسام JSON يجب **تحويلها إلى نصّ** يدويًّا:
+
+```js
+const res = await fetch("/api/users", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ name: "Ada", role: "admin" }),
+});
+
+if (!res.ok) throw new Error(`فشل الإنشاء: ${res.status}`);
+const created = await res.json();
+```
+
+ترويسة `Content-Type` تخبر الخادم كيف يفسّر الجسم؛ و`JSON.stringify` يحوّل كائنك إلى النصّ المُرسَل. لرفع الملفّات أو إرسال النماذج، استخدم كائن `FormData` كجسم بدلًا منه (و*لا* تضبط `Content-Type` — يضبطه المتصفح بالحدّ الصحيح).
+
+## الترويسات
+
+تحمل الترويسات بيانات وصفية على الطلبات والاستجابات معًا — نوع المحتوى، المصادقة، التخزين المؤقّت. ترويسات طلب شائعة:
+
+```js
+const res = await fetch("/api/data", {
+  headers: {
+    "Authorization": `Bearer ${token}`,  // مصادقة
+    "Accept": "application/json",          // "أريد JSON عائدًا"
+  },
+});
+
+// قراءة ترويسة استجابة
+const type = res.headers.get("Content-Type");
+```
+
+## مساعد متين قابل لإعادة الاستخدام
+
+معظم التطبيقات تغلّف `fetch` مرّة كي لا يتكرّر فحص `ok` وتحليل JSON في كل مكان:
+
+```js
+async function api(url, options = {}) {
+  const res = await fetch(url, {
+    headers: { "Content-Type": "application/json", ...options.headers },
+    ...options,
+  });
+  if (!res.ok) {
+    throw new Error(`${res.status} ${res.statusText} على ${url}`);
+  }
+  return res.status === 204 ? null : res.json(); // 204 بلا جسم
+}
+
+// الاستخدام
+const user = await api("/api/user/1");
+const created = await api("/api/users", { method: "POST", body: JSON.stringify(data) });
+```
+
+## الإلغاء والمهل بـ `AbortController`
+
+لا مهلة مدمجة في `fetch`. لإلغاء طلب (مكالمة بطيئة، أو بحث تجاوزه المستخدم)، استخدم `AbortController` ومرّر `signal` الخاصة به:
+
+```js
+const controller = new AbortController();
+const timer = setTimeout(() => controller.abort(), 5000); // مهلة 5 ثوانٍ
+
+try {
+  const res = await fetch("/api/slow", { signal: controller.signal });
+  const data = await res.json();
+} catch (err) {
+  if (err.name === "AbortError") console.log("أُلغي الطلب");
+  else throw err;
+} finally {
+  clearTimeout(timer);
+}
+```
+
+الإجهاض يجعل وعد fetch **يرفض** بـ `AbortError`. هذا النمط المعياري للمهل ولإلغاء الطلبات القديمة (مثل بحث الكتابة-التلقائية حيث يهمّ أحدث استعلام فقط). المتصفحات الحديثة تقدّم أيضًا `AbortSignal.timeout(5000)` كاختصار.
+
+## CORS، باختصار
+
+حين تطلب صفحتك *أصلًا مختلفًا* (نطاق/منفذ/بروتوكول)، يفرض المتصفح **CORS**: على الخادم إرسال ترويسات `Access-Control-Allow-Origin` تسمح بأصلك، وإلا يحجب المتصفح الاستجابة ويرفض `fetch`. CORS يفرضه **المتصفح**، ويُضبَط على **الخادم** — فخطأ CORS شيء على API السماح به، لا شيء تُصلحه بشيفرة العميل وحدها. (استدعاء API بنفس الأصل يتجنّبه كليًّا.)
+
+## الأخطاء الشائعة
+
+- **عدم فحص `response.ok`** — معاملة 404/500 كنجاح وتحليل صفحة خطأ.
+- **نسيان `JSON.stringify`** على الجسم، أو نسيان ترويسة `Content-Type: application/json`.
+- **نسيان `await response.json()`** — `response.json()` يُرجِع *وعدًا*، لا البيانات.
+- **توقّع أن يرفض `fetch` عند أخطاء HTTP** — يرفض فقط عند فشل الشبكة/CORS.
+- **ضبط `Content-Type` يدويًّا لـ `FormData`** — دع المتصفح يضبطه (الحدّ مطلوب).
+- **بلا مهلة/إلغاء** — تتكدّس الطلبات البطيئة أو القديمة؛ استخدم `AbortController`.
+- **محاولة إصلاح خطأ CORS في الواجهة** — إنها مسألة إعداد خادم.
+- **وضع أسرار (مفاتيح API) في fetch جانب العميل** — أي شيء في المتصفح مرئيّ للمستخدمين.
+
+## تمارين
+
+جرّب كلًّا منها قبل فتح الحل.
+
+### تمرين 1 — GET آمن
+
+اجلب `/api/profile` وأرجِع JSON المحلَّل، رامياً خطأً واضحًا إن لم تكن الاستجابة OK.
+
+<details>
+
+<summary>إظهار الحل</summary>
+
+```js
+async function getProfile() {
+  const res = await fetch("/api/profile");
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+```
+
+فحص `res.ok` هو السطر الحاسم — بدونه سيمرّ 404 و`res.json()` سيحاول تحليل جسم خطأ.
+
+</details>
+
+### تمرين 2 — أرسِل JSON بـ POST
+
+أرسِل `{ title: "Hello" }` إلى `/api/posts` كـ JSON وأرجِع الكائن المُنشأ.
+
+<details>
+
+<summary>إظهار الحل</summary>
+
+```js
+async function createPost(title) {
+  const res = await fetch("/api/posts", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ title }),
+  });
+  if (!res.ok) throw new Error(`فشل الإنشاء: ${res.status}`);
+  return res.json();
+}
+```
+
+ثلاث قطع مطلوبة لـ POST بـ JSON: `method`، وترويسة `Content-Type`، وجسم مُحوَّل بـ `JSON.stringify`.
+
+</details>
+
+### تمرين 3 — أضف مهلة
+
+اجلب `/api/slow` لكن أجهِض إن استغرق أكثر من 4 ثوانٍ.
+
+<details>
+
+<summary>إظهار الحل</summary>
+
+```js
+async function getWithTimeout() {
+  const res = await fetch("/api/slow", { signal: AbortSignal.timeout(4000) });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+// (أو نمط AbortController + setTimeout للمتصفحات الأقدم)
+```
+
+`AbortSignal.timeout(4000)` يُجهِض الطلب بعد 4 ثوانٍ، رافضًا الوعد بـ `TimeoutError`/`AbortError` تستطيع التقاطه.
+
+</details>
+
+### تمرين 4 — لماذا "نجح" هذا ثم انكسر؟
+
+```js
+const res = await fetch("/api/user/99999");
+const user = await res.json();
+showName(user.name);   // يرمي: لا يمكن قراءة 'name' من undefined
+```
+
+ما الخطأ، وكيف تُصلحه؟
+
+<details>
+
+<summary>إظهار الحل</summary>
+
+المستخدم غير موجود، فأرجع الخادم `404` بجسم خطأ (لا مستخدمًا). وبما أن `fetch` لا يرفض عند 404، حلّلت الشيفرة جسم الخطأ و`user.name` يساوي `undefined`. أصلِح بفحص `res.ok` قبل التحليل:
+
+```js
+const res = await fetch("/api/user/99999");
+if (!res.ok) throw new Error(`HTTP ${res.status}`);
+const user = await res.json();
+```
+
+</details>
+
+## النموذج الذهني الذي تحتفظ به
+
+HTTP طلب (طريقة + URL + ترويسات + جسم اختياري) واستجابة (حالة + ترويسات + جسم). في المتصفح، `fetch` يقوده ويُرجِع وعدًا بـ `Response` — لكن بقاعدتين غير بديهيتين محروقتين فيه: يرفض **فقط عند فشل الشبكة/CORS**، فافحص دائمًا **`response.ok`** وارمِ بنفسك؛ والجسم **يُقرأ منفصلًا** بـ `await response.json()` (أو `.text()`/`.blob()`). لإرسال بيانات، اضبط `method`، وترويسة `Content-Type`، وجسمًا مُحوَّلًا بـ `JSON.stringify`. غلّفه مرّة في مساعد يمركز فحص `ok`، وأضف **`AbortController`** للمهل والإلغاء، وتذكّر أن CORS مهمّة الخادم لا مهمّتك. أتقن ذلك وتستطيع التكامل مع أي API يرميه الويب أمامك.

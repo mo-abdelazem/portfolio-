@@ -1,0 +1,238 @@
+---
+title: "JavaScript Performance & Memory: Fast, Smooth, Leak-Free"
+description: "A practical guide to making JavaScript fast — the single-threaded model and avoiding main-thread blocking, debounce and throttle, memoization, efficient DOM updates and batching, memory leaks and how they happen, garbage collection, WeakMap/WeakSet, and measuring with DevTools — with hands-on exercises and solutions."
+publishedAt: "2026-06-07"
+translationKey: "javascript-performance"
+tags: ["JavaScript", "Performance", "Memory", "Advanced"]
+---
+
+A correct app that feels sluggish is still a bad app. JavaScript performance isn't about micro-optimizing arithmetic — it's about respecting the **single thread**, not doing expensive work more often than needed, touching the DOM efficiently, and not leaking memory until the tab crawls. This post covers the techniques that actually move the needle in real apps, and how to *measure* rather than guess. (Builds on the event loop from [JavaScript fundamentals](/blog/javascript-fundamentals) and DOM work from the [DOM post](/blog/dom-manipulation).)
+
+> The golden rule: **don't block the main thread.** JavaScript runs on one thread shared with rendering and input, so a single slow function freezes the whole page — scroll, clicks, animation, everything. Most "performance work" is really about keeping that thread free.
+
+## The Single Thread Is Your Budget
+
+The browser does layout, painting, JavaScript, and event handling on **one main thread**. To feel smooth (60fps), each frame has roughly **16 milliseconds**. A synchronous task that runs longer than that drops frames — visible jank:
+
+```js
+// ❌ blocks the thread — the page freezes until this finishes
+for (let i = 0; i < 1e9; i++) { /* heavy work */ }
+
+// ✅ break long work into chunks, yielding between them
+async function processInChunks(items) {
+  for (let i = 0; i < items.length; i += 500) {
+    processBatch(items.slice(i, i + 500));
+    await new Promise(r => setTimeout(r, 0));  // yield to let the page breathe
+  }
+}
+```
+
+For genuinely heavy computation (parsing, image processing), move it off the main thread entirely with a **Web Worker**, which runs in a separate thread and messages results back.
+
+## Debounce and Throttle
+
+High-frequency events — `scroll`, `resize`, `input`, `mousemove` — can fire dozens of times a second. Running an expensive handler on every one is wasteful. Two techniques tame them:
+
+```js
+// Debounce — run only after activity STOPS (e.g. search-as-you-type)
+function debounce(fn, ms) {
+  let t;
+  return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
+}
+
+// Throttle — run at most once per interval (e.g. scroll position)
+function throttle(fn, ms) {
+  let last = 0;
+  return (...args) => {
+    const now = performance.now();
+    if (now - last >= ms) { last = now; fn(...args); }
+  };
+}
+
+input.addEventListener("input", debounce(search, 300));
+window.addEventListener("scroll", throttle(updateHeader, 100));
+```
+
+**Debounce** waits for a pause (good when you only care about the final state — a finished search query). **Throttle** enforces a steady rate (good for continuous updates — a scroll indicator). Choosing the right one is most of the win.
+
+## Memoization
+
+If a pure function is called repeatedly with the same inputs, **cache** the results so the work happens once per unique input:
+
+```js
+function memoize(fn) {
+  const cache = new Map();
+  return (arg) => {
+    if (cache.has(arg)) return cache.get(arg);
+    const result = fn(arg);
+    cache.set(arg, result);
+    return result;
+  };
+}
+
+const slowSquare = (n) => { /* expensive */ return n * n; };
+const fastSquare = memoize(slowSquare);
+fastSquare(9); // computed
+fastSquare(9); // returned from cache
+```
+
+Memoization trades memory for speed — ideal for expensive *pure* computations with repeating inputs (it's how React's `useMemo`/`memo` work conceptually). Don't memoize cheap functions or ones with side effects.
+
+## Efficient DOM Updates
+
+The DOM is slow to touch; minimise how often and batch your changes. Two rules cover most cases (expanded in the [DOM post](/blog/dom-manipulation)):
+
+```js
+// ❌ insert in a loop — each can trigger layout
+items.forEach(i => list.append(makeRow(i)));
+
+// ✅ build off-screen, insert once
+const frag = document.createDocumentFragment();
+items.forEach(i => frag.append(makeRow(i)));
+list.append(frag);
+
+// ❌ layout thrashing — read after write forces sync reflow each iteration
+els.forEach(el => { el.style.height = el.offsetHeight + 10 + "px"; });
+
+// ✅ batch reads, then writes
+const heights = els.map(el => el.offsetHeight);
+els.forEach((el, i) => { el.style.height = heights[i] + 10 + "px"; });
+```
+
+And for animations, animate `transform`/`opacity` (compositor-only) rather than layout properties — the difference between smooth and janky.
+
+## How Memory Leaks Happen
+
+JavaScript has automatic **garbage collection**: memory is reclaimed when nothing references an object anymore. A **leak** is when you accidentally keep a reference alive, so the GC can't free it. The usual culprits:
+
+```js
+// 1. Listeners never removed — the handler (and its closure) stays referenced
+el.addEventListener("click", handler);
+// ...element removed from DOM, but listener keeps it (and its scope) alive
+el.removeEventListener("click", handler);  // ✅ clean up
+
+// 2. Timers that are never cleared
+const id = setInterval(tick, 1000);
+clearInterval(id);  // ✅ when no longer needed
+
+// 3. Growing caches/arrays that are never pruned
+const cache = {};
+function remember(k, v) { cache[k] = v; } // grows forever — bound it
+
+// 4. Closures holding large objects longer than needed
+```
+
+The pattern is always the same: something long-lived (a global, a listener, a timer, a cache) holds a reference to something that should have been freed. **Clean up listeners and timers**, and bound your caches.
+
+## `WeakMap` and `WeakSet`
+
+When you want to associate data with an object *without* preventing that object from being garbage-collected, use a **`WeakMap`**/`WeakSet`. Their keys are held *weakly* — if the object is otherwise unreferenced, the entry disappears automatically:
+
+```js
+const metadata = new WeakMap();
+metadata.set(domNode, { clicks: 0 });  // when domNode is removed & unreferenced,
+                                         // this entry is GC'd automatically — no leak
+```
+
+This is the leak-safe way to attach side data to DOM nodes or objects you don't own.
+
+## Measure, Don't Guess
+
+Optimising by intuition wastes time on the wrong things. Use the tools:
+
+- **DevTools Performance panel** — record an interaction and see exactly where time goes (long tasks, layout, paint).
+- **Memory panel** — take heap snapshots, compare them to find what's growing (a leak).
+- **`performance.now()`** — precise timing around a suspect block.
+- **Lighthouse** — overall page performance audit with concrete suggestions.
+
+Profile first, find the actual bottleneck, then optimise *that* — not what you assume is slow.
+
+## Common Mistakes
+
+- Blocking the main thread with a long synchronous loop — chunk it or use a Web Worker.
+- Running expensive handlers on every `scroll`/`input` event — debounce or throttle.
+- Inserting DOM nodes one at a time in a loop instead of batching with a fragment.
+- Interleaving DOM reads and writes, causing layout thrashing.
+- Leaving event listeners and timers attached after their element/component is gone (leaks).
+- Letting a cache grow unbounded — set a size limit or use a `WeakMap` where appropriate.
+- Optimising by guesswork instead of profiling — you'll speed up code that wasn't the bottleneck.
+- Memoizing cheap or impure functions, adding complexity for no gain.
+
+## Exercises
+
+Try each before opening the solution.
+
+### Exercise 1 — Debounce a resize handler
+
+A `recalcLayout()` runs on every `resize` event, far too often. Make it run only after resizing settles for 200ms.
+
+<details>
+
+<summary>Show solution</summary>
+
+```js
+function debounce(fn, ms) {
+  let t;
+  return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); };
+}
+window.addEventListener("resize", debounce(recalcLayout, 200));
+```
+
+Each resize event resets the timer; `recalcLayout` fires only once the user stops resizing for 200ms — instead of hundreds of times mid-drag.
+
+</details>
+
+### Exercise 2 — Fix the leak
+
+```js
+function setup(el) {
+  const data = bigArray();
+  el.addEventListener("click", () => use(data));
+}
+```
+
+The element is later removed but memory keeps growing. What's wrong and how do you fix it?
+
+<details>
+
+<summary>Show solution</summary>
+
+The click listener closes over `data` (a big array) and is never removed, so even after `el` leaves the DOM the listener — and `data` — stay referenced and can't be GC'd. Fix by removing the listener when done:
+
+```js
+function setup(el) {
+  const data = bigArray();
+  const onClick = () => use(data);
+  el.addEventListener("click", onClick);
+  return () => el.removeEventListener("click", onClick); // call on cleanup
+}
+```
+
+</details>
+
+### Exercise 3 — Memoize an expensive function
+
+Wrap a slow, pure `fib(n)` so repeated calls with the same `n` are instant.
+
+<details>
+
+<summary>Show solution</summary>
+
+```js
+const memo = new Map();
+function fib(n) {
+  if (n < 2) return n;
+  if (memo.has(n)) return memo.get(n);
+  const result = fib(n - 1) + fib(n - 2);
+  memo.set(n, result);
+  return result;
+}
+```
+
+Caching each computed `fib(n)` turns the exponential naive version into linear — every value is computed at most once.
+
+</details>
+
+## The Mental Model to Keep
+
+Performance is mostly about protecting **one shared thread**. Keep each frame under ~16ms: break long work into chunks (or push it to a **Web Worker**), and tame high-frequency events with **debounce** (run after it stops) or **throttle** (run at a steady rate). Cache repeated pure work with **memoization**, and touch the DOM as little as possible — **batch** insertions with fragments and don't interleave reads and writes. For memory, remember the GC frees only what's unreferenced, so **leaks** come from listeners, timers, and caches you forgot to clean up; clear them, bound your caches, and use **`WeakMap`** for side data that shouldn't keep objects alive. Above all, **measure with DevTools** before optimising — fix the real bottleneck, not the imagined one.

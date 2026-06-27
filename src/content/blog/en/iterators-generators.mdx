@@ -1,0 +1,231 @@
+---
+title: "Iterators & Generators: Lazy Sequences in JavaScript"
+description: "A practical guide to JavaScript's iteration protocol — what makes something iterable, the iterator protocol, for...of and the spread operator, writing generator functions with function* and yield, lazy and infinite sequences, generator delegation, and async iterators — with hands-on exercises and solutions."
+publishedAt: "2026-05-24"
+translationKey: "iterators-generators"
+tags: ["JavaScript", "Iterators", "Generators", "Advanced"]
+---
+
+Every time you write `for...of`, spread an array, or destructure, you're using JavaScript's **iteration protocol** — a small, elegant contract that lets any object describe how to be looped over. **Generators** are the easy way to produce iterators, and they unlock something arrays can't: **lazy** sequences that compute values on demand, including infinite ones. This is a corner of the language that looks advanced but rests on one simple interface. (Builds on objects and functions from [JavaScript fundamentals](/blog/javascript-fundamentals).)
+
+> An object is **iterable** if it has a method that returns an **iterator** — an object with a `next()` that hands back `{ value, done }` each call. `for...of`, spread, and destructuring all speak this one protocol, which is why they work uniformly on arrays, strings, Maps, Sets, and anything you make iterable.
+
+## The Iteration Protocol
+
+Two linked contracts. An **iterator** is an object with a `next()` method returning `{ value, done }`. An **iterable** is an object with a `[Symbol.iterator]()` method that returns an iterator:
+
+```js
+const iterator = {
+  current: 1,
+  last: 3,
+  next() {
+    return this.current <= this.last
+      ? { value: this.current++, done: false }
+      : { value: undefined, done: true };
+  },
+};
+
+iterator.next(); // { value: 1, done: false }
+iterator.next(); // { value: 2, done: false }
+iterator.next(); // { value: 3, done: false }
+iterator.next(); // { value: undefined, done: true }
+```
+
+Built-in iterables — arrays, strings, `Map`, `Set`, `arguments`, `NodeList` — all carry a `[Symbol.iterator]`. That's exactly what `for...of` calls under the hood.
+
+## What "Iterable" Buys You
+
+Because so much syntax is built on this one protocol, making something iterable makes it work everywhere at once:
+
+```js
+const set = new Set([1, 2, 3]);
+
+for (const x of set) { /* ... */ }   // for...of
+const arr = [...set];                 // spread
+const [first, ...rest] = set;         // destructuring
+Array.from(set);                      // Array.from
+```
+
+All four use the iterator protocol. Note `for...of` works on iterables (arrays, Sets, strings) — but **plain objects are not iterable**; use `Object.entries(obj)` to loop them, or `for...in` for keys.
+
+## Generators: Iterators Made Easy
+
+Writing iterators by hand is tedious. A **generator function** (`function*`) produces an iterator automatically — each `yield` pauses the function and emits a value; calling `next()` resumes it:
+
+```js
+function* range(start, end) {
+  for (let i = start; i <= end; i++) {
+    yield i;        // pause here, hand out i
+  }
+}
+
+const r = range(1, 3);
+r.next(); // { value: 1, done: false }
+[...range(1, 3)]; // [1, 2, 3] — generators are iterable
+
+for (const n of range(1, 5)) console.log(n); // 1 2 3 4 5
+```
+
+The magic is **pausing**: a generator runs until a `yield`, then *suspends* — its local state frozen — until you ask for the next value. This is what makes lazy evaluation possible.
+
+## Lazy and Infinite Sequences
+
+Because generators compute one value at a time, on demand, they can represent sequences that never end — something an array literally can't hold:
+
+```js
+function* naturals() {
+  let n = 1;
+  while (true) yield n++;   // infinite — but only runs as far as you pull
+}
+
+const nums = naturals();
+nums.next().value; // 1
+nums.next().value; // 2
+
+// take the first N from any (possibly infinite) iterator
+function* take(iterable, count) {
+  let i = 0;
+  for (const x of iterable) {
+    if (i++ >= count) return;
+    yield x;
+  }
+}
+[...take(naturals(), 5)]; // [1, 2, 3, 4, 5]
+```
+
+Laziness is the real payoff: you can describe an unbounded or expensive sequence and only pay for the values you actually consume — no array of a million items built upfront just to read the first ten.
+
+## Generator Delegation with `yield*`
+
+`yield*` delegates to another iterable — it yields all of that iterable's values in place, which makes composing generators clean:
+
+```js
+function* letters() { yield "a"; yield "b"; }
+function* numbers() { yield 1; yield 2; }
+
+function* combined() {
+  yield* letters();   // yields "a", "b"
+  yield* numbers();   // then 1, 2
+}
+[...combined()]; // ["a", "b", 1, 2]
+```
+
+## Making Your Own Objects Iterable
+
+Add a `[Symbol.iterator]` method — easiest as a generator — and your object joins `for...of`, spread, and the rest:
+
+```js
+const range = {
+  from: 1,
+  to: 4,
+  *[Symbol.iterator]() {        // a generator method
+    for (let i = this.from; i <= this.to; i++) yield i;
+  },
+};
+
+[...range];                     // [1, 2, 3, 4]
+for (const n of range) { /* works */ }
+```
+
+## Async Iterators, Briefly
+
+For sequences whose values arrive over time (streaming data, paginated APIs), there's an **async** variant: `async function*` with `for await...of`. Each value is a promise that's awaited as you iterate:
+
+```js
+async function* pages(url) {
+  let next = url;
+  while (next) {
+    const res = await fetch(next);
+    const data = await res.json();
+    yield data.items;            // hand out this page
+    next = data.nextPage;
+  }
+}
+
+for await (const items of pages("/api/list")) {
+  render(items);                 // process each page as it arrives
+}
+```
+
+This is the clean way to consume paginated or streamed data — the loop reads naturally while each iteration awaits the next chunk.
+
+## Common Mistakes
+
+- Trying to `for...of` a plain object — objects aren't iterable; use `Object.entries`/`keys`/`values`.
+- Spreading or `Array.from`-ing an **infinite** generator — it never terminates; use a `take`-style limit.
+- Forgetting a generator is **one-shot** — once exhausted, it's done; call the generator function again for a fresh run.
+- Expecting `yield` to return a value without using the two-way `next(value)` form.
+- Using `function` instead of `function*`, so `yield` is a syntax error.
+- Confusing `yield` (emit one) with `yield*` (delegate to a whole iterable).
+- Reaching for generators where a plain array or `map` would be simpler — they shine for *lazy* or *infinite* cases.
+
+## Exercises
+
+Try each before opening the solution.
+
+### Exercise 1 — A range generator
+
+Write `range(start, end)` that yields each integer inclusive, and collect `range(1, 4)` into an array.
+
+<details>
+
+<summary>Show solution</summary>
+
+```js
+function* range(start, end) {
+  for (let i = start; i <= end; i++) yield i;
+}
+[...range(1, 4)]; // [1, 2, 3, 4]
+```
+
+Each `yield` emits one value and pauses; spreading drives `next()` until `done`, collecting all the yielded values.
+
+</details>
+
+### Exercise 2 — Take from infinity
+
+Given an infinite `naturals()` generator, get the first 3 values safely.
+
+<details>
+
+<summary>Show solution</summary>
+
+```js
+function* naturals() { let n = 1; while (true) yield n++; }
+
+const it = naturals();
+const first3 = [it.next().value, it.next().value, it.next().value]; // [1, 2, 3]
+```
+
+You pull exactly three values with `next()`. Never spread `naturals()` directly — laziness means it only runs as far as you ask.
+
+</details>
+
+### Exercise 3 — Make an object iterable
+
+Make `const deck = { suits: ["♠","♥"], ranks: ["A","K"] }` iterate over all suit+rank combinations.
+
+<details>
+
+<summary>Show solution</summary>
+
+```js
+const deck = {
+  suits: ["♠", "♥"],
+  ranks: ["A", "K"],
+  *[Symbol.iterator]() {
+    for (const s of this.suits)
+      for (const r of this.ranks)
+        yield r + s;
+  },
+};
+[...deck]; // ["A♠", "K♠", "A♥", "K♥"]
+```
+
+The generator method nested-loops the two arrays and yields each combination, so `deck` now works with spread and `for...of`.
+
+</details>
+
+## The Mental Model to Keep
+
+JavaScript's iteration rests on one contract: an **iterable** exposes `[Symbol.iterator]()`, which returns an **iterator** whose `next()` yields `{ value, done }`. `for...of`, spread, destructuring, and `Array.from` all speak it, so anything iterable works with all of them. **Generators** (`function*` + `yield`) are the easy factory for iterators — and their superpower is *pausing*, which enables **lazy** sequences that compute on demand and even **infinite** ones, as long as you only pull what you need. Use `yield*` to compose generators, add a `[Symbol.iterator]` to make your own objects iterable, and reach for `async function*` + `for await...of` for values that arrive over time. Reach for them specifically when laziness or streaming matters — for finite, in-memory data, plain arrays and `map` are still simpler.

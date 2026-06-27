@@ -1,0 +1,170 @@
+---
+title: "Browser Storage & State: localStorage, Cookies, IndexedDB & More"
+description: "A practical guide to storing data in the browser — localStorage and sessionStorage, cookies and their flags, when to use each, IndexedDB for larger structured data, the Cache API, security and size limits, and patterns for persisting app state — with hands-on exercises and solutions."
+publishedAt: "2026-06-13"
+translationKey: "browser-storage"
+tags: ["JavaScript", "Storage", "Browser", "Advanced"]
+---
+
+Web pages are stateless by default — reload and everything resets. To remember a theme preference, keep a user logged in, cache data, or build something offline-capable, you need **browser storage**. There are several options and they're easy to confuse; picking the wrong one means data that vanishes too soon, leaks across tabs, or bloats a server request. This post lays out each mechanism, what it's for, and the trade-offs. (Builds on objects and JSON from [JavaScript fundamentals](/blog/javascript-fundamentals).)
+
+> Match the tool to the data. **localStorage** for small, persistent, non-sensitive values. **sessionStorage** for per-tab temporary state. **Cookies** only when the *server* needs the value on each request. **IndexedDB** for large or structured data. Reaching for the wrong one is the root of most storage bugs.
+
+## localStorage: Simple Persistent Key-Value
+
+The workhorse. A synchronous string key-value store that **persists** across reloads and browser restarts, scoped to the origin:
+
+```js
+localStorage.setItem("theme", "dark");
+localStorage.getItem("theme");     // "dark"
+localStorage.removeItem("theme");
+localStorage.clear();              // wipe everything for this origin
+```
+
+It stores **strings only**, so objects must be serialized with JSON:
+
+```js
+localStorage.setItem("user", JSON.stringify({ name: "Ada", age: 36 }));
+const user = JSON.parse(localStorage.getItem("user")); // back to an object
+```
+
+Limits and cautions: about **5–10 MB** per origin, it's **synchronous** (large reads/writes block the main thread), and it's readable by any JavaScript on the page — so **never store secrets or tokens** there. Perfect for: theme, language, UI preferences, non-sensitive cached data.
+
+## sessionStorage: Same API, Tab-Scoped
+
+Identical API to `localStorage`, but the data lives only for the **tab's session** — it clears when the tab closes and isn't shared with other tabs:
+
+```js
+sessionStorage.setItem("step", "3");   // a multi-step form's progress
+sessionStorage.getItem("step");
+```
+
+Use it for temporary, per-tab state: a wizard's current step, scroll position, a draft you don't want surviving a tab close. The key difference from `localStorage` is **lifetime and scope** — session vs persistent, one tab vs all tabs of the origin.
+
+## Cookies: When the Server Needs It
+
+Cookies predate the storage APIs and have one defining trait: they're **sent to the server with every request** to that origin. That makes them right for things the *server* must see (session IDs, auth) — and wrong for client-only data, since they bloat every request:
+
+```js
+document.cookie = "lang=en; path=/; max-age=31536000; SameSite=Lax";
+```
+
+Cookies are tiny (~4 KB) and the raw `document.cookie` API is clumsy. What matters most are the **security flags**, usually set by the server:
+
+- **`HttpOnly`** — invisible to JavaScript (blocks XSS theft); auth cookies should always have this.
+- **`Secure`** — only sent over HTTPS.
+- **`SameSite`** — `Strict`/`Lax`/`None`, controls cross-site sending (CSRF protection).
+
+Rule of thumb: if JavaScript needs the value, use Storage; if the *server* needs it on each request (sessions, auth tokens it sets), use a cookie — ideally `HttpOnly`.
+
+## IndexedDB: Large, Structured, Asynchronous
+
+When you outgrow a few key-values — caching API responses, an offline document store, hundreds of records — there's **IndexedDB**: an asynchronous, transactional database in the browser that holds structured objects (not just strings) and scales to hundreds of MB.
+
+```js
+const db = await new Promise((resolve, reject) => {
+  const req = indexedDB.open("app", 1);
+  req.onupgradeneeded = () => req.result.createObjectStore("notes", { keyPath: "id" });
+  req.onsuccess = () => resolve(req.result);
+  req.onerror = () => reject(req.error);
+});
+
+const tx = db.transaction("notes", "readwrite");
+tx.objectStore("notes").put({ id: 1, text: "Hello" });
+```
+
+The raw API is verbose and event-based, so most teams use a tiny wrapper like **idb** or **Dexie** that turns it into clean promises. Reach for IndexedDB when the data is large, structured, queried, or needed offline — it's the foundation of offline-capable apps.
+
+## The Cache API (and a Word on Offline)
+
+For caching network *responses* (assets, API results), the **Cache API** — usually driven by a **service worker** — stores `Request`/`Response` pairs and is what makes Progressive Web Apps work offline:
+
+```js
+const cache = await caches.open("v1");
+await cache.add("/styles.css");          // fetch and store
+const res = await cache.match("/styles.css"); // serve from cache
+```
+
+This is a specialised tool for offline-first and performance; you reach for it when building a PWA, not for everyday state.
+
+## Choosing: A Quick Map
+
+| Need | Use |
+|---|---|
+| Small value, persist across visits, JS-only | **localStorage** |
+| Temporary, this-tab-only | **sessionStorage** |
+| Server must read it each request (auth, session) | **Cookie** (`HttpOnly`) |
+| Large/structured/queryable/offline data | **IndexedDB** |
+| Cache network responses for offline | **Cache API** + service worker |
+
+## Common Mistakes
+
+- **Storing tokens/secrets in localStorage** — any script on the page can read them (XSS exposure).
+- Forgetting `JSON.stringify`/`parse` and storing `[object Object]` by accident.
+- Using cookies for client-only data, bloating every request to the server.
+- Expecting `localStorage` to be per-tab — it's shared across all tabs of the origin (use `sessionStorage` for per-tab).
+- Not handling `JSON.parse` failures on corrupt/old stored data — wrap it in try/catch.
+- Treating `localStorage` as unlimited — it's ~5–10 MB and synchronous; use IndexedDB for big data.
+- Assuming stored data is always present — users clear it, and private mode may disable it; code defensively.
+
+## Exercises
+
+Try each before opening the solution.
+
+### Exercise 1 — Persist a theme
+
+Save a theme choice so it survives reloads, and read it back with a default.
+
+<details>
+
+<summary>Show solution</summary>
+
+```js
+function setTheme(theme) { localStorage.setItem("theme", theme); }
+function getTheme() { return localStorage.getItem("theme") ?? "light"; }
+```
+
+`localStorage` persists across reloads; `?? "light"` supplies a default the first time, when nothing is stored yet.
+
+</details>
+
+### Exercise 2 — Store and read an object
+
+Save a settings object and read it back as a usable object, safely.
+
+<details>
+
+<summary>Show solution</summary>
+
+```js
+function saveSettings(obj) {
+  localStorage.setItem("settings", JSON.stringify(obj));
+}
+function loadSettings() {
+  try {
+    return JSON.parse(localStorage.getItem("settings")) ?? {};
+  } catch {
+    return {};   // corrupt/old data → safe default
+  }
+}
+```
+
+Storage holds strings, so you stringify on save and parse on load — wrapped in `try/catch` because stored data can be corrupt or from an older version.
+
+</details>
+
+### Exercise 3 — Pick the right store
+
+A user's auth token, set by the server, must accompany every API request and stay hidden from JavaScript. Which mechanism, and why?
+
+<details>
+
+<summary>Show solution</summary>
+
+A **cookie** with the `HttpOnly` (and `Secure`, `SameSite`) flags. It's automatically sent with each request to the origin (which is what the server needs), and `HttpOnly` makes it unreadable from JavaScript, protecting it from XSS theft — exactly why `localStorage` is the wrong choice for tokens.
+
+</details>
+
+## The Mental Model to Keep
+
+Browser storage is about matching lifetime, scope, and size to the data. **localStorage** is simple, persistent, ~5–10 MB, string-only (JSON your objects), JS-readable — great for preferences, terrible for secrets. **sessionStorage** is the same but per-tab and temporary. **Cookies** exist for one reason — being sent to the *server* each request — so use them for auth/sessions (with `HttpOnly`/`Secure`/`SameSite`) and nothing else. For large, structured, or offline data, step up to **IndexedDB** (via a wrapper like idb/Dexie), and to **Cache API** + service workers for offline responses. Code defensively — storage can be empty, corrupt, or disabled — and never put a token where a script can read it.

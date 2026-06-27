@@ -1,0 +1,233 @@
+---
+title: "Error Handling & Debugging: Failing Gracefully and Finding Bugs Fast"
+description: "A practical guide to handling errors and debugging in JavaScript — try/catch/finally, the Error object and custom error classes, throwing well, async error handling, global handlers, and a working DevTools debugging toolkit (breakpoints, the call stack, console methods, source maps) — with hands-on exercises and solutions."
+publishedAt: "2026-06-19"
+translationKey: "error-handling-debugging"
+tags: ["JavaScript", "Errors", "Debugging", "Advanced"]
+---
+
+Two skills quietly separate professionals from beginners: writing code that **fails gracefully** instead of crashing, and **finding bugs fast** instead of staring at the screen. Both come down to understanding how errors flow through JavaScript and how to drive the debugger. This post covers handling errors deliberately — synchronous and async — and a working DevTools toolkit that's far more powerful than scattering `console.log`. (Async error flow builds on [promises](/blog/promises) and [async/await](/blog/async-await).)
+
+> Errors aren't failures of your code — they're a *channel*. The skill is deciding, at each layer, whether to **handle** an error (recover), **transform** it (add context), or **let it propagate** (someone above knows better). Swallowing errors silently is the one universally wrong choice.
+
+## `try` / `catch` / `finally`
+
+The core construct. Code in `try` runs; if anything throws, control jumps to `catch` with the error; `finally` runs no matter what:
+
+```js
+try {
+  const data = JSON.parse(input);   // throws on invalid JSON
+  render(data);
+} catch (err) {
+  console.error("Parse failed:", err.message);
+  showFallback();
+} finally {
+  hideSpinner();                    // always runs — success or failure
+}
+```
+
+`finally` is for cleanup that must happen either way (closing a resource, hiding a loader). Keep `try` blocks focused around the operations that can actually throw, rather than wrapping huge swaths of code.
+
+## The Error Object
+
+A thrown error is normally an `Error` object (or a subclass) with useful properties:
+
+```js
+const err = new Error("Something broke");
+err.message;  // "Something broke"
+err.name;     // "Error"
+err.stack;    // a stack trace string — where it was thrown
+```
+
+Built-in subclasses carry meaning: `TypeError` (wrong type), `RangeError` (out of range), `SyntaxError` (parse failure), `ReferenceError` (undefined variable). **Always throw `Error` objects, never strings** — a string has no stack trace and breaks tooling:
+
+```js
+throw "bad";                 // ❌ no stack, no name
+throw new Error("bad input"); // ✅ proper error
+```
+
+## Custom Error Classes
+
+For domain-specific failures, subclass `Error`. This lets callers catch *specific* error types and react differently:
+
+```js
+class ValidationError extends Error {
+  constructor(message, field) {
+    super(message);
+    this.name = "ValidationError";
+    this.field = field;        // extra context
+  }
+}
+
+function save(user) {
+  if (!user.email) throw new ValidationError("Email required", "email");
+}
+
+try {
+  save({});
+} catch (err) {
+  if (err instanceof ValidationError) {
+    highlightField(err.field);   // handle this kind specifically
+  } else {
+    throw err;                   // re-throw anything we don't understand
+  }
+}
+```
+
+The `instanceof` check is the key move — it lets one `catch` distinguish a validation problem from a programming bug and handle each appropriately.
+
+## Async Error Handling
+
+With `async/await`, the same `try/catch` works because an awaited rejection *throws*:
+
+```js
+async function load() {
+  try {
+    const res = await fetch("/api/data");
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    console.error(err);
+    throw err;
+  }
+}
+```
+
+With raw promises, use `.catch()` instead. The critical rule: an **unhandled promise rejection** doesn't get caught by a surrounding `try/catch` unless you `await` it — a forgotten `await` lets the error escape silently.
+
+## Global Handlers (the Safety Net)
+
+Catch what slips through, so you can log it to a monitoring service rather than losing it:
+
+```js
+// uncaught synchronous errors
+window.addEventListener("error", (e) => report(e.error));
+
+// unhandled promise rejections
+window.addEventListener("unhandledrejection", (e) => report(e.reason));
+```
+
+These are a *last resort* for observability, not a substitute for handling errors where they occur. (In Node, the equivalents are `process.on("uncaughtException")` and `"unhandledRejection"`.)
+
+## Debugging: Beyond `console.log`
+
+`console.log` works, but the **debugger** is faster for anything non-trivial. Set a **breakpoint** (click the line number in DevTools' Sources panel, or write `debugger;` in code) and execution pauses there, letting you:
+
+- **Inspect every variable** in scope at that moment,
+- **Read the call stack** — the chain of function calls that got you here,
+- **Step through** line by line: step over, step into, step out,
+- **Watch expressions** and set **conditional breakpoints** (pause only when `i === 42`).
+
+This beats `console.log` because you see *all* state at once and can change what you inspect without re-running.
+
+## A Better `console`
+
+The console has far more than `log`:
+
+```js
+console.error("...");   // red, with a stack trace
+console.warn("...");    // yellow
+console.table(arrayOfObjects);   // tabular view — great for data
+console.group("Request"); /* ... */ console.groupEnd(); // nested logs
+console.assert(x > 0, "x must be positive"); // logs only if false
+console.time("fetch"); /* ... */ console.timeEnd("fetch"); // duration
+console.trace();        // print the call stack here
+```
+
+`console.table` and `console.group` alone make debugging data-heavy code far clearer than a wall of `log` lines.
+
+## Source Maps
+
+Your shipped code is bundled and minified — unreadable. **Source maps** map that back to your original files, so breakpoints and stack traces line up with the code you actually wrote. They're generated by your bundler; just make sure they're enabled in development (and uploaded to your error-monitoring tool for production traces).
+
+## Common Mistakes
+
+- **Swallowing errors** — an empty `catch {}` hides the bug instead of surfacing it.
+- **Throwing strings** instead of `Error` objects, losing the stack trace.
+- Catching too broadly and treating a programming bug like an expected failure.
+- Forgetting `await`, so a rejected promise escapes the surrounding `try/catch`.
+- Logging an error and continuing as if nothing happened, leaving corrupt state.
+- Leaving `console.log`/`debugger` statements in shipped code.
+- Relying only on global handlers instead of handling errors close to where they occur.
+- Showing raw error messages to users instead of a friendly fallback (and logging the detail).
+
+## Exercises
+
+Try each before opening the solution.
+
+### Exercise 1 — Guard a parse
+
+Safely parse a JSON string, returning `null` (not crashing) if it's invalid.
+
+<details>
+
+<summary>Show solution</summary>
+
+```js
+function safeParse(str) {
+  try {
+    return JSON.parse(str);
+  } catch {
+    return null;     // invalid JSON → graceful fallback
+  }
+}
+```
+
+`JSON.parse` throws on bad input; the `catch` converts that into a `null` the caller can check, instead of an uncaught crash.
+
+</details>
+
+### Exercise 2 — A custom error
+
+Create a `NotFoundError` and throw it from a `getUser` that can't find a user.
+
+<details>
+
+<summary>Show solution</summary>
+
+```js
+class NotFoundError extends Error {
+  constructor(id) {
+    super(`User ${id} not found`);
+    this.name = "NotFoundError";
+  }
+}
+function getUser(id) {
+  const user = db.find(id);
+  if (!user) throw new NotFoundError(id);
+  return user;
+}
+```
+
+Subclassing `Error` lets callers do `catch (e) { if (e instanceof NotFoundError) ... }` and treat "not found" differently from other failures.
+
+</details>
+
+### Exercise 3 — Handle an async failure
+
+Wrap a `fetch` so a network or HTTP error is caught and logged, then re-thrown.
+
+<details>
+
+<summary>Show solution</summary>
+
+```js
+async function getData(url) {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    console.error(`getData(${url}) failed:`, err);
+    throw err;   // let the caller decide what to do
+  }
+}
+```
+
+The `try/catch` catches both the network rejection and the manual HTTP throw; re-throwing keeps the caller informed rather than silently returning `undefined`.
+
+</details>
+
+## The Mental Model to Keep
+
+Treat errors as a channel, not a catastrophe. Use **`try/catch/finally`** around the operations that can actually throw, always throw real **`Error` objects** (subclass them for domain failures so callers can `instanceof`-discriminate), and at each layer decide to handle, add context, or re-throw — never silently swallow. Async errors flow through the same `try/catch` *as long as you `await`*, with `.catch()` for raw promises and global handlers as a last-resort safety net. For finding bugs, graduate from `console.log` to the **debugger** — breakpoints, the call stack, stepping, and watches show you all state at once — and lean on the richer `console` methods and **source maps**. Code that fails gracefully and a developer who can drive the debugger: that combination is what makes bugs cheap instead of dreaded.

@@ -1,0 +1,223 @@
+---
+title: "Testing JavaScript: Confidence Through Automated Tests"
+description: "A practical guide to testing JavaScript — why tests matter, unit vs integration vs end-to-end, the arrange-act-assert structure, writing tests with Vitest, assertions and matchers, mocking, testing async code, what to test (and what not to), and test-driven development — with hands-on exercises and solutions."
+publishedAt: "2026-05-04"
+translationKey: "testing-javascript"
+tags: ["JavaScript", "Testing", "Vitest", "Advanced"]
+---
+
+Tests are how you stop being afraid of your own code. Without them, every change is a gamble — does this break something three files away? With them, you change code confidently and a red test tells you the instant something regresses. Testing isn't a separate discipline you bolt on at the end; it's a habit that makes you write better-structured code in the first place. This post covers the practical core: how to write good tests, what to test, and the tools to do it. (Pure functions from [functional JS](/blog/functional-javascript) are the easiest things to test, which is part of why that style pays off.)
+
+> A test is just code that runs your code and asserts the result is what you expect. Its real value isn't catching bugs today — it's the **confidence to change things tomorrow**, knowing the suite will catch anything you break.
+
+## The Testing Pyramid
+
+Tests come in layers, and a healthy suite has more of the cheap, fast ones:
+
+- **Unit tests** — test one function or module in isolation. Fast, numerous, pinpoint failures. The base of the pyramid.
+- **Integration tests** — test several pieces working together (a component plus its data layer). Fewer, slower, catch wiring bugs.
+- **End-to-end (E2E) tests** — drive the real app in a browser like a user would (with tools like Playwright). Few, slow, but verify the whole thing works.
+
+Aim for **many unit tests, some integration, a few E2E**. Inverting that — lots of slow E2E tests, few units — gives a suite that's slow and flaky.
+
+## Anatomy of a Test
+
+Every test follows the same three-part shape, **Arrange–Act–Assert**:
+
+```js
+import { describe, it, expect } from "vitest";
+
+function add(a, b) { return a + b; }
+
+describe("add", () => {
+  it("sums two numbers", () => {
+    const a = 2, b = 3;            // Arrange — set up inputs
+    const result = add(a, b);      // Act — run the thing
+    expect(result).toBe(5);        // Assert — check the outcome
+  });
+});
+```
+
+- **`describe`** groups related tests.
+- **`it`** (or `test`) is a single test case — name it as a sentence describing the behaviour.
+- **`expect(...).toBe(...)`** is the assertion — it fails the test if the value isn't what you expect.
+
+Good test names read like a spec: *"add sums two numbers,"* *"throws on negative input."*
+
+## Assertions and Matchers
+
+`expect` offers **matchers** for different kinds of checks:
+
+```js
+expect(2 + 2).toBe(4);                 // strict equality (===) for primitives
+expect({ a: 1 }).toEqual({ a: 1 });     // deep equality for objects/arrays
+expect([1, 2, 3]).toContain(2);
+expect("hello").toMatch(/ell/);         // regex
+expect(value).toBeNull();
+expect(value).toBeTruthy();
+expect(() => parse("")).toThrow();      // expects the function to throw
+expect(arr).toHaveLength(3);
+```
+
+The crucial distinction: **`toBe`** uses `===` (right for numbers, strings, booleans, same reference), while **`toEqual`** compares structure (right for objects and arrays, which aren't `===` even when identical in content).
+
+## Mocking
+
+When code depends on something slow, external, or unpredictable (an API, a timer, the current date), you **mock** it — replace it with a controlled fake so the test stays fast and deterministic:
+
+```js
+import { vi, expect, it } from "vitest";
+
+it("calls the callback once", () => {
+  const cb = vi.fn();                 // a mock function that records calls
+  doWork(cb);
+  expect(cb).toHaveBeenCalledOnce();
+  expect(cb).toHaveBeenCalledWith("done");
+});
+
+// mock a whole module (e.g. the network)
+vi.mock("./api", () => ({
+  fetchUser: vi.fn(() => Promise.resolve({ name: "Ada" })),
+}));
+```
+
+`vi.fn()` creates a spy you can assert was called (and how). Mock the *boundaries* — network, filesystem, randomness, time — so your test exercises your logic, not someone else's server.
+
+## Testing Async Code
+
+Async tests just `await` the thing and assert on the result — the test function is `async`:
+
+```js
+it("loads a user", async () => {
+  const user = await loadUser(1);
+  expect(user.name).toBe("Ada");
+});
+
+it("rejects on a bad id", async () => {
+  await expect(loadUser(-1)).rejects.toThrow();
+});
+```
+
+`.resolves`/`.rejects` let you assert on a promise's outcome directly. The key is to `await` (or return) the assertion so the test waits for it — forgetting that makes the test pass before the async work finishes.
+
+## What to Test (and What Not To)
+
+Good testing is about *what* you cover, not chasing 100%:
+
+- **Test behaviour, not implementation** — assert *what* a function returns, not *how* it computes it, so refactors don't break tests.
+- **Prioritise** the critical paths, edge cases (empty input, zero, negative, null), and anything that's broken before.
+- **Don't test** the language or libraries (that `Array.map` works), trivial getters, or private internals.
+- **Pure functions are easiest** — same input, same output, no setup — which is a reason to structure logic that way.
+
+A test that breaks every time you refactor without changing behaviour is testing the wrong thing.
+
+## Test-Driven Development, Briefly
+
+**TDD** flips the order: write a *failing* test first, then the code to pass it, then refactor — the "red, green, refactor" loop:
+
+```js
+// 1. RED — write the test for behaviour that doesn't exist yet
+it("formats a price", () => {
+  expect(formatPrice(5)).toBe("$5.00");
+});
+// 2. GREEN — write the minimal formatPrice to pass it
+// 3. REFACTOR — clean up, with the test guarding you
+```
+
+You don't have to do TDD always, but writing the test first clarifies what the function *should* do and guarantees the test actually fails when the behaviour is missing.
+
+## Common Mistakes
+
+- Testing **implementation details** instead of behaviour, so harmless refactors break tests.
+- Forgetting to `await`/return an async assertion, so the test passes before the work finishes.
+- Using `toBe` on objects/arrays (it's `===`, so it fails) — use `toEqual`.
+- Not mocking external boundaries, making tests slow, flaky, or network-dependent.
+- Chasing 100% coverage by testing trivial code, while missing the critical edge cases.
+- Tests that depend on each other or on order — each should be independent and repeatable.
+- Writing one giant test that asserts ten things — small, focused tests pinpoint failures.
+
+## Exercises
+
+Try each before opening the solution.
+
+### Exercise 1 — A first unit test
+
+Write a test for `function isEven(n) { return n % 2 === 0; }`.
+
+<details>
+
+<summary>Show solution</summary>
+
+```js
+import { describe, it, expect } from "vitest";
+
+describe("isEven", () => {
+  it("is true for even numbers", () => {
+    expect(isEven(4)).toBe(true);
+  });
+  it("is false for odd numbers", () => {
+    expect(isEven(3)).toBe(false);
+  });
+});
+```
+
+Two cases cover the behaviour: a true path and a false path. `toBe` is right here because the result is a boolean primitive.
+
+</details>
+
+### Exercise 2 — toBe vs toEqual
+
+Why does `expect({ a: 1 }).toBe({ a: 1 })` fail, and what should you use?
+
+<details>
+
+<summary>Show solution</summary>
+
+`toBe` uses `===`, which for objects checks *reference* identity — two different object literals are never `===`, even with identical contents, so it fails. Use `toEqual`, which compares structure:
+
+```js
+expect({ a: 1 }).toEqual({ a: 1 }); // passes
+```
+
+</details>
+
+### Exercise 3 — Test an async function
+
+Write a test that `loadUser(1)` resolves to an object whose `name` is `"Ada"`.
+
+<details>
+
+<summary>Show solution</summary>
+
+```js
+it("loads Ada", async () => {
+  const user = await loadUser(1);
+  expect(user.name).toBe("Ada");
+});
+```
+
+The `async` test function `await`s the promise so the assertion runs on the resolved value — without `await`, the test would finish before the data arrived.
+
+</details>
+
+### Exercise 4 — Test that it throws
+
+`withdraw(amount)` should throw on a negative amount. Test it.
+
+<details>
+
+<summary>Show solution</summary>
+
+```js
+it("rejects negative amounts", () => {
+  expect(() => withdraw(-5)).toThrow();
+});
+```
+
+You pass a *function* to `expect` (not the call's result), so the matcher can invoke it and catch the throw — calling `withdraw(-5)` directly would throw before `expect` ever ran.
+
+</details>
+
+## The Mental Model to Keep
+
+A test runs your code and asserts the outcome — its payoff is the **confidence to change code tomorrow**. Favour the pyramid: lots of fast **unit** tests, some **integration**, a few **E2E**. Structure each as **Arrange–Act–Assert**, name it like a behaviour, and pick the right matcher — **`toBe`** for primitives/references, **`toEqual`** for object structure. **Mock the boundaries** (network, time, randomness) so tests are fast and deterministic, `await` your async assertions, and **test behaviour, not implementation**, so refactors stay green. Cover the critical paths and edge cases rather than chasing 100%. Write tests as a habit — sometimes first, TDD-style — and your codebase becomes something you can change fearlessly instead of tiptoe around.

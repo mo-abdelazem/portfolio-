@@ -1,0 +1,266 @@
+---
+title: "JavaScript Promises: Taming Asynchronous Code"
+description: "A complete, practical guide to Promises — what they are and the three states, creating and consuming them, chaining with .then/.catch/.finally, the combinators (all, allSettled, race, any), error propagation, microtask timing, and the common mistakes — with hands-on exercises and solutions."
+publishedAt: "2026-06-27"
+translationKey: "promises"
+tags: ["JavaScript", "Promises", "Async", "Frontend"]
+---
+
+A Promise is JavaScript's answer to "this value doesn't exist yet, but it will." Before promises, asynchronous code meant nested callbacks that drifted off the right edge of the screen — the infamous "callback hell." Promises flatten that into a readable chain and give errors a single place to land. They're also the foundation `async/await` is built on, so understanding them properly makes everything downstream click. (This builds on the event loop from [JavaScript fundamentals](/blog/javascript-fundamentals).)
+
+> A Promise is an object representing a future value. It's in exactly one of three states — **pending**, **fulfilled**, or **rejected** — and once it settles (fulfilled or rejected), it's frozen there forever. Everything else is about reacting to that settlement.
+
+## The Three States
+
+A promise starts **pending**. It then settles exactly once, into one of two final states:
+
+- **fulfilled** — the operation succeeded, and the promise holds a *value*.
+- **rejected** — the operation failed, and the promise holds a *reason* (an error).
+
+Once settled it never changes again — a fulfilled promise can't later reject. This immutability is what makes promises predictable.
+
+```js
+const p = fetch("/api/data");  // pending now...
+// ...later it settles: fulfilled with a Response, or rejected with an error
+```
+
+## Consuming a Promise
+
+You react to a settled promise with three methods:
+
+```js
+fetch("/api/user")
+  .then(response => response.json())   // runs on fulfillment, receives the value
+  .then(user => console.log(user))     // each .then passes its result to the next
+  .catch(error => console.error(error)) // runs on ANY rejection above
+  .finally(() => hideSpinner());        // always runs, settled either way
+```
+
+- **`.then(onFulfilled)`** — runs when the promise fulfills, receiving its value. Whatever it *returns* becomes the value of the next link.
+- **`.catch(onRejected)`** — runs when any promise earlier in the chain rejects.
+- **`.finally(fn)`** — runs regardless of outcome; perfect for cleanup like hiding a loading spinner.
+
+## Chaining: The Whole Point
+
+The magic is that **`.then` returns a new promise**, so calls chain into a flat sequence instead of nesting. And if a `.then` returns a promise, the chain *waits* for it before continuing:
+
+```js
+fetch("/api/user/1")
+  .then(res => res.json())
+  .then(user => fetch(`/api/posts?author=${user.id}`)) // returns a promise...
+  .then(res => res.json())                              // ...the chain waits for it
+  .then(posts => console.log(posts))
+  .catch(err => console.error("Something failed:", err));
+```
+
+Compare that to the callback-nested version of the same logic, which would march several indents to the right. The chain reads top to bottom, and **one `.catch` at the end handles a failure from any step** — errors propagate down the chain until something catches them.
+
+## Creating a Promise
+
+Most of the time you consume promises from APIs like `fetch`. When you need to wrap something callback-based (a timer, an old API), use the constructor — it hands you `resolve` and `reject`:
+
+```js
+function delay(ms) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);   // fulfill after ms milliseconds
+  });
+}
+
+await delay(1000);  // pause for a second
+
+function loadImage(src) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);          // fulfill with the image
+    img.onerror = () => reject(new Error(`Failed to load ${src}`)); // reject
+    img.src = src;
+  });
+}
+```
+
+Call `resolve(value)` to fulfill, `reject(reason)` to fail. Two ready-made shortcuts exist for already-known values:
+
+```js
+Promise.resolve(42);              // an already-fulfilled promise
+Promise.reject(new Error("no")); // an already-rejected promise
+```
+
+## The Combinators
+
+When you have *several* promises, four static methods combine them — knowing which to reach for is a mark of fluency:
+
+```js
+// Wait for ALL to fulfill; reject as soon as ANY rejects.
+const [a, b, c] = await Promise.all([fetchA(), fetchB(), fetchC()]);
+
+// Wait for all to SETTLE; never rejects — you inspect each result.
+const results = await Promise.allSettled([fetchA(), fetchB()]);
+// → [{status:"fulfilled", value}, {status:"rejected", reason}]
+
+// Settle as soon as the FIRST one settles (fulfill or reject).
+const fastest = await Promise.race([fetchData(), timeout(5000)]);
+
+// Fulfill with the first SUCCESS; reject only if all reject.
+const firstOk = await Promise.any([mirror1(), mirror2(), mirror3()]);
+```
+
+- **`Promise.all`** — "I need all of these." Fails fast if any fails. The go-to for parallel fetches you all depend on.
+- **`Promise.allSettled`** — "Run all, tell me how each went." Nothing can make it reject; ideal when partial failure is acceptable.
+- **`Promise.race`** — first to settle wins. Classic use: race a request against a `timeout` to enforce a deadline.
+- **`Promise.any`** — first to *succeed* wins. Good for trying redundant sources.
+
+## Running in Parallel vs Sequence
+
+A subtle but important performance point: promises are *eager* — the work starts the moment you create them. So **how** you await them decides whether they run together or one-after-another:
+
+```js
+// ❌ Sequential — B doesn't even start until A finishes
+const a = await getA();
+const b = await getB();   // total time = A + B
+
+// ✅ Parallel — both start immediately, then you await both
+const [a2, b2] = await Promise.all([getA(), getB()]); // total time = max(A, B)
+```
+
+If the two operations don't depend on each other, `Promise.all` can roughly halve the wait.
+
+## Error Handling and Propagation
+
+A rejection skips every `.then` until it hits a `.catch`. A thrown error inside a `.then` also becomes a rejection — so synchronous and asynchronous failures funnel to the same place:
+
+```js
+fetch("/api/data")
+  .then(res => {
+    if (!res.ok) throw new Error(`HTTP ${res.status}`); // becomes a rejection
+    return res.json();
+  })
+  .then(data => process(data))
+  .catch(err => {
+    // catches the HTTP error, a JSON parse failure, OR a throw in process()
+    console.error(err);
+  });
+```
+
+Put your `.catch` at the **end** so it covers the whole chain. A `.catch` in the middle handles errors up to that point and then *recovers* — the chain continues fulfilled afterward, which is occasionally what you want but a common source of surprise.
+
+## Microtask Timing
+
+Promise callbacks run as **microtasks** — they have priority over `setTimeout` (a macrotask) and run after the current synchronous code finishes:
+
+```js
+console.log("1");
+setTimeout(() => console.log("2"), 0);
+Promise.resolve().then(() => console.log("3"));
+console.log("4");
+// Output: 1, 4, 3, 2  — the promise (3) jumps ahead of the timer (2)
+```
+
+This is why a `.then` never runs "in the middle" of your synchronous code, and why promise work is consistently scheduled ahead of timers.
+
+## Common Mistakes
+
+- **Forgetting to return** inside a `.then` — the next link receives `undefined` and the chain breaks silently.
+- **Not returning/awaiting a nested promise**, so the chain doesn't wait for it and ordering goes wrong.
+- **Omitting `.catch`** — an unhandled rejection warns in the console and can crash Node.
+- **`await`-ing in a loop** for independent work instead of `Promise.all` — needless sequential slowness.
+- **Using `Promise.all` when one failure shouldn't kill the batch** — reach for `allSettled`.
+- **Mixing callbacks and promises** in the constructor and calling `resolve` more than once (only the first wins, silently).
+- **Assuming `.then` runs synchronously** — it's always a microtask, never immediate.
+
+## Exercises
+
+Try each before opening the solution.
+
+### Exercise 1 — Predict the order
+
+```js
+console.log("A");
+Promise.resolve().then(() => console.log("B"));
+console.log("C");
+```
+
+<details>
+
+<summary>Show solution</summary>
+
+`A, C, B`. The synchronous lines (`A`, `C`) run first; the `.then` callback (`B`) is a microtask that runs only after the current synchronous code completes.
+
+</details>
+
+### Exercise 2 — Promisify a timer
+
+Write `delay(ms)` that returns a promise fulfilling after `ms` milliseconds, then use it.
+
+<details>
+
+<summary>Show solution</summary>
+
+```js
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+delay(500).then(() => console.log("half a second later"));
+```
+
+`setTimeout` calls `resolve` after the delay; nothing is passed, so the promise fulfills with `undefined` — which is fine when you only care about the timing.
+
+</details>
+
+### Exercise 3 — Parallel fetch
+
+You need a user and their settings from two independent endpoints. Fetch both as fast as possible.
+
+<details>
+
+<summary>Show solution</summary>
+
+```js
+const [user, settings] = await Promise.all([
+  fetch("/api/user").then(r => r.json()),
+  fetch("/api/settings").then(r => r.json()),
+]);
+```
+
+Both requests start immediately; `Promise.all` waits for both and resolves to an array of results. Total time is the slower of the two, not their sum.
+
+</details>
+
+### Exercise 4 — Timeout a slow request
+
+Reject if `fetchData()` takes longer than 3 seconds.
+
+<details>
+
+<summary>Show solution</summary>
+
+```js
+const timeout = (ms) =>
+  new Promise((_, reject) => setTimeout(() => reject(new Error("Timed out")), ms));
+
+const data = await Promise.race([fetchData(), timeout(3000)]);
+```
+
+`Promise.race` settles with whichever finishes first. If `fetchData` is slower than the timeout, the timeout's rejection wins and you get a clear error.
+
+</details>
+
+### Exercise 5 — Survive partial failure
+
+Fetch three endpoints and log the data from whichever succeed, ignoring the ones that fail.
+
+<details>
+
+<summary>Show solution</summary>
+
+```js
+const results = await Promise.allSettled([fetchA(), fetchB(), fetchC()]);
+const ok = results.filter(r => r.status === "fulfilled").map(r => r.value);
+console.log(ok);
+```
+
+`allSettled` never rejects, so one failed endpoint doesn't sink the others — you filter for `"fulfilled"` and keep the values that came through.
+
+</details>
+
+## The Mental Model to Keep
+
+A Promise is a one-shot box for a future value: **pending** until it settles, then permanently **fulfilled** (a value) or **rejected** (an error). Consume it with `.then`/`.catch`/`.finally`, and remember that **`.then` returns a new promise**, so returning a value or another promise *chains* — a flat sequence with one `.catch` at the end catching any failure. Combine multiples with the right tool: **`all`** (need every one), **`allSettled`** (tolerate failures), **`race`** (first to settle, e.g. timeouts), **`any`** (first success). Because promises are eager and their callbacks run as **microtasks**, start independent work together and await with `Promise.all` for parallelism. Once this is solid, [`async/await`](/blog/async-await) is just nicer syntax over exactly these mechanics.

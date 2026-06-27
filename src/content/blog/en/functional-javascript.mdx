@@ -1,0 +1,241 @@
+---
+title: "Functional JavaScript: Pure Functions, Immutability & Composition"
+description: "A practical guide to functional programming in JavaScript — pure functions and side effects, immutability and how to update data without mutation, first-class and higher-order functions, map/filter/reduce, composition and currying, and why this style underpins React — with hands-on exercises and solutions."
+publishedAt: "2026-06-15"
+translationKey: "functional-javascript"
+tags: ["JavaScript", "Functional", "Immutability", "Advanced"]
+---
+
+Functional programming isn't an exotic paradigm you have to fully convert to — it's a set of habits that make JavaScript more predictable and easier to test. Pure functions, immutable updates, and composition are the same ideas React, Redux, and modern data pipelines are built on. You don't need category theory; you need a handful of techniques that reduce bugs by removing the thing that causes most of them: **uncontrolled change**. (Builds on functions and array methods from [JavaScript fundamentals](/blog/javascript-fundamentals).)
+
+> The core promise: a **pure function** with **immutable data** always does the same thing for the same input and changes nothing else. Code built that way is trivially testable, safe to reuse, and free of the "something elsewhere mutated my data" class of bugs.
+
+## Pure Functions
+
+A function is **pure** if it satisfies two rules: its output depends *only* on its inputs, and it causes no **side effects** (no mutating external state, no I/O, no logging, no DOM changes). Same input, same output, every time:
+
+```js
+// Pure — depends only on its arguments, changes nothing
+function add(a, b) { return a + b; }
+function fullName(user) { return `${user.first} ${user.last}`; }
+
+// Impure — reads/writes external state
+let total = 0;
+function addToTotal(n) { total += n; }   // side effect: mutates `total`
+function now() { return Date.now(); }     // output depends on the clock
+```
+
+Pure functions are predictable, testable in isolation (no setup, no mocks), cacheable, and safe to run in any order. You can't make *everything* pure — apps need I/O somewhere — but you can push the impure parts to the edges and keep the core logic pure.
+
+## Side Effects, Quarantined
+
+A side effect is anything a function does beyond returning a value: writing to a variable outside itself, calling an API, touching the DOM, logging. They're necessary, but the functional habit is to **isolate** them so most of your code stays pure:
+
+```js
+// ❌ logic and effect tangled
+function applyDiscount(cart) {
+  cart.total = cart.total * 0.9;          // mutates the input
+  localStorage.setItem("cart", JSON.stringify(cart)); // side effect mixed in
+}
+
+// ✅ pure calculation, effect kept separate
+function withDiscount(cart) {
+  return { ...cart, total: cart.total * 0.9 };  // returns a new cart
+}
+localStorage.setItem("cart", JSON.stringify(withDiscount(cart))); // effect at the edge
+```
+
+## Immutability
+
+**Immutability** means not changing data in place — instead of mutating an object or array, you create a new one with the change. This is the single biggest source of safety, because [objects are shared by reference](/blog/javascript-fundamentals): mutating one can surprise every other place holding the same reference.
+
+```js
+// ❌ mutation — affects everyone holding this array/object
+arr.push(4);
+user.age = 30;
+
+// ✅ create new values with the spread operator
+const arr2 = [...arr, 4];
+const user2 = { ...user, age: 30 };
+
+// arrays: prefer the methods that return new arrays
+const doubled = nums.map(n => n * 2);          // not a loop that mutates
+const active  = users.filter(u => u.active);   // new array
+const without = arr.filter((_, i) => i !== 2); // remove index 2 immutably
+```
+
+Updating nested data immutably means spreading at each level you change:
+
+```js
+const next = {
+  ...state,
+  user: { ...state.user, name: "Ada" },   // new user object inside a new state
+};
+```
+
+This exact pattern is how you update React state — never mutate, always return a new object — which is why functional habits transfer directly to modern frameworks.
+
+## First-Class and Higher-Order Functions
+
+Functions are **values** in JavaScript: you can store them, pass them, and return them. A **higher-order function** is one that takes or returns a function — the foundation of `map`/`filter`/`reduce` and of reusable abstractions:
+
+```js
+// takes a function
+[1, 2, 3].map(n => n * 2);
+
+// returns a function
+function multiplyBy(factor) {
+  return (n) => n * factor;
+}
+const triple = multiplyBy(3);
+triple(5); // 15
+
+// takes AND returns — a reusable wrapper
+function withLogging(fn) {
+  return (...args) => {
+    console.log("calling with", args);
+    return fn(...args);
+  };
+}
+```
+
+## map / filter / reduce as a Pipeline
+
+The functional trio expresses most data transformations declaratively — *what* you want, not the loop mechanics. They chain into readable pipelines:
+
+```js
+const totalActiveSpend = users
+  .filter(u => u.active)            // keep some
+  .map(u => u.totalSpent)           // transform each
+  .reduce((sum, n) => sum + n, 0);  // fold to one value
+```
+
+`reduce` is the general one — it folds a list into any single result (a sum, an object, a grouped map):
+
+```js
+// group items by category
+const byCategory = items.reduce((acc, item) => {
+  (acc[item.category] ??= []).push(item);
+  return acc;
+}, {});
+```
+
+## Composition and Currying
+
+**Composition** builds a complex operation by chaining small functions — the output of one feeds the next:
+
+```js
+const compose = (...fns) => (x) => fns.reduceRight((acc, fn) => fn(acc), x);
+
+const trim    = (s) => s.trim();
+const lower   = (s) => s.toLowerCase();
+const slugify = compose((s) => s.replace(/\s+/g, "-"), lower, trim);
+
+slugify("  Hello World  "); // "hello-world"
+```
+
+**Currying** turns a multi-argument function into a chain of single-argument functions, which makes functions easy to pre-configure and compose:
+
+```js
+const add = (a) => (b) => a + b;
+const add10 = add(10);   // pre-applied
+add10(5); // 15
+```
+
+Both let you build behaviour from small, named, reusable pieces instead of one big function — easier to read, test, and recombine.
+
+## Common Mistakes
+
+- Calling `map`/`filter` "functional" while mutating something inside the callback (a side effect).
+- Using `forEach` to build a result by pushing to an outer array — `map`/`reduce` express it purely.
+- Thinking spread makes a *deep* copy — it's shallow; nested objects are still shared.
+- Mutating React (or any) state directly instead of returning a new object — breaks change detection.
+- `sort()` and `reverse()` mutate in place — copy first (`[...arr].sort()`) if you need immutability.
+- Over-abstracting with currying/composition where a plain function would be clearer.
+- Forgetting `reduce`'s initial value, which misbehaves on empty arrays.
+
+## Exercises
+
+Try each before opening the solution.
+
+### Exercise 1 — Make it pure
+
+Rewrite this to be pure (no mutation, no external state):
+
+```js
+let count = 0;
+function tag(item) { count++; item.tagged = true; }
+```
+
+<details>
+
+<summary>Show solution</summary>
+
+```js
+function tag(item) {
+  return { ...item, tagged: true };   // new object, no external count
+}
+```
+
+The pure version returns a new tagged item and leaves counting to the caller (e.g. `items.map(tag).length`), removing both the mutation and the external `count`.
+
+</details>
+
+### Exercise 2 — Immutable update
+
+Given `const state = { user: { name: "A", age: 20 } }`, produce a new state with age 21, without mutating `state`.
+
+<details>
+
+<summary>Show solution</summary>
+
+```js
+const next = { ...state, user: { ...state.user, age: 21 } };
+```
+
+Spread at *each* level you change: a new `state` object containing a new `user` object — the original `state` is untouched.
+
+</details>
+
+### Exercise 3 — One pipeline
+
+From `orders` (each `{ paid, amount }`), compute the total of paid orders using filter/map/reduce.
+
+<details>
+
+<summary>Show solution</summary>
+
+```js
+const total = orders
+  .filter(o => o.paid)
+  .map(o => o.amount)
+  .reduce((sum, a) => sum + a, 0);
+```
+
+Each step is pure and returns a new array (or value), so the pipeline reads as a description of the result rather than loop bookkeeping.
+
+</details>
+
+### Exercise 4 — Compose two functions
+
+Write `shout = compose(exclaim, upper)` so `shout("hi")` is `"HI!"`.
+
+<details>
+
+<summary>Show solution</summary>
+
+```js
+const compose = (f, g) => (x) => f(g(x));
+const upper = (s) => s.toUpperCase();
+const exclaim = (s) => s + "!";
+const shout = compose(exclaim, upper);
+shout("hi"); // "HI!"
+```
+
+`compose(f, g)` applies `g` first, then `f` — so the string is uppercased, then the `!` is added.
+
+</details>
+
+## The Mental Model to Keep
+
+Functional JavaScript is about removing uncontrolled change. Write **pure functions** — output depends only on input, no side effects — and push the unavoidable effects (I/O, DOM, storage) to the edges. Treat data as **immutable**: update by creating new values with spread and the array methods that *return* new arrays, never by mutating shared references (this is exactly how React state works). Lean on **higher-order functions** and the **map/filter/reduce** pipeline to say *what* you want declaratively, and assemble behaviour from small pieces with **composition** and **currying**. You don't have to be a purist — just pulling your core logic toward pure, immutable functions removes a whole category of bugs and makes everything easier to test.

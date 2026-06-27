@@ -1,0 +1,243 @@
+---
+title: "TypeScript: A Practical Introduction for JavaScript Developers"
+description: "A practical guide to TypeScript — why static types matter, basic and inferred types, interfaces and type aliases, unions and literals, generics, optional and readonly, narrowing, typing functions and async, and how it integrates into a real project — with hands-on exercises and solutions."
+publishedAt: "2026-05-12"
+translationKey: "typescript-intro"
+tags: ["TypeScript", "JavaScript", "Types", "Advanced"]
+---
+
+TypeScript is JavaScript with a type system bolted on — and once you've used it, going back feels like coding blindfolded. It catches a whole class of bugs *before you run the code* (typos, wrong arguments, `undefined` you forgot to handle), and it powers the autocomplete and refactoring that make large codebases manageable. The best part: it's *gradual* — valid JavaScript is valid TypeScript, so you adopt it as much or as little as you want. This is the practical core that covers most day-to-day use. (Assumes the [JavaScript fundamentals](/blog/javascript-fundamentals).)
+
+> TypeScript adds types that exist *only at compile time*. They're checked by the compiler, then **erased** — the browser runs plain JavaScript. So types cost nothing at runtime; their entire value is catching mistakes and guiding your editor while you write.
+
+## Why Types
+
+Plain JavaScript lets this ship and crash in production:
+
+```js
+function greet(user) { return "Hi " + user.name.toUpperCase(); }
+greet({ nme: "Ada" });   // typo — crashes at runtime: name is undefined
+```
+
+TypeScript catches it as you type:
+
+```ts
+function greet(user: { name: string }) { return "Hi " + user.name.toUpperCase(); }
+greet({ nme: "Ada" });   // ❌ compile error: 'nme' doesn't match { name: string }
+```
+
+The error appears in your editor immediately, with the fix obvious. Multiply that across a large codebase and types prevent a steady stream of bugs while documenting intent.
+
+## Basic Types and Inference
+
+You annotate with `: type`, but TypeScript **infers** most types automatically — you rarely annotate variables:
+
+```ts
+let name: string = "Ada";
+let age: number = 36;
+let active: boolean = true;
+let tags: string[] = ["a", "b"];        // array
+let pair: [string, number] = ["x", 1];  // tuple — fixed positions/types
+
+let inferred = "hello";   // TS infers `string` — no annotation needed
+```
+
+Annotate **function parameters and return types** (which aren't inferred from usage) and let inference handle the rest:
+
+```ts
+function add(a: number, b: number): number {
+  return a + b;
+}
+```
+
+Two special types to know: **`any`** opts out of checking (avoid it — it defeats the point), and **`unknown`** is the safe version that forces you to check before use.
+
+## Interfaces and Type Aliases
+
+Describe the shape of an object with an `interface` or a `type` — they're largely interchangeable for objects:
+
+```ts
+interface User {
+  id: number;
+  name: string;
+  email?: string;          // optional — may be missing
+  readonly createdAt: Date; // can't be reassigned after creation
+}
+
+type Point = { x: number; y: number };  // type alias — same idea
+
+function format(user: User): string {
+  return user.email ?? user.name;
+}
+```
+
+`?` marks a property optional; `readonly` prevents reassignment. Use `interface` for object shapes you might extend, `type` for unions and aliases (below) — but for plain objects either is fine.
+
+## Unions and Literal Types
+
+A **union** (`|`) says "one of these types," and **literal types** narrow to specific values — together they model real domains precisely:
+
+```ts
+type Status = "loading" | "success" | "error";  // only these three strings
+type Id = string | number;                        // either type
+
+function setStatus(s: Status) { /* ... */ }
+setStatus("success");   // ✅
+setStatus("done");      // ❌ not an allowed value
+
+let value: string | null = getValue();
+```
+
+Literal unions are one of TypeScript's most useful features — they turn "a string that's supposed to be one of a few values" into something the compiler enforces.
+
+## Narrowing
+
+When a value could be several types, TypeScript **narrows** it based on your checks — inside an `if`, it knows the more specific type:
+
+```ts
+function len(x: string | string[]): number {
+  if (typeof x === "string") {
+    return x.length;       // here TS knows x is a string
+  }
+  return x.length;          // here it knows x is string[]
+}
+
+function greet(name: string | null) {
+  if (name === null) return "Hi there";
+  return `Hi ${name.toUpperCase()}`;  // null already ruled out — safe
+}
+```
+
+This is how TypeScript handles `null`/`undefined` safely: it forces you to check, then *knows* the value is present afterward. Strict null checking is what eliminates "cannot read property of undefined."
+
+## Generics
+
+A **generic** is a type parameter — it lets a function or type work with *any* type while keeping the relationship between input and output:
+
+```ts
+function first<T>(arr: T[]): T | undefined {
+  return arr[0];
+}
+
+first([1, 2, 3]);        // T = number, returns number | undefined
+first(["a", "b"]);       // T = string, returns string | undefined
+
+// generic interface
+interface Box<T> { value: T; }
+const b: Box<number> = { value: 42 };
+```
+
+Without generics you'd either lose type information (returning `any`) or write a copy per type. `T` is a placeholder filled in at each call, so `first` keeps the element type intact. You see generics everywhere: `Array<T>`, `Promise<T>`, `Map<K, V>`.
+
+## Typing Functions and Async
+
+```ts
+// function type
+type Handler = (event: string) => void;
+
+// async — the return type is a Promise
+async function loadUser(id: number): Promise<User> {
+  const res = await fetch(`/api/user/${id}`);
+  return res.json();
+}
+```
+
+An `async` function's return type is always `Promise<Something>`. Typing the resolved shape (`Promise<User>`) means everything downstream that awaits it gets full type safety.
+
+## How It Fits a Project
+
+TypeScript compiles (`tsc`, or via your bundler) `.ts` files to `.js`. A `tsconfig.json` configures it; the key setting is `"strict": true`, which turns on the checks that make TypeScript worth using (especially strict null checking). In practice your bundler (Vite, etc.) handles compilation, your editor shows errors live, and you ship plain JavaScript. Adopt gradually — rename a file to `.ts`, add types where they help, and let inference do the rest.
+
+## Common Mistakes
+
+- Reaching for **`any`** to silence an error — it disables checking and hides the bug; prefer `unknown` and narrow.
+- Over-annotating where inference is fine — annotate function signatures, let variables infer.
+- Forgetting to enable `"strict"`, missing the null-safety that's the main payoff.
+- Confusing compile-time types with runtime — types are erased; you still validate external data (API responses) at runtime.
+- Writing huge `interface`s when a `union` of literals models the domain better.
+- Fighting the compiler with type assertions (`as`) instead of fixing the actual type mismatch.
+- Assuming a `.json()` response is typed — it's `any`; type it explicitly or validate it.
+
+## Exercises
+
+Try each before opening the solution.
+
+### Exercise 1 — Type a function
+
+Add types to `function double(n) { return n * 2; }`.
+
+<details>
+
+<summary>Show solution</summary>
+
+```ts
+function double(n: number): number {
+  return n * 2;
+}
+```
+
+Annotate the parameter and return type; now `double("x")` is a compile error instead of producing `NaN` at runtime.
+
+</details>
+
+### Exercise 2 — Model a status
+
+Define a type that allows only `"idle"`, `"active"`, or `"done"`, and a function that accepts it.
+
+<details>
+
+<summary>Show solution</summary>
+
+```ts
+type State = "idle" | "active" | "done";
+function transition(to: State) { /* ... */ }
+transition("active"); // ✅
+transition("paused"); // ❌ not allowed
+```
+
+A literal union restricts the value to exactly those three strings, so typos and invalid states are caught at compile time.
+
+</details>
+
+### Exercise 3 — Handle a nullable value
+
+Write `shout(name: string | null)` that returns `"..."` for null and the uppercased name otherwise, type-safely.
+
+<details>
+
+<summary>Show solution</summary>
+
+```ts
+function shout(name: string | null): string {
+  if (name === null) return "...";
+  return name.toUpperCase();   // TS knows name is a string here
+}
+```
+
+The `null` check narrows the type, so after it TypeScript is certain `name` is a string and `.toUpperCase()` is safe.
+
+</details>
+
+### Exercise 4 — A generic identity
+
+Write `wrap<T>` that puts any value into `{ value }` while preserving its type.
+
+<details>
+
+<summary>Show solution</summary>
+
+```ts
+function wrap<T>(value: T): { value: T } {
+  return { value };
+}
+const a = wrap(42);     // { value: number }
+const b = wrap("hi");   // { value: string }
+```
+
+The generic `T` captures the argument's type so the returned object's `value` stays precisely typed, rather than collapsing to `any`.
+
+</details>
+
+## The Mental Model to Keep
+
+TypeScript is JavaScript plus a **compile-time** type system that's erased before it runs — pure safety and tooling, zero runtime cost. Annotate **function signatures** and let **inference** handle variables; describe object shapes with **interfaces/types**, model domains precisely with **literal unions** (`"a" | "b"`), and let **narrowing** make `null`/`undefined` safe by forcing a check. Reach for **generics** (`<T>`) to keep type relationships intact across reusable code, avoid **`any`** (use `unknown` and narrow), and turn on **`strict`** to get the real value. It's *gradual*, so adopt it one file at a time. Once you've felt the editor catch a bug before you've even saved, plain JavaScript starts to feel like working without a safety net.

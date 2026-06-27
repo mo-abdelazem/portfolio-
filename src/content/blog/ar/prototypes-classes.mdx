@@ -1,0 +1,254 @@
+---
+title: "النماذج الأولية والأصناف والبرمجة الكائنية في JavaScript"
+description: "دليل عملي للبرمجة الكائنية في JavaScript — سلسلة النموذج الأولي وكيف يعمل البحث عن الخصائص، ودوال الباني، وصياغة class، والتوابع والنموذج الأولي، والوراثة بـ extends وsuper، والأعضاء الساكنة، والحقول الخاصّة #، وgetters/setters، والتركيب على الوراثة — مع تمارين عملية وحلولها."
+publishedAt: "2026-06-02"
+translationKey: "prototypes-classes"
+tags: ["JavaScript", "OOP", "Classes", "Prototypes"]
+---
+
+نموذج كائنات JavaScript يبدو كالبرمجة الكائنية الكلاسيكية ظاهريًّا — فيه `class` و`extends` و`new` — لكنه تحته شيء مختلف وربّما أبسط: **النماذج الأولية (prototypes)**. كل كائن يرتبط بكائن آخر يستطيع استعارة خصائصه منه. فهم تلك الآلية الواحدة يزيل غموض الأصناف (التي هي تحلية فوقها)، ويفسّر كيف تعمل الوراثة فعلًا، ويوضّح كثيرًا من التباس "من أين أتى هذا التابع؟". (يبني على الكائنات من [مقال الأساسيات](/blog/javascript-fundamentals).)
+
+> الأصناف في JavaScript **تحلية صياغية فوق النماذج الأولية**. حين تقرأ خاصية من كائن، يفحص المحرّك الكائن نفسه، ثم يصعد **سلسلة نموذجه الأولي** حتى يجد الخاصية أو ينفد. تلك القاعدة الواحدة للبحث هي نظام الكائنات كلّه.
+
+## سلسلة النموذج الأولي
+
+كل كائن له رابط خفيّ إلى **نموذج أولي** — كائن آخر. حين تصل إلى خاصية لا يملكها الكائن، تتبع JavaScript ذلك الرابط، ثم التالي، حتى تجد الخاصية أو تبلغ `null`:
+
+```js
+const animal = { eats: true };
+const dog = Object.create(animal); // نموذج dog الأولي هو animal
+dog.barks = true;
+
+dog.barks;  // true  — خاصية ذاتية
+dog.eats;   // true  — موروثة من animal عبر السلسلة
+dog.flies;  // undefined — غير موجودة في أي مكان بالسلسلة
+```
+
+هذه **الوراثة النموذجية**: ترث الكائنات مباشرةً من كائنات أخرى. `Object.create(proto)` يصنع كائنًا جديدًا بـ `proto` كنموذج أولي له. توابع المصفوفات (`map`، `filter`) والكائنات تأتي من `Array.prototype` و`Object.prototype` بالطريقة نفسها — مصفوفتك لا *تملك* `map`؛ بل ترثه.
+
+## دوال الباني (الطريقة القديمة)
+
+قبل `class`، كنت تبني أنواع كائنات قابلة لإعادة الاستخدام بـ **دالّة باني** مع `prototype` الخاص بها:
+
+```js
+function Person(name) {
+  this.name = name;             // خاصية نسخة، تُضبَط لكل كائن
+}
+Person.prototype.greet = function () {  // تابع مشترك، على النموذج الأولي
+  return `Hi, I'm ${this.name}`;
+};
+
+const ada = new Person("Ada");
+ada.greet(); // "Hi, I'm Ada"
+```
+
+`new` يفعل أربعة أشياء: يصنع كائنًا جديدًا، ويربط نموذجه الأولي بـ `Person.prototype`، ويشغّل الدالّة بـ `this` كذلك الكائن، ويُرجِعه. توابع تذهب على `prototype` كي **تشترك كل النُّسخ في نسخة واحدة** بدل أن تحمل كلٌّ نسختها.
+
+## صياغة `class`
+
+`class` طريقة أنظف لكتابة ما سبق تمامًا — نفس النماذج الأولية تحته:
+
+```js
+class Person {
+  constructor(name) {
+    this.name = name;           // خاصية نسخة
+  }
+  greet() {                     // تذهب تلقائيًّا على Person.prototype
+    return `Hi, I'm ${this.name}`;
+  }
+}
+
+const ada = new Person("Ada");
+ada.greet(); // "Hi, I'm Ada"
+```
+
+التوابع المصرَّح بها في جسم الصنف تحطّ على النموذج الأولي (مشتركة)، بينما ما يُسنَد إلى `this` في الباني لكل نسخة. `class` ليست نموذج كائنات جديدًا — بل تدوين أجمل بكثير لنمط الباني-مع-النموذج-الأولي.
+
+## الوراثة بـ `extends` و`super`
+
+يستطيع صنف توسيع آخر، فيرث توابعه ويضيف أو يتجاوز خاصّته. `super` يستدعي الأب:
+
+```js
+class Animal {
+  constructor(name) { this.name = name; }
+  speak() { return `${this.name} makes a sound`; }
+}
+
+class Dog extends Animal {
+  constructor(name, breed) {
+    super(name);                // يجب استدعاؤه قبل استخدام `this`
+    this.breed = breed;
+  }
+  speak() {                     // تجاوز
+    return `${this.name} barks`;
+  }
+  fetch() { return super.speak(); } // استدعِ نسخة الأب
+}
+
+const d = new Dog("Rex", "Lab");
+d.speak();  // "Rex barks"
+d.fetch();  // "Rex makes a sound"
+```
+
+`extends` يصل سلسلة النموذج الأولي (نسخة `Dog` → `Dog.prototype` → `Animal.prototype`)، فيسقط تابع غير موجود إلى الأب. وفي باني صنف فرعي **يجب استدعاء `super()` قبل لمس `this`**.
+
+## الأعضاء الساكنة
+
+خصائص وتوابع `static` تعيش على **الصنف نفسه**، لا على النُّسخ — مفيدة للمصانع والثوابت والأدوات المتعلّقة بالنوع:
+
+```js
+class User {
+  static count = 0;
+  constructor(name) { this.name = name; User.count++; }
+  static fromJSON(json) { return new User(JSON.parse(json).name); } // مصنع
+}
+
+User.count;                 // يُوصَل على الصنف
+User.fromJSON('{"name":"Ada"}');
+```
+
+تستدعي `User.fromJSON(...)`، لا `someUser.fromJSON(...)` — السواكن غير مرئيّة على النُّسخ.
+
+## الحقول الخاصّة وgetters وsetters
+
+الأصناف الحديثة لها خصوصية حقيقية بحقول مسبوقة بـ `#` — يتعذّر الوصول إليها من خارج الصنف. وgetters/setters تتيح للخاصية تشغيل منطق عند القراءة/الكتابة:
+
+```js
+class BankAccount {
+  #balance = 0;                 // خاص — مخفيّ فعلًا
+
+  deposit(amount) {
+    if (amount <= 0) throw new Error("مبلغ غير صالح");
+    this.#balance += amount;
+  }
+  get balance() {               // يُقرأ كـ account.balance (بلا أقواس)
+    return this.#balance;
+  }
+  set balance(v) {              // خطّاف الإسناد
+    throw new Error("استخدم deposit()");
+  }
+}
+
+const acct = new BankAccount();
+acct.deposit(100);
+acct.balance;        // 100 — عبر الـ getter
+acct.#balance;       // SyntaxError — خاص، لا يُبلَغ من الخارج
+```
+
+`#balance` لا يُقرأ ولا يُكتَب خارج الصنف — تغليف حقيقيّ، لا اصطلاح الشرطة السفلية القديم. وgetters/setters تكشف واجهة خاصية نظيفة مع الإبقاء على التحكّم في كيفية الوصول للبيانات.
+
+## التركيب على الوراثة
+
+هرميات الوراثة العميقة تصير جامدة بسرعة — تغيير في الأعلى يتموّج في كل مكان. وغالبًا **التركيب (composition)** (بناء السلوك بدمج قطع صغيرة) أمرن من `extends`:
+
+```js
+// بدل class Duck extends Bird extends Animal...
+const canSwim = (state) => ({ swim: () => `${state.name} swims` });
+const canFly  = (state) => ({ fly:  () => `${state.name} flies` });
+
+function duck(name) {
+  const state = { name };
+  return { ...state, ...canSwim(state), ...canFly(state) };
+}
+
+duck("Donald").swim(); // "Donald swims"
+```
+
+التوجيه "فضّل التركيب على الوراثة" يعني: الجأ للوراثة حين توجد علاقة *هو-نوع-من* حقيقية وهرمية ضحلة؛ والجأ للتركيب (mixins، دوال صغيرة، تمرير المتعاونين) حين تجمع قدرات فقط.
+
+## الأخطاء الشائعة
+
+- الظنّ أن الأصناف نموذج مختلف عن النماذج الأولية — هما الشيء نفسه بصياغة أجمل.
+- تعريف التوابع داخل الباني (`this.greet = () => …`)، فتعطي كل نسخة نسختها بدل المشاركة عبر النموذج الأولي.
+- استخدام `this` قبل `super()` في باني صنف فرعي — ReferenceError.
+- نسيان `new`، فيكون `this` خاطئًا (undefined/عام) ولا تُنشأ نسخة.
+- تغيير كائن مشترك يجلس على النموذج الأولي، فيؤثّر بالخطأ على كل النُّسخ.
+- بناء سلاسل `extends` عميقة حيث التركيب أمرن.
+- استخدام تسمية `_private` وافتراض أنها مفروضة — فقط `#fields` خاصّة فعلًا.
+
+## تمارين
+
+جرّب كلًّا منها قبل فتح الحل.
+
+### تمرين 1 — صنف بتابع
+
+اكتب صنف `Rectangle` بـ `width`/`height` وتابع `area()`.
+
+<details>
+
+<summary>إظهار الحل</summary>
+
+```js
+class Rectangle {
+  constructor(width, height) {
+    this.width = width;
+    this.height = height;
+  }
+  area() { return this.width * this.height; }
+}
+new Rectangle(3, 4).area(); // 12
+```
+
+`area` يعيش على `Rectangle.prototype`، مشتركًا بين كل النُّسخ؛ و`width`/`height` لكل نسخة، تُضبَط في الباني.
+
+</details>
+
+### تمرين 2 — وسّعه
+
+اصنع `Square` يوسّع `Rectangle` ويأخذ `side` واحدًا.
+
+<details>
+
+<summary>إظهار الحل</summary>
+
+```js
+class Square extends Rectangle {
+  constructor(side) {
+    super(side, side);   // أعد استخدام باني Rectangle
+  }
+}
+new Square(5).area(); // 25
+```
+
+`super(side, side)` يستدعي باني `Rectangle` بعرض وارتفاع متساويين، و`area()` موروثة دون تغيير.
+
+</details>
+
+### تمرين 3 — حالة خاصّة
+
+ابنِ `Counter` لا يتغيّر عدّه الداخلي إلا عبر `increment()`.
+
+<details>
+
+<summary>إظهار الحل</summary>
+
+```js
+class Counter {
+  #count = 0;
+  increment() { this.#count++; }
+  get value() { return this.#count; }
+}
+const c = new Counter();
+c.increment();
+c.value; // 1
+```
+
+`#count` لا يُبلَغ من الخارج؛ مسار التغيير الوحيد `increment()`، و`value` getter للقراءة فقط.
+
+</details>
+
+### تمرين 4 — من أين يأتي `map`؟
+
+بمعطى `const a = [1,2,3]`، لا يملك `a` `map` خاصًّا به. اشرح كيف يعمل `a.map(...)`.
+
+<details>
+
+<summary>إظهار الحل</summary>
+
+نموذج `a` الأولي هو `Array.prototype`، الذي *يملك* `map`. حين تستدعي `a.map(...)`، لا يجد المحرّك `map` على `a` نفسه، فيصعد سلسلة النموذج الأولي إلى `Array.prototype`، يجده هناك، ويستدعيه بـ `this` مضبوط إلى `a`.
+
+</details>
+
+## النموذج الذهني الذي تحتفظ به
+
+نظام كائنات JavaScript **نموذجيّ**: كل كائن يرتبط بنموذج أولي، والبحث عن الخصائص يصعد تلك **السلسلة** حتى يجد الاسم. `class` **تحلية فوق هذا** — توابع جسم الصنف تذهب على النموذج الأولي المشترك، وإسنادات الباني لكل نسخة، و`extends`/`super` يصلان السلسلة للوراثة، والأعضاء `static` تعيش على الصنف، و`#fields` تمنح خصوصية حقيقية. الجأ للأصناف حين تملك علاقة *هو-نوع-من* حقيقية وهرمية ضحلة؛ والجأ إلى **التركيب** حين تجمع قدرات. أبقِ السلسلة في ذهنك، فيكون لسؤال "من أين أتى هذا التابع؟" جواب دقيق دائمًا: في مكان ما أعلى سلسلة النموذج الأولي.
