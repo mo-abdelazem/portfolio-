@@ -216,6 +216,24 @@
         ]
       },
       {
+        "key": "javascript-in-depth",
+        "title": "JavaScript بعمق",
+        "description": "تجاوز الأساسيات — آليات اللغة والأنماط والأدوات التي تفصل المتوسّط عن المتقدّم.",
+        "topics": [
+          { "key": "closures-scope-this", "title": "الإغلاقات والنطاق وthis" },
+          { "key": "prototypes-classes", "title": "النماذج الأولية والأصناف والبرمجة الكائنية" },
+          { "key": "es-modules", "title": "وحدات ES والأدوات" },
+          { "key": "functional-javascript", "title": "JavaScript الوظيفية" },
+          { "key": "iterators-generators", "title": "المُكرِّرات والمولّدات" },
+          { "key": "regular-expressions", "title": "التعبيرات النمطية" },
+          { "key": "error-handling-debugging", "title": "معالجة الأخطاء والتنقيح" },
+          { "key": "browser-storage", "title": "تخزين المتصفح والحالة" },
+          { "key": "javascript-performance", "title": "الأداء والذاكرة" },
+          { "key": "typescript-intro", "title": "مقدّمة TypeScript" },
+          { "key": "testing-javascript", "title": "اختبار JavaScript" }
+        ]
+      },
+      {
         "key": "framework",
         "title": "أطر العمل",
         "description": "ابنِ واجهات حقيقية باستخدام إطار عمل حديث للمكوّنات.",

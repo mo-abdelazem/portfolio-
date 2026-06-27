@@ -201,6 +201,24 @@
         ]
       },
       {
+        "key": "javascript-in-depth",
+        "title": "JavaScript in Depth",
+        "description": "Go beyond the basics — the language mechanics, patterns, and tooling that separate intermediate from advanced.",
+        "topics": [
+          { "key": "closures-scope-this", "title": "Closures, scope & this" },
+          { "key": "prototypes-classes", "title": "Prototypes, classes & OOP" },
+          { "key": "es-modules", "title": "ES modules & tooling" },
+          { "key": "functional-javascript", "title": "Functional JavaScript" },
+          { "key": "iterators-generators", "title": "Iterators & generators" },
+          { "key": "regular-expressions", "title": "Regular expressions" },
+          { "key": "error-handling-debugging", "title": "Error handling & debugging" },
+          { "key": "browser-storage", "title": "Browser storage & state" },
+          { "key": "javascript-performance", "title": "Performance & memory" },
+          { "key": "typescript-intro", "title": "TypeScript intro" },
+          { "key": "testing-javascript", "title": "Testing JavaScript" }
+        ]
+      },
+      {
         "key": "framework",
         "title": "Framework",
         "description": "Build real interfaces with a modern component framework.",

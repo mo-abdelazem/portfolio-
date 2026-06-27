@@ -1,0 +1,254 @@
+---
+title: "Prototypes, Classes & OOP in JavaScript"
+description: "A practical guide to object-oriented JavaScript — the prototype chain and how property lookup works, constructor functions, the class syntax, methods and the prototype, inheritance with extends and super, static members, private #fields, getters/setters, and composition over inheritance — with hands-on exercises and solutions."
+publishedAt: "2026-06-02"
+translationKey: "prototypes-classes"
+tags: ["JavaScript", "OOP", "Classes", "Prototypes"]
+---
+
+JavaScript's object model looks like classical OOP on the surface — it has `class`, `extends`, `new` — but underneath it's something different and arguably simpler: **prototypes**. Every object links to another object it can borrow properties from. Understanding that one mechanism demystifies classes (which are sugar over it), explains how inheritance really works, and clears up a lot of "where did this method come from?" confusion. (Builds on objects from the [fundamentals post](/blog/javascript-fundamentals).)
+
+> Classes in JavaScript are **syntax sugar over prototypes**. When you read a property off an object, the engine checks the object itself, then walks up its **prototype chain** until it finds the property or runs out. That single lookup rule is the whole object system.
+
+## The Prototype Chain
+
+Every object has a hidden link to a **prototype** — another object. When you access a property the object doesn't have, JavaScript follows that link, and the next, until it finds the property or reaches `null`:
+
+```js
+const animal = { eats: true };
+const dog = Object.create(animal); // dog's prototype is animal
+dog.barks = true;
+
+dog.barks;  // true  — own property
+dog.eats;   // true  — inherited from animal via the chain
+dog.flies;  // undefined — not found anywhere in the chain
+```
+
+This is **prototypal inheritance**: objects inherit directly from other objects. `Object.create(proto)` makes a new object with `proto` as its prototype. Methods on arrays (`map`, `filter`) and objects come from `Array.prototype` and `Object.prototype` the same way — your array doesn't *own* `map`; it inherits it.
+
+## Constructor Functions (the Old Way)
+
+Before `class`, you built reusable object types with a **constructor function** plus its `prototype`:
+
+```js
+function Person(name) {
+  this.name = name;             // instance property, set per object
+}
+Person.prototype.greet = function () {  // shared method, on the prototype
+  return `Hi, I'm ${this.name}`;
+};
+
+const ada = new Person("Ada");
+ada.greet(); // "Hi, I'm Ada"
+```
+
+`new` does four things: creates a fresh object, links its prototype to `Person.prototype`, runs the function with `this` as that object, and returns it. Methods go on `prototype` so **all instances share one copy** rather than each carrying its own.
+
+## The `class` Syntax
+
+`class` is a cleaner way to write exactly the above — same prototypes underneath:
+
+```js
+class Person {
+  constructor(name) {
+    this.name = name;           // instance property
+  }
+  greet() {                     // automatically goes on Person.prototype
+    return `Hi, I'm ${this.name}`;
+  }
+}
+
+const ada = new Person("Ada");
+ada.greet(); // "Hi, I'm Ada"
+```
+
+Methods declared in the class body land on the prototype (shared), while things assigned to `this` in the constructor are per-instance. `class` is not a new object model — it's a much nicer notation for the constructor-plus-prototype pattern.
+
+## Inheritance with `extends` and `super`
+
+A class can extend another, inheriting its methods and adding or overriding its own. `super` calls the parent:
+
+```js
+class Animal {
+  constructor(name) { this.name = name; }
+  speak() { return `${this.name} makes a sound`; }
+}
+
+class Dog extends Animal {
+  constructor(name, breed) {
+    super(name);                // must call before using `this`
+    this.breed = breed;
+  }
+  speak() {                     // override
+    return `${this.name} barks`;
+  }
+  fetch() { return super.speak(); } // call the parent's version
+}
+
+const d = new Dog("Rex", "Lab");
+d.speak();  // "Rex barks"
+d.fetch();  // "Rex makes a sound"
+```
+
+`extends` wires up the prototype chain (a `Dog` instance → `Dog.prototype` → `Animal.prototype`), so an unfound method falls through to the parent. In a subclass constructor you **must call `super()` before touching `this`**.
+
+## Static Members
+
+`static` properties and methods live on the **class itself**, not on instances — useful for factories, constants, and utilities related to the type:
+
+```js
+class User {
+  static count = 0;
+  constructor(name) { this.name = name; User.count++; }
+  static fromJSON(json) { return new User(JSON.parse(json).name); } // factory
+}
+
+User.count;                 // accessed on the class
+User.fromJSON('{"name":"Ada"}');
+```
+
+You call `User.fromJSON(...)`, not `someUser.fromJSON(...)` — statics aren't visible on instances.
+
+## Private Fields, Getters, and Setters
+
+Modern classes have true privacy with `#`-prefixed fields — inaccessible from outside the class. And getters/setters let a property run logic on read/write:
+
+```js
+class BankAccount {
+  #balance = 0;                 // private — truly hidden
+
+  deposit(amount) {
+    if (amount <= 0) throw new Error("Invalid amount");
+    this.#balance += amount;
+  }
+  get balance() {               // read as account.balance (no parens)
+    return this.#balance;
+  }
+  set balance(v) {              // assignment hook
+    throw new Error("Use deposit()");
+  }
+}
+
+const acct = new BankAccount();
+acct.deposit(100);
+acct.balance;        // 100 — via the getter
+acct.#balance;       // SyntaxError — private, unreachable from outside
+```
+
+`#balance` can't be read or written outside the class — real encapsulation, not the old underscore convention. Getters/setters expose a clean property interface while keeping control over how data is accessed.
+
+## Composition Over Inheritance
+
+Deep inheritance hierarchies get rigid fast — a change high up ripples everywhere. Often **composition** (building behaviour by combining small pieces) is more flexible than `extends`:
+
+```js
+// Instead of class Duck extends Bird extends Animal...
+const canSwim = (state) => ({ swim: () => `${state.name} swims` });
+const canFly  = (state) => ({ fly:  () => `${state.name} flies` });
+
+function duck(name) {
+  const state = { name };
+  return { ...state, ...canSwim(state), ...canFly(state) };
+}
+
+duck("Donald").swim(); // "Donald swims"
+```
+
+The guideline "favour composition over inheritance" means: reach for inheritance when there's a genuine *is-a* relationship and a shallow hierarchy; reach for composition (mixins, small functions, passing collaborators in) when you're really just combining capabilities.
+
+## Common Mistakes
+
+- Thinking classes are a different model from prototypes — they're the same thing with nicer syntax.
+- Defining methods inside the constructor (`this.greet = () => …`), giving every instance its own copy instead of sharing via the prototype.
+- Using `this` before `super()` in a subclass constructor — a ReferenceError.
+- Forgetting `new`, so `this` is wrong (undefined/global) and no instance is created.
+- Mutating a shared object that sits on the prototype, accidentally affecting all instances.
+- Building deep `extends` chains where composition would be more flexible.
+- Using `_private` naming and assuming it's enforced — only `#fields` are truly private.
+
+## Exercises
+
+Try each before opening the solution.
+
+### Exercise 1 — A class with a method
+
+Write a `Rectangle` class with `width`/`height` and an `area()` method.
+
+<details>
+
+<summary>Show solution</summary>
+
+```js
+class Rectangle {
+  constructor(width, height) {
+    this.width = width;
+    this.height = height;
+  }
+  area() { return this.width * this.height; }
+}
+new Rectangle(3, 4).area(); // 12
+```
+
+`area` lives on `Rectangle.prototype`, shared by all instances; `width`/`height` are per-instance, set in the constructor.
+
+</details>
+
+### Exercise 2 — Extend it
+
+Make a `Square` that extends `Rectangle` and takes a single `side`.
+
+<details>
+
+<summary>Show solution</summary>
+
+```js
+class Square extends Rectangle {
+  constructor(side) {
+    super(side, side);   // reuse Rectangle's constructor
+  }
+}
+new Square(5).area(); // 25
+```
+
+`super(side, side)` calls `Rectangle`'s constructor with equal width and height, and `area()` is inherited unchanged.
+
+</details>
+
+### Exercise 3 — Private state
+
+Build a `Counter` whose internal count can only change via `increment()`.
+
+<details>
+
+<summary>Show solution</summary>
+
+```js
+class Counter {
+  #count = 0;
+  increment() { this.#count++; }
+  get value() { return this.#count; }
+}
+const c = new Counter();
+c.increment();
+c.value; // 1
+```
+
+`#count` is unreachable from outside; the only mutation path is `increment()`, and `value` is a read-only getter.
+
+</details>
+
+### Exercise 4 — Where does `map` come from?
+
+Given `const a = [1,2,3]`, `a` doesn't have its own `map`. Explain how `a.map(...)` works.
+
+<details>
+
+<summary>Show solution</summary>
+
+`a`'s prototype is `Array.prototype`, which *does* have `map`. When you call `a.map(...)`, the engine doesn't find `map` on `a` itself, so it walks up the prototype chain to `Array.prototype`, finds it there, and calls it with `this` set to `a`.
+
+</details>
+
+## The Mental Model to Keep
+
+JavaScript's object system is **prototypal**: every object links to a prototype, and property lookup walks that **chain** until it finds the name. `class` is **sugar over this** — methods in the class body go on the shared prototype, constructor assignments are per-instance, `extends`/`super` wire the chain for inheritance, `static` members live on the class, and `#fields` give real privacy. Reach for classes when you have a true *is-a* relationship and a shallow hierarchy; reach for **composition** when you're combining capabilities. Keep the chain in mind and "where did this method come from?" always has a precise answer: somewhere up the prototype chain.

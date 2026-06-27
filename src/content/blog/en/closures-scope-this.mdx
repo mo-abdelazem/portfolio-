@@ -1,0 +1,263 @@
+---
+title: "Closures, Scope & this: The Mechanics Behind JavaScript"
+description: "A deeper guide to JavaScript's execution model — lexical scope and the scope chain, hoisting and the temporal dead zone, closures and the patterns they enable (private state, factories, memoization), the four rules of this, call/apply/bind, and arrow functions — with hands-on exercises and solutions."
+publishedAt: "2026-06-17"
+translationKey: "closures-scope-this"
+tags: ["JavaScript", "Closures", "Scope", "Advanced"]
+---
+
+Closures, scope, and `this` are the three concepts that separate someone who *uses* JavaScript from someone who *understands* it. They're behind private state, React hooks, event handlers, partial application, and the single most-asked interview question. The [fundamentals post](/blog/javascript-fundamentals) introduced them; this one goes deeper into *why* they behave as they do, so the behaviour becomes predictable instead of surprising.
+
+> Two ideas unlock everything here. **Scope is lexical** — a function's access to variables is decided by *where it's written*, not where it's called. But **`this` is dynamic** — it's decided by *how a function is called*, not where it's written. Almost every confusion comes from mixing those two up.
+
+## Lexical Scope and the Scope Chain
+
+Scope is the set of variables a piece of code can see. JavaScript is **lexically scoped**: an inner function can read variables from the functions that *enclose it in the source code*, walking outward until it finds the name or hits the global scope. That path is the **scope chain**:
+
+```js
+const planet = "Earth";
+
+function outer() {
+  const greeting = "Hello";
+  function inner() {
+    console.log(greeting, planet); // sees both — walks up the chain
+  }
+  inner();
+}
+```
+
+`inner` can see `greeting` (its parent) and `planet` (global) because of *where it's defined*. It doesn't matter where `inner` is later called from — lexical scope is fixed at authoring time.
+
+`let` and `const` are **block-scoped** (confined to the nearest `{ }`); `var` is **function-scoped**, which is one reason to avoid it:
+
+```js
+if (true) {
+  let a = 1;
+  var b = 2;
+}
+console.log(b); // 2 — var ignores the block
+console.log(a); // ReferenceError — let respects it
+```
+
+## Hoisting and the Temporal Dead Zone
+
+**Hoisting** means declarations are processed before the code runs. But the three kinds behave differently:
+
+```js
+greet();                      // ✅ works — function declarations are fully hoisted
+function greet() { return "hi"; }
+
+console.log(x);               // undefined — var is hoisted but not its value
+var x = 5;
+
+console.log(y);               // ❌ ReferenceError — TDZ
+let y = 5;
+```
+
+A `function` declaration is hoisted entirely, so you can call it before its line. A `var` is hoisted but initialised to `undefined`. A `let`/`const` is hoisted too, but lives in the **temporal dead zone** — referencing it before its declaration throws, which catches bugs that `var`'s silent `undefined` would hide.
+
+## Closures
+
+A **closure** is a function bundled with the variables from its lexical scope — it "remembers" them even after the outer function has returned. This is a direct consequence of lexical scope: the inner function kept its reference to the outer variables, so they stay alive.
+
+```js
+function makeCounter() {
+  let count = 0;                 // lives on inside the closure
+  return {
+    increment: () => ++count,
+    value: () => count,
+  };
+}
+
+const c = makeCounter();
+c.increment();
+c.increment();
+c.value(); // 2 — count persisted, reachable only through these functions
+```
+
+`count` is **private** — nothing outside can read or mutate it except through the returned functions. That's the foundation of three patterns:
+
+```js
+// 1. Private state / data hiding (above)
+
+// 2. Factory functions — pre-configure behaviour
+function multiplier(factor) {
+  return (n) => n * factor;      // closes over `factor`
+}
+const double = multiplier(2);
+double(5); // 10
+
+// 3. Memoization — cache results in a closed-over map
+function memoize(fn) {
+  const cache = new Map();
+  return (arg) => cache.has(arg) ? cache.get(arg) : cache.set(arg, fn(arg)).get(arg);
+}
+```
+
+The classic closure-in-a-loop trap, and why `let` fixes it:
+
+```js
+for (let i = 0; i < 3; i++) {
+  setTimeout(() => console.log(i), 0); // 0, 1, 2 — each iteration has its own i
+}
+// with `var`, all three log 3 — one shared binding closed over by all callbacks
+```
+
+## `this`: Decided by the Call
+
+Here's the pivot: **`this` is not lexical.** A normal function's `this` is set fresh on every call, by *how* the call is made. The four rules, in priority order:
+
+```js
+function show() { return this; }
+
+// 1. Method call — `this` is the object before the dot
+const obj = { name: "Ada", show };
+obj.show();          // obj
+
+// 2. Plain call — `this` is undefined (strict mode) or the global object
+const bare = obj.show;
+bare();              // undefined
+
+// 3. Explicit — call/apply/bind set `this` yourself
+show.call({ name: "Grace" });   // { name: "Grace" }
+
+// 4. new — `this` is the brand-new object being constructed
+function Person(n) { this.name = n; }
+new Person("Lin");   // { name: "Lin" }
+```
+
+The most common bug: passing a method as a bare callback (`setTimeout(obj.show, 0)`) loses its `this`, because it's no longer called as `obj.show()`.
+
+## `call`, `apply`, and `bind`
+
+These three let you control `this` explicitly:
+
+```js
+const greet = function (greeting) { return `${greeting}, ${this.name}`; };
+const user = { name: "Ada" };
+
+greet.call(user, "Hi");          // "Hi, Ada" — args listed
+greet.apply(user, ["Hi"]);       // "Hi, Ada" — args as an array
+const bound = greet.bind(user);  // returns a NEW function with this permanently set
+bound("Hey");                    // "Hey, Ada"
+```
+
+`call` and `apply` invoke immediately (differing only in how args are passed); `bind` returns a new function with `this` locked in — perfect for handing a method to `setTimeout` or an event listener without losing its context.
+
+## Arrow Functions Have No `this`
+
+Arrow functions don't get their own `this` — they use the `this` of the **enclosing lexical scope**. This is what makes them ideal for callbacks inside methods, where you *want* the outer `this` to flow through:
+
+```js
+const timer = {
+  seconds: 0,
+  start() {
+    setInterval(() => {
+      this.seconds++;     // `this` = timer, inherited from start()
+    }, 1000);
+  },
+};
+```
+
+A regular function callback there would have `this === undefined`. Because the arrow has no `this` of its own, it transparently uses `start`'s — closing the gap between lexical scope and `this`. (For the same reason, never use an arrow as an object *method* that needs `this` to be the object.)
+
+## Common Mistakes
+
+- Assuming `this` follows where a function is *defined* — it follows how it's *called*.
+- Passing `obj.method` as a callback and losing `this` — use `.bind(obj)` or an arrow wrapper.
+- Using an arrow function as a method that needs `this` to be the object — it won't be.
+- Relying on `var` in a loop with closures and getting the shared-binding bug — use `let`.
+- Referencing a `let`/`const` before its declaration and hitting the TDZ.
+- Thinking closures "copy" variables — they hold a *live reference*, so later mutations are visible.
+- Forgetting that each call to a factory makes a *fresh* closure with its own private state.
+
+## Exercises
+
+Try each before opening the solution.
+
+### Exercise 1 — Private counter
+
+Build a counter with `inc()` and `get()` where the count can't be touched from outside.
+
+<details>
+
+<summary>Show solution</summary>
+
+```js
+function counter() {
+  let n = 0;
+  return { inc: () => ++n, get: () => n };
+}
+```
+
+`n` lives in the closure — only `inc` and `get` close over it, so there's no way to reach it externally.
+
+</details>
+
+### Exercise 2 — Predict the output
+
+```js
+const obj = {
+  name: "X",
+  regular() { return this?.name; },
+  arrow: () => this?.name,
+};
+console.log(obj.regular());
+console.log(obj.arrow());
+```
+
+<details>
+
+<summary>Show solution</summary>
+
+`"X"` then `undefined`. `regular` is called as `obj.regular()`, so `this` is `obj`. `arrow` has no own `this`; it uses the enclosing (module/global) scope's `this`, where `name` isn't defined.
+
+</details>
+
+### Exercise 3 — Fix the lost context
+
+```js
+const api = {
+  base: "/v1",
+  url(path) { return this.base + path; },
+};
+const fn = api.url;
+fn("/users"); // breaks
+```
+
+<details>
+
+<summary>Show solution</summary>
+
+```js
+const fn = api.url.bind(api);
+fn("/users"); // "/v1/users"
+```
+
+Pulling `api.url` into `fn` and calling it bare loses `this`. `bind(api)` returns a function with `this` permanently set to `api`.
+
+</details>
+
+### Exercise 4 — Make an adder factory
+
+Write `adder(x)` returning a function that adds `x` to its argument; show that two adders are independent.
+
+<details>
+
+<summary>Show solution</summary>
+
+```js
+function adder(x) { return (y) => x + y; }
+const add5 = adder(5);
+const add10 = adder(10);
+add5(1);  // 6
+add10(1); // 11
+```
+
+Each call to `adder` creates a separate closure over its own `x`, so `add5` and `add10` don't interfere.
+
+</details>
+
+## The Mental Model to Keep
+
+Hold the two axes apart. **Scope is lexical**: where a function is *written* fixes which variables it can see, walking up the scope chain — and a **closure** is just a function that kept those variables alive after its parent returned, which is how you get private state, factories, and memoization. **`this` is dynamic**: it's set by *how* a function is called — method call (the object), bare call (`undefined`), explicit (`call`/`apply`/`bind`), or `new` (the new object) — except **arrow functions**, which have no `this` and borrow the enclosing one, making them perfect for callbacks. Keep "defined where" (scope) and "called how" (`this`) separate, and the parts of JavaScript that felt like dark magic become rules you can apply.

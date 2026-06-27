@@ -1,0 +1,242 @@
+---
+title: "Regular Expressions in JavaScript: Pattern Matching Without Fear"
+description: "A practical guide to regex in JavaScript — literal vs constructor syntax, character classes, quantifiers, anchors, groups and alternation, flags, the string methods (test, match, matchAll, replace, split), capture and named groups, lookahead/lookbehind, and common pitfalls — with hands-on exercises and solutions."
+publishedAt: "2026-06-24"
+translationKey: "regular-expressions"
+tags: ["JavaScript", "Regex", "Strings", "Advanced"]
+---
+
+Regular expressions are the tool everyone avoids and then quietly needs every week — validating input, extracting data, find-and-replace that's smarter than a literal string. They *look* like line noise, but they're built from a small set of pieces that combine predictably. Learn those pieces and the dread evaporates; you'll read and write patterns the way you read code. This is the practical subset that covers the vast majority of real use. (Builds on strings from [JavaScript fundamentals](/blog/javascript-fundamentals).)
+
+> A regex describes a *pattern*, not a fixed string. You assemble it from **character classes** (what kind of character), **quantifiers** (how many), **anchors** (where), and **groups** (capture and structure). Almost every pattern you'll ever write is a combination of those four ideas.
+
+## Creating a Regex
+
+Two syntaxes. Prefer the literal unless the pattern is built from variables at runtime:
+
+```js
+const re1 = /\d+/g;                       // literal — between slashes, with flags
+const re2 = new RegExp("\\d+", "g");      // constructor — note doubled backslashes
+
+// constructor is for dynamic patterns
+const word = "cat";
+const re3 = new RegExp(`\\b${word}\\b`, "i");
+```
+
+In the constructor form, backslashes must be escaped (`\\d`), which is why the literal is cleaner when you can use it.
+
+## Character Classes
+
+These match *kinds* of characters:
+
+```
+.        any character (except newline)
+\d  \D   a digit  /  a non-digit
+\w  \W   word char [A-Za-z0-9_]  /  non-word
+\s  \S   whitespace  /  non-whitespace
+[abc]    any one of a, b, c
+[^abc]   any character EXCEPT a, b, c
+[a-z]    a range
+```
+
+```js
+/[aeiou]/.test("sky");   // false — no vowel
+/[0-9]/.test("a1b");     // true  — has a digit
+/[^0-9]/.test("123");    // false — every char is a digit
+```
+
+## Quantifiers
+
+These say *how many* of the preceding item:
+
+```
+*        0 or more
++        1 or more
+?        0 or 1 (optional)
+{3}      exactly 3
+{2,4}    2 to 4
+{2,}     2 or more
+```
+
+```js
+/colou?r/.test("color");   // true — the u is optional
+/\d{3}-\d{4}/.test("555-1234"); // true — 3 digits, dash, 4 digits
+```
+
+Quantifiers are **greedy** by default — they match as much as possible. Add `?` to make them **lazy** (as little as possible), which matters when extracting between delimiters:
+
+```js
+"<a><b>".match(/<.+>/)[0];   // "<a><b>" — greedy, grabs everything
+"<a><b>".match(/<.+?>/)[0];  // "<a>"    — lazy, stops at the first >
+```
+
+## Anchors and Boundaries
+
+These match a *position*, not a character:
+
+```
+^        start of string (or line, with m flag)
+$        end of string (or line)
+\b       a word boundary
+```
+
+```js
+/^https/.test("https://x");  // true — starts with https
+/\.com$/.test("a.com");       // true — ends with .com
+/\bcat\b/.test("the cat sat"); // true — "cat" as a whole word
+/\bcat\b/.test("category");    // false — not a standalone word
+```
+
+`\b` is what separates "find the word cat" from "find c-a-t anywhere" — essential for whole-word matches.
+
+## Groups and Alternation
+
+Parentheses **group** parts (for quantifiers or capturing); the pipe `|` is **OR**:
+
+```js
+/(ab)+/.test("abab");         // true — the group repeats
+/cat|dog/.test("a dog");      // true — either alternative
+
+// capture groups — extract the matched pieces
+const m = "2024-01-15".match(/(\d{4})-(\d{2})-(\d{2})/);
+m[1]; // "2024" — first group
+m[2]; // "01"
+m[3]; // "15"
+
+// named groups — clearer than numbered
+const d = "2024-01-15".match(/(?<year>\d{4})-(?<month>\d{2})-(?<day>\d{2})/);
+d.groups.year;  // "2024"
+d.groups.month; // "01"
+```
+
+A `(?:...)` group is **non-capturing** — it groups without creating a numbered capture, which keeps your capture indices clean.
+
+## Flags
+
+Flags after the closing slash change behaviour:
+
+```
+g    global — find ALL matches, not just the first
+i    case-insensitive
+m    multiline — ^ and $ match line starts/ends
+s    dotall — . also matches newlines
+u    unicode — proper handling of code points
+```
+
+```js
+"Hello HELLO".match(/hello/gi); // ["Hello", "HELLO"] — global + insensitive
+```
+
+## The String Methods
+
+Regex is used through string/RegExp methods — knowing which to reach for is half the battle:
+
+```js
+// test — does it match? → boolean
+/\d/.test("abc1");                    // true
+
+// match — first match (or all, with g)
+"a1b2".match(/\d/);                   // ["1", index: 1, ...]
+"a1b2".match(/\d/g);                  // ["1", "2"]
+
+// matchAll — every match WITH its capture groups (needs g)
+[..."a1b2".matchAll(/(\w)(\d)/g)];    // detailed match objects
+
+// replace — substitute; $1 references a group
+"2024-01-15".replace(/(\d{4})-(\d{2})-(\d{2})/, "$3/$2/$1"); // "15/01/2024"
+"hello".replace(/l/g, "L");           // "heLLo" (g for all)
+
+// replace with a function — compute each replacement
+"a1b2".replace(/\d/g, (d) => d * 2);  // "a2b4"
+
+// split — break on a pattern
+"a, b,c ,  d".split(/\s*,\s*/);       // ["a", "b", "c", "d"]
+```
+
+Use `test` for yes/no, `match`/`matchAll` to extract, `replace` to transform, `split` to tokenize.
+
+## Common Mistakes
+
+- Forgetting the **`g` flag** when you want all matches — `match`/`replace` only do the first without it.
+- Reusing a `g`-flagged regex with `test()` in a loop — `lastIndex` is stateful and skips matches.
+- Greedy quantifiers grabbing too much — use lazy `*?`/`+?` to stop early.
+- Not escaping special characters (`. * + ? ( ) [ ]`) when matching them literally — `\.` for a dot.
+- Forgetting `^`/`$` and accidentally matching a substring instead of the whole string.
+- Building dynamic regexes from user input without escaping — a correctness and ReDoS risk.
+- Reaching for regex to parse HTML or nested structures — use a real parser; regex can't handle nesting.
+
+## Exercises
+
+Try each before opening the solution.
+
+### Exercise 1 — Validate a simple pattern
+
+Write a regex that tests whether a string is exactly 5 digits.
+
+<details>
+
+<summary>Show solution</summary>
+
+```js
+/^\d{5}$/.test("12345"); // true
+/^\d{5}$/.test("1234");  // false
+/^\d{5}$/.test("12345x"); // false — anchored, no trailing chars allowed
+```
+
+`^` and `$` anchor to the whole string, and `\d{5}` requires exactly five digits — without the anchors, `"12345x"` would match the digit part.
+
+</details>
+
+### Exercise 2 — Extract date parts
+
+From `"2024-03-09"`, pull year, month, and day using named groups.
+
+<details>
+
+<summary>Show solution</summary>
+
+```js
+const { year, month, day } =
+  "2024-03-09".match(/(?<year>\d{4})-(?<month>\d{2})-(?<day>\d{2})/).groups;
+// year "2024", month "03", day "09"
+```
+
+Named capture groups put the pieces on `.groups` with readable keys, which is clearer than relying on `m[1]`, `m[2]`, `m[3]`.
+
+</details>
+
+### Exercise 3 — Replace all and transform
+
+Mask every digit in `"id 4815"` with `*`.
+
+<details>
+
+<summary>Show solution</summary>
+
+```js
+"id 4815".replace(/\d/g, "*"); // "id ****"
+```
+
+The `g` flag makes `replace` hit every digit, not just the first; each match is swapped for `*`.
+
+</details>
+
+### Exercise 4 — Split on flexible whitespace
+
+Split `"one,  two ,three"` into clean tokens, tolerating spaces around the commas.
+
+<details>
+
+<summary>Show solution</summary>
+
+```js
+"one,  two ,three".split(/\s*,\s*/); // ["one", "two", "three"]
+```
+
+`\s*,\s*` matches a comma with any amount of surrounding whitespace, so `split` produces trimmed tokens directly.
+
+</details>
+
+## The Mental Model to Keep
+
+A regex is a pattern assembled from four kinds of pieces: **character classes** (`\d`, `\w`, `[a-z]` — *what*), **quantifiers** (`*`, `+`, `{n}` — *how many*, greedy unless you add `?`), **anchors** (`^`, `$`, `\b` — *where*), and **groups** (`( )` capture, `(?: )` don't, `|` alternates). Drive it through the right method: **`test`** for yes/no, **`match`/`matchAll`** to extract (with named groups for clarity), **`replace`** to transform (with `$1` or a function), **`split`** to tokenize — and remember the **`g` flag** when you want them all. Escape literals you mean literally, prefer anchored patterns to avoid accidental substring matches, and reach for a real parser when structure is nested. Built from those few parts, regex stops being line noise and becomes a precise, readable tool.

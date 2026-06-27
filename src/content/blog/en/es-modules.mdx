@@ -1,0 +1,190 @@
+---
+title: "ES Modules & Modern Tooling: From Scripts to Apps"
+description: "A practical guide to JavaScript modules and the build toolchain — named and default exports, import syntax, why modules have their own scope, static vs dynamic import, the module graph, npm and package.json, bundlers like Vite, and how a modern build works — with hands-on exercises and solutions."
+publishedAt: "2026-06-22"
+translationKey: "es-modules"
+tags: ["JavaScript", "Modules", "Tooling", "Frontend"]
+---
+
+The jump from "a few `<script>` tags" to "a real application" is mostly about **modules** and **tooling**. ES Modules let you split code into files with their own scope and explicit dependencies; npm and bundlers turn that pile of files into something fast that runs in a browser. Understanding this layer is what lets you read any modern codebase and set up your own. (Builds on the modules intro in [JavaScript fundamentals](/blog/javascript-fundamentals).)
+
+> A module is a file with its own **private scope** — nothing leaks out unless you `export` it, and nothing comes in unless you `import` it. That explicitness is the whole point: dependencies become visible and the global namespace stops being a dumping ground.
+
+## Exports: Named and Default
+
+A module exposes values with `export`. There are two flavours, and they're often mixed:
+
+```js
+// math.js
+
+// Named exports — any number, imported by their exact names
+export const PI = 3.14159;
+export function add(a, b) { return a + b; }
+export class Vector { /* ... */ }
+
+// Default export — at most ONE per module, the "main thing"
+export default function multiply(a, b) { return a * b; }
+```
+
+Use **named exports** for a module that offers several things (a utils file); use a **default export** for a module whose job is one thing (a single component or class). You can have both in one file.
+
+## Imports
+
+Import mirrors export. Named imports use braces and must match the exported names; the default is imported without braces under any name you choose:
+
+```js
+// app.js
+import multiply, { PI, add } from "./math.js";  // default + named together
+import { add as sum } from "./math.js";          // rename a named import
+import * as math from "./math.js";               // namespace: math.PI, math.add
+import "./styles.css";                            // side-effect import (runs the file)
+```
+
+A few rules: the path needs the extension in the browser (`./math.js`), `./` or `../` marks a *local* file (a bare name like `"react"` is a package), and import names are **live read-only bindings** — you see the exporting module's current value but can't reassign it.
+
+## Module Scope and Strict Mode
+
+This is the behavioural difference from old scripts. Each module has its **own top-level scope** — a `const x` at the top of a module is private to that file, not global:
+
+```js
+// a.js
+const secret = 42;   // NOT global — invisible to other files
+export const shared = "visible only if imported";
+```
+
+Modules also run in **strict mode** automatically, and they're **deferred** by default (they don't block HTML parsing). In the browser you opt in with `type="module"`:
+
+```html
+<script type="module" src="/app.js"></script>
+```
+
+## Static vs Dynamic Import
+
+The `import` statement above is **static** — resolved before the code runs, so bundlers can see the whole dependency graph. When you need to load a module *conditionally* or *lazily* (only when a feature is used), use the **dynamic** `import()`, which returns a promise:
+
+```js
+button.addEventListener("click", async () => {
+  const { Chart } = await import("./chart.js");  // loaded only on demand
+  new Chart(/* ... */);
+});
+```
+
+Dynamic import is how **code splitting** works: heavy features download only when needed, keeping the initial bundle small. Static imports are the default; reach for dynamic import for lazy-loading.
+
+## The Module Graph
+
+Your app is a **graph**: an entry file imports others, which import others, down to leaves. The bundler starts at the entry, follows every `import`, and assembles the whole graph. This is also where **tree-shaking** happens — a bundler can drop exported functions you never import, so a big utility library only ships the parts you use (one reason named exports matter for bundle size).
+
+## npm and `package.json`
+
+**npm** is the package registry and the tool that installs dependencies. `package.json` is the manifest at the root of every project:
+
+```json
+{
+  "name": "my-app",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build"
+  },
+  "dependencies": { "react": "^19.0.0" },
+  "devDependencies": { "vite": "^6.0.0" }
+}
+```
+
+- `npm install` reads this and downloads packages into `node_modules`.
+- **`dependencies`** ship in production; **`devDependencies`** are build/test-only.
+- `scripts` are shortcuts you run with `npm run dev`.
+- The `^` in `^19.0.0` allows compatible updates; `package-lock.json` pins exact installed versions for reproducibility.
+
+## Bundlers: Why and What
+
+Browsers can run modules natively, but loading hundreds of small files over the network is slow, and `node_modules` packages often aren't browser-ready. A **bundler** (Vite, esbuild, webpack, Rollup) solves this by:
+
+- **Bundling** the module graph into a few optimised files,
+- **Transpiling** modern/TypeScript/JSX syntax down to what browsers run,
+- **Tree-shaking** unused exports and **minifying** the output,
+- Serving a fast **dev server** with hot module replacement (instant updates as you edit).
+
+**Vite** is the common modern default: instant dev startup (it serves native ES modules in development) and an optimised production build. You rarely configure it by hand for a standard app — `npm create vite@latest` scaffolds it.
+
+## Common Mistakes
+
+- Forgetting the file extension (`./math` vs `./math.js`) in browser-native modules.
+- Mixing up named and default imports — `import { multiply }` when it was a default export.
+- Expecting a top-level `const` to be global — modules have private scope.
+- Trying to `await import()` synchronously — dynamic import returns a promise.
+- Putting a runtime dependency in `devDependencies` (or vice versa), breaking the production build.
+- Committing `node_modules` instead of relying on `package.json` + lockfile.
+- Importing an entire library for one function, defeating tree-shaking — import the named export.
+
+## Exercises
+
+Try each before opening the solution.
+
+### Exercise 1 — Export and import
+
+Create `utils.js` exporting a named `clamp(n, min, max)` and import it into `app.js`.
+
+<details>
+
+<summary>Show solution</summary>
+
+```js
+// utils.js
+export function clamp(n, min, max) {
+  return Math.min(Math.max(n, min), max);
+}
+
+// app.js
+import { clamp } from "./utils.js";
+clamp(15, 0, 10); // 10
+```
+
+Named export, named import with matching braces — the standard pattern for a utilities module.
+
+</details>
+
+### Exercise 2 — Default + named
+
+A `Button.js` should default-export the component and also export a named `BUTTON_SIZES` constant. Import both.
+
+<details>
+
+<summary>Show solution</summary>
+
+```js
+// Button.js
+export const BUTTON_SIZES = ["sm", "md", "lg"];
+export default function Button() { /* ... */ }
+
+// app.js
+import Button, { BUTTON_SIZES } from "./Button.js";
+```
+
+The default (no braces, your choice of name) and the named import (in braces) combine in one statement.
+
+</details>
+
+### Exercise 3 — Lazy-load on demand
+
+Load a heavy `./editor.js` module only when the user clicks "Edit".
+
+<details>
+
+<summary>Show solution</summary>
+
+```js
+editBtn.addEventListener("click", async () => {
+  const { Editor } = await import("./editor.js");
+  new Editor();
+});
+```
+
+Dynamic `import()` returns a promise and downloads the module only at click time — code splitting that keeps the initial load small.
+
+</details>
+
+## The Mental Model to Keep
+
+A module is a file with **private scope**: values cross the boundary only through `export`/`import`, which makes dependencies explicit and kills global pollution. Use **named exports** for multi-thing modules and a **default** for single-purpose ones; remember imports are live read-only bindings and modules run deferred in strict mode. Static `import` builds the **module graph** a bundler walks (and tree-shakes); **dynamic `import()`** lazy-loads on demand for code splitting. On top sits the toolchain: **npm + `package.json`** manage dependencies and scripts, and a **bundler like Vite** transpiles, bundles, tree-shakes, and serves a fast dev server. Together these are what turn a folder of `.js` files into a shippable app.
