@@ -26,6 +26,8 @@ interface BlogExplorerProps {
   allLabel: string;
   tagsLabel: string;
   emptyLabel: string;
+  moreLabel: string;
+  lessLabel: string;
 }
 
 export function BlogExplorer({
@@ -35,9 +37,24 @@ export function BlogExplorer({
   allLabel,
   tagsLabel,
   emptyLabel,
+  moreLabel,
+  lessLabel,
 }: BlogExplorerProps) {
   const [query, setQuery] = useState("");
   const [activeTag, setActiveTag] = useState<string | null>(null);
+  const [showAllTags, setShowAllTags] = useState(false);
+
+  // Tags used more than once make useful filters; the long tail of
+  // single-use tags is hidden behind a toggle so it doesn't wall off the grid.
+  const frequentTags = useMemo(() => tags.filter((t) => t.count > 1), [tags]);
+  const hasTail = frequentTags.length > 0 && tags.length > frequentTags.length;
+  const visibleTags =
+    showAllTags || !hasTail
+      ? tags
+      : // keep the active tag visible even if it's in the tail
+        activeTag && !frequentTags.some((t) => t.tag === activeTag)
+        ? [...frequentTags, ...tags.filter((t) => t.tag === activeTag)]
+        : frequentTags;
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -83,7 +100,7 @@ export function BlogExplorer({
           >
             {allLabel}
           </button>
-          {tags.map((tag) => {
+          {visibleTags.map((tag) => {
             const active = activeTag === tag.tag;
             return (
               <button
@@ -98,6 +115,16 @@ export function BlogExplorer({
               </button>
             );
           })}
+          {hasTail && (
+            <button
+              type="button"
+              className="explorer__more"
+              aria-expanded={showAllTags}
+              onClick={() => setShowAllTags((v) => !v)}
+            >
+              {showAllTags ? lessLabel : moreLabel}
+            </button>
+          )}
         </div>
       )}
 

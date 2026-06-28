@@ -2256,6 +2256,25 @@ button {
   font: inherit;
 }
 
+.explorer__more {
+  align-self: center;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  padding: 6px 10px;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color 0.2s;
+}
+
+.explorer__more:hover {
+  color: var(--text);
+}
+
 .tag-chip--active {
   background: var(--text);
   color: var(--bg);

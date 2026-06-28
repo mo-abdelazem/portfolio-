@@ -113,7 +113,6 @@ export default async function BlogHomePage({ params }: Props) {
               {sections.map((section) => {
                 const total = section.topics.length;
                 const done = section.doneCount;
-                const complete = total > 0 && done === total;
                 const fillPct = total > 0 ? Math.round((done / total) * 100) : 0;
                 return (
                   <Link
@@ -123,16 +122,10 @@ export default async function BlogHomePage({ params }: Props) {
                   >
                     <span className="path-tile__head">
                       <span className="path-tile__name">{section.title}</span>
-                      {complete ? (
-                        <span className="path-tile__badge path-tile__badge--done">
-                          {t("sectionDone")}
+                      {done === 0 && (
+                        <span className="path-tile__badge path-tile__badge--soon">
+                          {t("sectionSoon")}
                         </span>
-                      ) : (
-                        done === 0 && (
-                          <span className="path-tile__badge path-tile__badge--soon">
-                            {t("sectionSoon")}
-                          </span>
-                        )
                       )}
                     </span>
                     <span className="path-tile__count">
@@ -163,6 +156,8 @@ export default async function BlogHomePage({ params }: Props) {
               allLabel={t("allTopics")}
               tagsLabel={t("tagsHeading")}
               emptyLabel={t("noResults")}
+              moreLabel={t("showAllTags")}
+              lessLabel={t("showFewerTags")}
             />
           )}
         </section>

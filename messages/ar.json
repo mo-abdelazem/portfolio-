@@ -274,7 +274,9 @@
     "topicCount": "{count} موضوعات",
     "sectionDone": "مكتمل",
     "sectionSoon": "قريبًا",
-    "noResults": "لا توجد مقالات تطابق بحثك."
+    "noResults": "لا توجد مقالات تطابق بحثك.",
+    "showAllTags": "إظهار كل الوسوم",
+    "showFewerTags": "إظهار أقل"
   },
   "Roadmap": {
     "indexTitle": "مسارات التعلّم",
