@@ -78,8 +78,8 @@ export default async function BlogHomePage({ params }: Props) {
   return (
     <main id="main" className="blog-index">
       <div className="blog-home__shell">
-        <header className="blog-hero">
-          <Reveal className="blog-hero__intro">
+        <header className="blog-index-hero">
+          <Reveal className="blog-index-hero__intro">
             <p className="blog-home__eyebrow">{t("indexTitle")}</p>
             <h1 className="blog-home__title">{t("indexDescription")}</h1>
           </Reveal>
