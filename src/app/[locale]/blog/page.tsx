@@ -4,7 +4,7 @@ import { Link } from "@/i18n/navigation";
 import { Reveal } from "@/components/reveal";
 import { BlogExplorer, type ExplorerPost } from "@/components/blog-explorer";
 import { getAllTags, getBlogPosts } from "@/lib/blog";
-import { buildCurriculum, summarizeCategories } from "@/lib/curriculum";
+import { buildCurriculum } from "@/lib/curriculum";
 import type { Locale, RoadmapCategory } from "@/lib/types";
 
 type Props = {
@@ -58,11 +58,9 @@ export default async function BlogHomePage({ params }: Props) {
   const categoriesRaw = tr.raw("categories") as RoadmapCategory[];
   const path = categoriesRaw[0];
   const sections = path ? buildCurriculum(path.sections, locale) : [];
-  const overall = path ? summarizeCategories(categoriesRaw, locale)[0] : undefined;
-  const pct =
-    overall && overall.total > 0
-      ? Math.round((overall.done / overall.total) * 100)
-      : 0;
+  const doneTopics = sections.reduce((n, s) => n + s.doneCount, 0);
+  const totalTopics = sections.reduce((n, s) => n + s.topics.length, 0);
+  const pct = totalTopics > 0 ? Math.round((doneTopics / totalTopics) * 100) : 0;
   const pathHref = path ? `/blog/learn/${path.key}` : "/blog";
 
   const dateFormatter = new Intl.DateTimeFormat(locale, { dateStyle: "medium" });
@@ -85,12 +83,12 @@ export default async function BlogHomePage({ params }: Props) {
             <h1 className="blog-home__title">{t("indexDescription")}</h1>
           </Reveal>
 
-          {overall && (
+          {totalTopics > 0 && (
             <Reveal delay={120} className="progress-card">
               <div className="progress-card__row">
                 <span className="progress-card__label">{t("progressLabel")}</span>
                 <span className="progress-card__count">
-                  {tr("progress", { done: overall.done, total: overall.total })}
+                  {tr("progress", { done: doneTopics, total: totalTopics })}
                 </span>
               </div>
               <span className="progress-card__track" aria-hidden="true">
@@ -118,7 +116,7 @@ export default async function BlogHomePage({ params }: Props) {
                 return (
                   <Link
                     key={section.key}
-                    href={pathHref}
+                    href={`${pathHref}#sec-${section.key}`}
                     className="path-tile"
                   >
                     <span className="path-tile__head">
