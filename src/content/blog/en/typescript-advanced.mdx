@@ -1,0 +1,291 @@
+---
+title: "TypeScript, Advanced: Conditional & Mapped Types, infer, and the Type Toolkit"
+description: "The type-level programming layer of TypeScript — conditional types and infer, mapped types with key remapping and modifiers, template literal types, recursive types, building your own utility types, declaration files and module augmentation, assertion functions and overloads, and bridging compile-time types to runtime validation — with hands-on exercises and solutions."
+publishedAt: "2026-05-26"
+translationKey: "typescript-advanced"
+tags: ["TypeScript", "Types", "Advanced"]
+---
+
+The [intermediate guide](/blog/typescript-intermediate) used the type system to enforce rules. This is where you *compute* with it: types that take other types as input and produce new ones. This is what library authors use to make APIs that "just know" the right shape, and it's how the built-in utilities (`Partial`, `ReturnType`, `Awaited`) are actually written. You won't reach for this every day — but understanding it turns the standard library and the gnarlier error messages from mysteries into things you can read.
+
+> Treat types as a small functional language: conditional types are its `if`, `infer` is pattern-matching/destructuring, mapped types are its `map` over keys, and recursion is recursion. Same instincts as value-level code, one level up.
+
+## Conditional Types
+
+A conditional type chooses a branch based on a type relationship — `T extends U ? X : Y`:
+
+```ts
+type IsString<T> = T extends string ? true : false;
+
+type A = IsString<"hi">;   // true
+type B = IsString<number>; // false
+```
+
+Over a **union**, conditionals *distribute* — each member is checked independently and the results re-union. That's how `Exclude` and `NonNullable` work:
+
+```ts
+type Exclude2<T, U> = T extends U ? never : T;
+type Without = Exclude2<"a" | "b" | "c", "b">;   // "a" | "c"
+```
+
+Each member that matches `U` becomes `never` (and `never` vanishes from a union), so `"b"` is filtered out.
+
+## `infer`
+
+Inside a conditional's `extends`, **`infer`** captures part of a type into a new variable — pattern-matching for types. This is how you pull the element type out of an array, or the resolved type out of a `Promise`:
+
+```ts
+type ElementOf<T> = T extends (infer E)[] ? E : never;
+type X = ElementOf<string[]>;   // string
+
+type Resolve<T> = T extends Promise<infer R> ? R : T;
+type Y = Resolve<Promise<number>>;   // number
+
+// the real ReturnType is just this:
+type MyReturn<F> = F extends (...args: any[]) => infer R ? R : never;
+type Z = MyReturn<() => User>;   // User
+```
+
+`infer R` says "match this position and call whatever's there `R`." Combine it with recursion and you can unwrap nested structures (a `DeepAwaited`, a flattened array type, and so on).
+
+## Mapped Types
+
+A mapped type builds a new object type by iterating a union of keys — `{ [K in Keys]: ... }`. With `keyof` it transforms an existing type. The **modifiers** `?` and `readonly` can be added or removed with `+`/`-`:
+
+```ts
+type Optional<T> = { [K in keyof T]?: T[K] };          // ≈ Partial
+type Mutable<T> = { -readonly [K in keyof T]: T[K] };  // strip readonly
+type Nullable<T> = { [K in keyof T]: T[K] | null };
+
+interface User { readonly id: number; name: string }
+type EditableUser = Mutable<User>;   // { id: number; name: string }
+```
+
+**Key remapping** with `as` lets you rename or filter keys while mapping — e.g. generate getter names, or drop keys by type:
+
+```ts
+type Getters<T> = {
+  [K in keyof T as `get${Capitalize<string & K>}`]: () => T[K];
+};
+
+type UserGetters = Getters<{ name: string; age: number }>;
+// { getName: () => string; getAge: () => number }
+```
+
+Mapping `as never` removes a key entirely — that's how `Omit`-style filters are built.
+
+## Template Literal Types
+
+String literals can be *composed* at the type level, with the built-in `Uppercase`/`Lowercase`/`Capitalize` helpers:
+
+```ts
+type Color = "red" | "blue";
+type Shade = "light" | "dark";
+type Swatch = `${Shade}-${Color}`;
+// "light-red" | "light-blue" | "dark-red" | "dark-blue"
+
+type Route = `/users/${number}`;
+const r: Route = "/users/42";   // ✅
+```
+
+This powers typed event names (`on${Capitalize<Event>}`), CSS-in-JS keys, route patterns, and the getter example above — strings the compiler can actually reason about.
+
+## Recursive Types
+
+A type can refer to itself, which models trees and arbitrarily nested data — and lets you write deep transformations:
+
+```ts
+type Json =
+  | string | number | boolean | null
+  | Json[]
+  | { [key: string]: Json };
+
+type DeepReadonly<T> = {
+  readonly [K in keyof T]: T[K] extends object ? DeepReadonly<T[K]> : T[K];
+};
+```
+
+`DeepReadonly` maps each key, and recurses into nested objects — so the `readonly` applies all the way down, not just the top level.
+
+## Building Your Own Utility Types
+
+The built-ins are just the pieces above, combined. Reading their definitions demystifies them — here's `Pick` and a `DeepPartial`:
+
+```ts
+type MyPick<T, K extends keyof T> = { [P in K]: T[P] };
+
+type DeepPartial<T> = {
+  [K in keyof T]?: T[K] extends object ? DeepPartial<T[K]> : T[K];
+};
+```
+
+When you hit a repetitive type pattern in your codebase — "the same shape but with all dates as strings," "every handler's payload type" — a small mapped/conditional type removes the duplication and stays correct as the source evolves.
+
+## Assertion Functions and Overloads
+
+An **assertion function** uses `asserts` to narrow by *throwing* instead of returning a boolean — after it runs, the compiler trusts the type:
+
+```ts
+function assert(cond: unknown, msg: string): asserts cond {
+  if (!cond) throw new Error(msg);
+}
+
+function assertIsUser(v: unknown): asserts v is User {
+  if (typeof v !== "object" || v === null || !("name" in v)) {
+    throw new Error("not a user");
+  }
+}
+
+const data: unknown = JSON.parse(input);
+assertIsUser(data);
+data.name;   // narrowed — no `if` needed after the assertion
+```
+
+**Overloads** give one implementation several typed call signatures, when the return type depends on the arguments in a way a single signature can't express:
+
+```ts
+function parse(x: string): number;
+function parse(x: string[]): number[];
+function parse(x: string | string[]): number | number[] {
+  return Array.isArray(x) ? x.map(Number) : Number(x);
+}
+
+const a = parse("3");        // number
+const b = parse(["3", "4"]); // number[]
+```
+
+## Declaration Files and Module Augmentation
+
+`.d.ts` files describe types with no implementation — for plain-JS libraries, globals, or non-code imports. `declare` introduces an ambient type/value the compiler should trust exists:
+
+```ts
+// global.d.ts
+declare global {
+  interface Window { analytics: { track(event: string): void } }
+}
+declare module "*.svg" {
+  const src: string;
+  export default src;
+}
+export {};
+```
+
+**Module augmentation** adds to an existing library's types — e.g. extending a framework's `Request` with your own field:
+
+```ts
+import "express";
+declare module "express" {
+  interface Request { userId?: string }
+}
+```
+
+This is how you teach the type system about JS-only packages and your own runtime extensions without forking them.
+
+## The Boundary: Types Are Erased
+
+The one thing type-level programming *can't* do is check runtime data — types are gone before the code runs. At every boundary (API responses, `localStorage`, form input, env vars) validate, then let the types take over. A schema library like **Zod** does both at once — validate and *infer* the type from the schema, so there's one source of truth:
+
+```ts
+import { z } from "zod";
+
+const UserSchema = z.object({ id: z.number(), name: z.string() });
+type User = z.infer<typeof UserSchema>;   // { id: number; name: string }
+
+const user = UserSchema.parse(await res.json());  // throws on bad data
+// `user` is a fully-typed User from here on
+```
+
+Inside your app: rich compile-time types. At the edges: runtime validation that *produces* those types. That's the complete picture.
+
+## Common Mistakes
+
+- Reaching for advanced types when a plain interface would do — type-level cleverness has a real readability cost; use it to remove duplication, not to show off.
+- Forgetting conditional types **distribute** over unions, then being surprised by the result (wrap in a tuple — `[T] extends [U]` — to opt out of distribution).
+- Writing deep recursive types with no base case, hitting "type instantiation is excessively deep."
+- Trusting `as` / type assertions at runtime boundaries — they don't validate anything; data can still be the wrong shape.
+- Re-deriving a type and a Zod schema separately, so they drift — infer the type *from* the schema.
+- Overusing overloads where a single generic or union signature is clearer.
+- Putting `declare global` augmentations in a module without an `export {}`, so the file isn't treated as a module and the augmentation misbehaves.
+
+## Exercises
+
+Try each before opening the solution.
+
+### Exercise 1 — Unwrap a Promise
+
+Write `Unwrap<T>` that yields the resolved type of a `Promise`, or `T` itself if it isn't one.
+
+<details>
+
+<summary>Show solution</summary>
+
+```ts
+type Unwrap<T> = T extends Promise<infer R> ? R : T;
+
+type A = Unwrap<Promise<string>>;   // string
+type B = Unwrap<number>;            // number
+```
+
+`infer R` captures the type inside `Promise<…>`; the false branch returns `T` unchanged.
+
+</details>
+
+### Exercise 2 — Strip readonly
+
+Write `Writable<T>` that removes `readonly` from every property.
+
+<details>
+
+<summary>Show solution</summary>
+
+```ts
+type Writable<T> = { -readonly [K in keyof T]: T[K] };
+
+type R = Writable<{ readonly a: number }>;   // { a: number }
+```
+
+The `-readonly` modifier subtracts the `readonly` flag while mapping each key.
+
+</details>
+
+### Exercise 3 — Event name type
+
+Given `type Event = "click" | "focus"`, produce `"onClick" | "onFocus"`.
+
+<details>
+
+<summary>Show solution</summary>
+
+```ts
+type Event = "click" | "focus";
+type Handler = `on${Capitalize<Event>}`;   // "onClick" | "onFocus"
+```
+
+The template literal prepends `on` and `Capitalize` upper-cases the first letter, distributing over the union.
+
+</details>
+
+### Exercise 4 — Pick by value type
+
+Write `KeysOfType<T, V>` that returns the union of keys in `T` whose value extends `V`.
+
+<details>
+
+<summary>Show solution</summary>
+
+```ts
+type KeysOfType<T, V> = {
+  [K in keyof T]: T[K] extends V ? K : never;
+}[keyof T];
+
+type T = { id: number; name: string; age: number };
+type NumKeys = KeysOfType<T, number>;   // "id" | "age"
+```
+
+The mapped type sets each key to itself or `never`, then indexing with `[keyof T]` unions the surviving keys.
+
+</details>
+
+## The Mental Model to Keep
+
+Advanced TypeScript is **programming with types**. Conditional types (`T extends U ? …`) are your branches; **`infer`** pattern-matches and extracts; **mapped types** iterate keys (with `?`/`readonly` modifiers and `as` remapping); **template literals** compose strings; and **recursion** handles nested data. The built-in utilities are nothing more than these combined — read their source and they stop being magic. Wrap JS-only code and globals with **declaration files** and **module augmentation**, narrow imperatively with **assertion functions**, and remember the hard boundary: **types are erased**, so validate runtime data at the edges (ideally with a schema that *infers* the type, like Zod). Use this power sparingly — its job is to delete duplication and make wrong usage impossible, not to win complexity contests. Reach back to the [intro](/blog/typescript-intro) and [intermediate](/blog/typescript-intermediate) guides for the everyday foundation; this layer is the one you grow into.

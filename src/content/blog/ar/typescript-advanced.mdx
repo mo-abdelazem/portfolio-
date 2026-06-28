@@ -1,0 +1,291 @@
+---
+title: "TypeScript، المستوى المتقدّم: الأنواع الشرطية والمُسقَطة، وinfer، وعُدّة الأنواع"
+description: "طبقة البرمجة على مستوى الأنواع في TypeScript — الأنواع الشرطية وinfer، والأنواع المُسقَطة مع إعادة تسمية المفاتيح والمُعدِّلات، وأنواع القوالب الحرفية، والأنواع العَودية، وبناء أنواعك المساعِدة، وملفّات الإعلان وتوسعة الوحدات، ودوال التوكيد والتحميل الزائد، وربط أنواع وقت الترجمة بالتحقّق وقت التشغيل — مع تمارين عملية وحلولها."
+publishedAt: "2026-05-26"
+translationKey: "typescript-advanced"
+tags: ["TypeScript", "Types", "Advanced"]
+---
+
+[الدليل المتوسّط](/blog/typescript-intermediate) استخدم نظام الأنواع لفرض القواعد. هنا *تحسب* به: أنواع تأخذ أنواعًا أخرى مُدخلًا وتنتج جديدة. هذا ما يستخدمه مؤلّفو المكتبات لصنع واجهات "تعرف" الشكل الصحيح، وهكذا تُكتَب الأدوات المدمجة فعلًا (`Partial`، `ReturnType`، `Awaited`). لن تلجأ إلى هذا يوميًّا — لكن فهمه يحوّل المكتبة القياسية ورسائل الأخطاء الأعقد من ألغاز إلى أشياء تقرؤها.
+
+> عامِل الأنواع كلغة دالّية صغيرة: الأنواع الشرطية هي `if` فيها، و`infer` مطابقة نمط/تفكيك، والأنواع المُسقَطة هي `map` على المفاتيح، والعَودية عَودية. الحدْس نفسه كشيفرة مستوى القيمة، طبقةً أعلى.
+
+## الأنواع الشرطية
+
+النوع الشرطيّ يختار فرعًا بناءً على علاقة بين الأنواع — `T extends U ? X : Y`:
+
+```ts
+type IsString<T> = T extends string ? true : false;
+
+type A = IsString<"hi">;   // true
+type B = IsString<number>; // false
+```
+
+فوق **اتحاد**، تتوزّع الشرطيات — يُفحَص كل عضو مستقلًّا وتُعاد النتائج اتحادًا. هكذا يعمل `Exclude` و`NonNullable`:
+
+```ts
+type Exclude2<T, U> = T extends U ? never : T;
+type Without = Exclude2<"a" | "b" | "c", "b">;   // "a" | "c"
+```
+
+كل عضو يطابق `U` يصير `never` (و`never` يتلاشى من الاتحاد)، فيُرشَّح `"b"`.
+
+## `infer`
+
+داخل `extends` للنوع الشرطيّ، يلتقط **`infer`** جزءًا من نوع في متغيّر جديد — مطابقة نمط للأنواع. هكذا تسحب نوع العنصر من مصفوفة، أو النوع المُحَلّ من `Promise`:
+
+```ts
+type ElementOf<T> = T extends (infer E)[] ? E : never;
+type X = ElementOf<string[]>;   // string
+
+type Resolve<T> = T extends Promise<infer R> ? R : T;
+type Y = Resolve<Promise<number>>;   // number
+
+// ReturnType الحقيقيّ هو هذا فقط:
+type MyReturn<F> = F extends (...args: any[]) => infer R ? R : never;
+type Z = MyReturn<() => User>;   // User
+```
+
+`infer R` يقول "طابِق هذا الموضع وسمِّ ما فيه `R`". اجمعه مع العَودية فتفكّ بُنى متداخلة (`DeepAwaited`، نوع مصفوفة مسطَّحة، وهكذا).
+
+## الأنواع المُسقَطة
+
+النوع المُسقَط يبني نوع كائن جديدًا بالمرور على اتحاد مفاتيح — `{ [K in Keys]: ... }`. مع `keyof` يحوّل نوعًا قائمًا. ويمكن إضافة المُعدِّلَين `?` و`readonly` أو إزالتهما بـ `+`/`-`:
+
+```ts
+type Optional<T> = { [K in keyof T]?: T[K] };          // ≈ Partial
+type Mutable<T> = { -readonly [K in keyof T]: T[K] };  // إزالة readonly
+type Nullable<T> = { [K in keyof T]: T[K] | null };
+
+interface User { readonly id: number; name: string }
+type EditableUser = Mutable<User>;   // { id: number; name: string }
+```
+
+**إعادة تسمية المفاتيح** بـ `as` تتيح إعادة التسمية أو الترشيح أثناء الإسقاط — مثل توليد أسماء قارئات، أو إسقاط مفاتيح حسب النوع:
+
+```ts
+type Getters<T> = {
+  [K in keyof T as `get${Capitalize<string & K>}`]: () => T[K];
+};
+
+type UserGetters = Getters<{ name: string; age: number }>;
+// { getName: () => string; getAge: () => number }
+```
+
+الإسقاط `as never` يحذف مفتاحًا كليًّا — هكذا تُبنى مرشِّحات على نمط `Omit`.
+
+## أنواع القوالب الحرفية
+
+يمكن *تركيب* السلاسل الحرفية على مستوى الأنواع، مع المساعِدات المدمجة `Uppercase`/`Lowercase`/`Capitalize`:
+
+```ts
+type Color = "red" | "blue";
+type Shade = "light" | "dark";
+type Swatch = `${Shade}-${Color}`;
+// "light-red" | "light-blue" | "dark-red" | "dark-blue"
+
+type Route = `/users/${number}`;
+const r: Route = "/users/42";   // ✅
+```
+
+هذا يشغّل أسماء الأحداث المنمَّطة (`on${Capitalize<Event>}`)، ومفاتيح CSS-in-JS، وأنماط المسارات، ومثال القارئات أعلاه — سلاسل يستطيع المترجم الاستدلال عليها فعلًا.
+
+## الأنواع العَودية
+
+يمكن لنوع أن يشير إلى نفسه، ما ينمذج الأشجار والبيانات المتداخلة كيفما عمُقت — ويتيح كتابة تحويلات عميقة:
+
+```ts
+type Json =
+  | string | number | boolean | null
+  | Json[]
+  | { [key: string]: Json };
+
+type DeepReadonly<T> = {
+  readonly [K in keyof T]: T[K] extends object ? DeepReadonly<T[K]> : T[K];
+};
+```
+
+`DeepReadonly` يُسقِط كل مفتاح، ويتعاود داخل الكائنات المتداخلة — فيُطبَّق `readonly` حتى الأعماق، لا المستوى الأعلى فقط.
+
+## بناء أنواعك المساعِدة
+
+الأدوات المدمجة ليست إلا القطع أعلاه مركَّبة. قراءة تعريفاتها تزيل عنها الغموض — إليك `Pick` و`DeepPartial`:
+
+```ts
+type MyPick<T, K extends keyof T> = { [P in K]: T[P] };
+
+type DeepPartial<T> = {
+  [K in keyof T]?: T[K] extends object ? DeepPartial<T[K]> : T[K];
+};
+```
+
+حين تصطدم بنمط نوع متكرّر في قاعدتك — "الشكل نفسه لكن كل التواريخ سلاسل"، "نوع حمولة كل معالِج" — يزيل نوع مُسقَط/شرطيّ صغير التكرار ويبقى صحيحًا مع تطوّر المصدر.
+
+## دوال التوكيد والتحميل الزائد
+
+**دالّة التوكيد** تستخدم `asserts` لتضييق بالـ*رمي* بدل إرجاع قيمة منطقية — بعد تشغيلها، يثق المترجم بالنوع:
+
+```ts
+function assert(cond: unknown, msg: string): asserts cond {
+  if (!cond) throw new Error(msg);
+}
+
+function assertIsUser(v: unknown): asserts v is User {
+  if (typeof v !== "object" || v === null || !("name" in v)) {
+    throw new Error("not a user");
+  }
+}
+
+const data: unknown = JSON.parse(input);
+assertIsUser(data);
+data.name;   // مُضيَّق — بلا حاجة إلى `if` بعد التوكيد
+```
+
+**التحميل الزائد** يمنح تنفيذًا واحدًا عدّة توقيعات استدعاء منمَّطة، حين يعتمد نوع الإرجاع على الوسائط بطريقة لا يعبّر عنها توقيع واحد:
+
+```ts
+function parse(x: string): number;
+function parse(x: string[]): number[];
+function parse(x: string | string[]): number | number[] {
+  return Array.isArray(x) ? x.map(Number) : Number(x);
+}
+
+const a = parse("3");        // number
+const b = parse(["3", "4"]); // number[]
+```
+
+## ملفّات الإعلان وتوسعة الوحدات
+
+ملفّات `.d.ts` تصف الأنواع بلا تنفيذ — لمكتبات JS خالصة، أو للعموميات، أو لاستيرادات غير برمجية. و`declare` يُدخِل نوعًا/قيمة محيطية ينبغي للمترجم الوثوق بوجودها:
+
+```ts
+// global.d.ts
+declare global {
+  interface Window { analytics: { track(event: string): void } }
+}
+declare module "*.svg" {
+  const src: string;
+  export default src;
+}
+export {};
+```
+
+**توسعة الوحدات** تضيف إلى أنواع مكتبة قائمة — مثل توسيع `Request` لإطار بحقلك الخاصّ:
+
+```ts
+import "express";
+declare module "express" {
+  interface Request { userId?: string }
+}
+```
+
+هكذا تُعلِّم نظام الأنواع عن حزم JS-فقط وتوسعاتك وقت التشغيل دون تشعيبها.
+
+## الحدّ: الأنواع تُمحى
+
+الشيء الوحيد الذي *لا* تستطيعه البرمجة على مستوى الأنواع هو فحص بيانات وقت التشغيل — الأنواع تختفي قبل تشغيل الشيفرة. عند كل حدّ (استجابات API، `localStorage`، مُدخَل النماذج، متغيّرات البيئة) تحقّق، ثم دع الأنواع تتولّى. مكتبة مخطَّطات مثل **Zod** تفعل الاثنين معًا — تتحقّق و*تستنتج* النوع من المخطَّط، فيكون هناك مصدر حقيقة واحد:
+
+```ts
+import { z } from "zod";
+
+const UserSchema = z.object({ id: z.number(), name: z.string() });
+type User = z.infer<typeof UserSchema>;   // { id: number; name: string }
+
+const user = UserSchema.parse(await res.json());  // يرمي عند بيانات خاطئة
+// `user` صار User منمَّطًا بالكامل من هنا
+```
+
+داخل تطبيقك: أنواع غنيّة وقت الترجمة. وعند الأطراف: تحقّق وقت تشغيل *ينتج* تلك الأنواع. تلك هي الصورة الكاملة.
+
+## الأخطاء الشائعة
+
+- اللجوء إلى الأنواع المتقدّمة حيث تكفي واجهة عادية — لذكاء مستوى الأنواع كلفة قراءة حقيقية؛ استخدمه لإزالة التكرار، لا للاستعراض.
+- نسيان أن الأنواع الشرطية **تتوزّع** فوق الاتحادات، ثم الاندهاش من النتيجة (لُفّها في صفّ — `[T] extends [U]` — للانسحاب من التوزيع).
+- كتابة أنواع عَودية عميقة بلا حالة أساس، فتصطدم بـ "type instantiation is excessively deep".
+- الوثوق بـ `as`/توكيدات النوع عند حدود وقت التشغيل — لا تتحقّق من شيء؛ قد تظلّ البيانات بشكل خاطئ.
+- اشتقاق نوع ومخطَّط Zod منفصلَين، فينحرفان — استنتج النوع *من* المخطَّط.
+- الإفراط في التحميل الزائد حيث توقيع عام أو اتحاديّ واحد أوضح.
+- وضع توسعات `declare global` في وحدة بلا `export {}`، فلا يُعامَل الملفّ كوحدة وتسيء التوسعة التصرّف.
+
+## تمارين
+
+جرّب كلًّا منها قبل فتح الحل.
+
+### تمرين 1 — فكّ غلاف Promise
+
+اكتب `Unwrap<T>` الذي يعطي النوع المُحَلّ لـ `Promise`، أو `T` نفسه إن لم يكن كذلك.
+
+<details>
+
+<summary>إظهار الحل</summary>
+
+```ts
+type Unwrap<T> = T extends Promise<infer R> ? R : T;
+
+type A = Unwrap<Promise<string>>;   // string
+type B = Unwrap<number>;            // number
+```
+
+`infer R` يلتقط النوع داخل `Promise<…>`؛ والفرع الخاطئ يُرجِع `T` كما هو.
+
+</details>
+
+### تمرين 2 — إزالة readonly
+
+اكتب `Writable<T>` الذي يزيل `readonly` من كل خاصية.
+
+<details>
+
+<summary>إظهار الحل</summary>
+
+```ts
+type Writable<T> = { -readonly [K in keyof T]: T[K] };
+
+type R = Writable<{ readonly a: number }>;   // { a: number }
+```
+
+المُعدِّل `-readonly` يطرح علامة `readonly` أثناء إسقاط كل مفتاح.
+
+</details>
+
+### تمرين 3 — نوع اسم حدث
+
+بمعلوميّة `type Event = "click" | "focus"`، أنتج `"onClick" | "onFocus"`.
+
+<details>
+
+<summary>إظهار الحل</summary>
+
+```ts
+type Event = "click" | "focus";
+type Handler = `on${Capitalize<Event>}`;   // "onClick" | "onFocus"
+```
+
+القالب الحرفيّ يسبق بـ `on` و`Capitalize` يرفع أول حرف، موزِّعًا فوق الاتحاد.
+
+</details>
+
+### تمرين 4 — انتقاء حسب نوع القيمة
+
+اكتب `KeysOfType<T, V>` الذي يُرجِع اتحاد مفاتيح `T` التي تمتدّ قيمتها `V`.
+
+<details>
+
+<summary>إظهار الحل</summary>
+
+```ts
+type KeysOfType<T, V> = {
+  [K in keyof T]: T[K] extends V ? K : never;
+}[keyof T];
+
+type T = { id: number; name: string; age: number };
+type NumKeys = KeysOfType<T, number>;   // "id" | "age"
+```
+
+النوع المُسقَط يجعل كل مفتاح نفسه أو `never`، ثم الفهرسة بـ `[keyof T]` تجمع المفاتيح الباقية اتحادًا.
+
+</details>
+
+## النموذج الذهني الذي تحتفظ به
+
+TypeScript المتقدّمة هي **البرمجة بالأنواع**. الأنواع الشرطية (`T extends U ? …`) هي فروعك؛ و**`infer`** يطابق ويستخرج؛ والأنواع **المُسقَطة** تمرّ على المفاتيح (بمُعدِّلات `?`/`readonly` وإعادة تسمية `as`)؛ والقوالب **الحرفية** تركّب السلاسل؛ و**العَودية** تعالج البيانات المتداخلة. الأدوات المدمجة ليست إلا هذه مركَّبة — اقرأ مصدرها يزُل عنها السحر. لُفّ شيفرة JS-فقط والعموميات بـ**ملفّات الإعلان** و**توسعة الوحدات**، وضيّق أمريًّا بـ**دوال التوكيد**، وتذكّر الحدّ الصارم: **الأنواع تُمحى**، فتحقّق من بيانات وقت التشغيل عند الأطراف (بمخطَّط *يستنتج* النوع، كـ Zod، مثاليًّا). استخدم هذه القوّة باعتدال — مهمّتها حذف التكرار وجعل الاستخدام الخاطئ مستحيلًا، لا الفوز بمسابقات التعقيد. ارجع إلى دليلَي [المقدّمة](/blog/typescript-intro) و[المتوسّط](/blog/typescript-intermediate) للأساس اليوميّ؛ هذه الطبقة هي التي تنمو إليها.
