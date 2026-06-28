@@ -275,8 +275,8 @@
     "sectionDone": "Done",
     "sectionSoon": "Soon",
     "noResults": "No posts match your search.",
-    "showAllTags": "Show all tags",
-    "showFewerTags": "Show fewer"
+    "showAllTags": "+{count} more",
+    "showFewerTags": "Show less"
   },
   "Roadmap": {
     "indexTitle": "Learning Paths",

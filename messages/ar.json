@@ -275,7 +275,7 @@
     "sectionDone": "مكتمل",
     "sectionSoon": "قريبًا",
     "noResults": "لا توجد مقالات تطابق بحثك.",
-    "showAllTags": "إظهار كل الوسوم",
+    "showAllTags": "+{count} أخرى",
     "showFewerTags": "إظهار أقل"
   },
   "Roadmap": {

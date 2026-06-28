@@ -53,6 +53,7 @@ export default async function BlogHomePage({ params }: Props) {
   const tr = await getTranslations("Roadmap");
   const posts = getBlogPosts(locale);
   const tags = getAllTags(locale);
+  const hiddenTagCount = tags.filter((tag) => tag.count <= 1).length;
 
   const categoriesRaw = tr.raw("categories") as RoadmapCategory[];
   const path = categoriesRaw[0];
@@ -156,7 +157,7 @@ export default async function BlogHomePage({ params }: Props) {
               allLabel={t("allTopics")}
               tagsLabel={t("tagsHeading")}
               emptyLabel={t("noResults")}
-              moreLabel={t("showAllTags")}
+              moreLabel={t("showAllTags", { count: hiddenTagCount })}
               lessLabel={t("showFewerTags")}
             />
           )}
