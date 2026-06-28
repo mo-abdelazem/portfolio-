@@ -1,6 +1,8 @@
 "use client";
 
+import type { CSSProperties } from "react";
 import { useInView } from "@/hooks/use-in-view";
+import { cn } from "@/lib/utils";
 
 interface RevealProps {
   children: React.ReactNode;
@@ -8,18 +10,19 @@ interface RevealProps {
   className?: string;
 }
 
+// Progressive enhancement: content ships visible (`.reveal`), and only the
+// hidden→animate behaviour is layered on when JS is present (`html.js .reveal`,
+// see globals.css). So a no-JS / pre-hydration paint never leaves the page
+// blank, and the scroll-reveal is purely additive.
 export function Reveal({ children, delay = 0, className = "" }: RevealProps) {
   const [ref, inView] = useInView(0.15);
 
   return (
     <div
       ref={ref}
-      className={className}
-      style={{
-        opacity: inView ? 1 : 0,
-        transform: inView ? "translateY(0)" : "translateY(28px)",
-        transition: `opacity 0.7s cubic-bezier(0.22,1,0.36,1) ${delay}ms, transform 0.7s cubic-bezier(0.22,1,0.36,1) ${delay}ms`,
-      }}
+      className={cn("reveal", className)}
+      data-inview={inView}
+      style={delay ? ({ "--reveal-delay": `${delay}ms` } as CSSProperties) : undefined}
     >
       {children}
     </div>

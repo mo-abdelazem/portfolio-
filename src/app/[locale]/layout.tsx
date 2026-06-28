@@ -137,7 +137,7 @@ export default async function LocaleLayout({ children, params }: Props) {
           id="theme-init"
           strategy="beforeInteractive"
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var d=document.documentElement;var t=localStorage.getItem('theme');if(t!=='light'&&t!=='dark'){t=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}d.setAttribute('data-theme',t);d.style.colorScheme=t;requestAnimationFrame(function(){requestAnimationFrame(function(){d.classList.add('theme-ready');});});}catch(e){}})();`,
+            __html: `(function(){try{var d=document.documentElement;d.classList.add('js');var t=localStorage.getItem('theme');if(t!=='light'&&t!=='dark'){t=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}d.setAttribute('data-theme',t);d.style.colorScheme=t;requestAnimationFrame(function(){requestAnimationFrame(function(){d.classList.add('theme-ready');});});}catch(e){}})();`,
           }}
         />
         <NextIntlClientProvider locale={locale} messages={{}}>

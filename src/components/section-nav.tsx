@@ -29,13 +29,26 @@ export function SectionNav({ navLinks, label }: SectionNavProps) {
       .map((link) => hashId(link.href))
       .filter((id): id is string => id !== null);
 
+    // Track each section's visibility and activate the most-visible one, so
+    // overlapping sections (and upward scrolling) resolve correctly instead of
+    // letting whichever entry fired last win.
+    const ratios = new Map<string, number>();
     const observer = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
-          if (entry.isIntersecting) setActive(entry.target.id);
+          ratios.set(entry.target.id, entry.isIntersecting ? entry.intersectionRatio : 0);
         }
+        let best = "";
+        let bestRatio = 0;
+        for (const [id, ratio] of ratios) {
+          if (ratio > bestRatio) {
+            bestRatio = ratio;
+            best = id;
+          }
+        }
+        if (best) setActive(best);
       },
-      { rootMargin: "-45% 0px -50% 0px" },
+      { threshold: [0, 0.25, 0.5, 0.75, 1], rootMargin: "-15% 0px -45% 0px" },
     );
 
     for (const id of ids) {

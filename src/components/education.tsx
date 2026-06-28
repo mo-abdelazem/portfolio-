@@ -1,5 +1,6 @@
 import type { SiteContent } from "@/lib/types";
 import { Reveal } from "./reveal";
+import { Section, Container, SectionHeading } from "@/components/ui/section";
 
 interface EducationProps {
   content: SiteContent;
@@ -7,14 +8,13 @@ interface EducationProps {
 
 export function Education({ content }: EducationProps) {
   return (
-    <section id="education" className="section" aria-labelledby="education-heading">
-      <div className="section__inner">
-        <Reveal>
-          <p className="section__label">{content.sections.education.label}</p>
-          <h2 id="education-heading" className="section__title">
-            {content.sections.education.title}
-          </h2>
-        </Reveal>
+    <Section id="education" aria-labelledby="education-heading">
+      <Container>
+        <SectionHeading
+          id="education-heading"
+          label={content.sections.education.label}
+          title={content.sections.education.title}
+        />
         <div className="timeline">
           {content.education.map((edu, i) => (
             <Reveal key={edu.school} delay={100 + i * 100}>
@@ -32,7 +32,7 @@ export function Education({ content }: EducationProps) {
             </Reveal>
           ))}
         </div>
-      </div>
-    </section>
+      </Container>
+    </Section>
   );
 }

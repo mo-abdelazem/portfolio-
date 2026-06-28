@@ -1,5 +1,7 @@
 import type { SiteContent } from "@/lib/types";
 import { Reveal } from "./reveal";
+import { Section, Container, SectionHeading } from "@/components/ui/section";
+import { Card } from "@/components/ui/card";
 
 interface AboutProps {
   content: SiteContent;
@@ -7,30 +9,35 @@ interface AboutProps {
 
 export function About({ content }: AboutProps) {
   return (
-    <section id="about" className="section" aria-labelledby="about-heading">
-      <div className="section__inner">
-        <Reveal>
-          <p className="section__label">{content.sections.about.label}</p>
-          <h2 id="about-heading" className="section__title">
-            {content.sections.about.title}
-          </h2>
-        </Reveal>
-        <div className="about__grid">
+    <Section id="about" aria-labelledby="about-heading">
+      <Container>
+        <SectionHeading
+          id="about-heading"
+          label={content.sections.about.label}
+          title={content.sections.about.title}
+        />
+        <div className="grid grid-cols-1 items-start gap-10 md:grid-cols-2 md:gap-16">
           <Reveal delay={100}>
-            <p className="about__bio">{content.personal.bio}</p>
+            <p className="text-lg leading-[1.6] tracking-[0.18px] text-secondary-foreground">
+              {content.personal.bio}
+            </p>
           </Reveal>
-          <div className="about__details">
+          <div className="grid grid-cols-2 gap-4">
             {content.details.map((detail, i) => (
               <Reveal key={detail.label} delay={150 + i * 75}>
-                <div className="about__card">
-                  <span className="about__card-label">{detail.label}</span>
-                  <span className="about__card-value">{detail.value}</span>
-                </div>
+                <Card interactive className="rounded-[var(--radius-lg)] p-5">
+                  <span className="mb-1.5 block text-xs font-medium tracking-[0.14px] text-muted-foreground">
+                    {detail.label}
+                  </span>
+                  <span className="text-[15px] font-medium tracking-[0.15px] text-foreground">
+                    {detail.value}
+                  </span>
+                </Card>
               </Reveal>
             ))}
           </div>
         </div>
-      </div>
-    </section>
+      </Container>
+    </Section>
   );
 }

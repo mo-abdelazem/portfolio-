@@ -61,15 +61,25 @@ export function Nav({ locale, navLinks, copy }: NavProps) {
       .map((link) => getHash(link.href)?.replace("#", ""))
       .filter((id): id is string => Boolean(id));
 
+    // Activate the most-visible section rather than whichever entry fired last,
+    // so the active nav link stays correct when sections overlap or on scroll-up.
+    const ratios = new Map<string, number>();
     const observer = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
-          if (entry.isIntersecting) {
-            setActiveSection(`#${entry.target.id}`);
+          ratios.set(entry.target.id, entry.isIntersecting ? entry.intersectionRatio : 0);
+        }
+        let best = "";
+        let bestRatio = 0;
+        for (const [id, ratio] of ratios) {
+          if (ratio > bestRatio) {
+            bestRatio = ratio;
+            best = id;
           }
         }
+        if (best) setActiveSection(`#${best}`);
       },
-      { rootMargin: "-40% 0px -55% 0px" }
+      { threshold: [0, 0.25, 0.5, 0.75, 1], rootMargin: "-15% 0px -45% 0px" }
     );
 
     for (const id of sectionIds) {
