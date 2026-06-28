@@ -1,5 +1,6 @@
 import type { SiteContent } from "@/lib/types";
 import { Reveal } from "./reveal";
+import { Section, Container, SectionHeading } from "@/components/ui/section";
 
 interface ExperienceProps {
   content: SiteContent;
@@ -7,14 +8,13 @@ interface ExperienceProps {
 
 export function Experience({ content }: ExperienceProps) {
   return (
-    <section id="experience" className="section" aria-labelledby="experience-heading">
-      <div className="section__inner">
-        <Reveal>
-          <p className="section__label">{content.sections.experience.label}</p>
-          <h2 id="experience-heading" className="section__title">
-            {content.sections.experience.title}
-          </h2>
-        </Reveal>
+    <Section id="experience" aria-labelledby="experience-heading">
+      <Container>
+        <SectionHeading
+          id="experience-heading"
+          label={content.sections.experience.label}
+          title={content.sections.experience.title}
+        />
         <div className="timeline">
           {content.experience.map((job, i) => (
             <Reveal key={job.company} delay={100 + i * 100}>
@@ -40,7 +40,7 @@ export function Experience({ content }: ExperienceProps) {
             </Reveal>
           ))}
         </div>
-      </div>
-    </section>
+      </Container>
+    </Section>
   );
 }

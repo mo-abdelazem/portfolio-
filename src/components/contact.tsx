@@ -1,5 +1,8 @@
 import type { SiteContent } from "@/lib/types";
 import { Reveal } from "./reveal";
+import { Section, Container } from "@/components/ui/section";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 interface ContactProps {
   content: SiteContent;
@@ -14,21 +17,26 @@ export function Contact({ content }: ContactProps) {
   ] as const;
 
   return (
-    <section id="contact" className="section section--centered" aria-labelledby="contact-heading">
-      <div className="section__inner">
+    <Section id="contact" centered aria-labelledby="contact-heading">
+      <Container>
         <Reveal>
-          <p className="section__label">{content.copy.contactLabel}</p>
-          <h2 id="contact-heading" className="section__title">
+          <p className="mb-2.5 text-[13px] font-medium tracking-[0.14px] text-muted-foreground">
+            {content.copy.contactLabel}
+          </p>
+          <h2
+            id="contact-heading"
+            className="mb-12 text-[clamp(32px,5vw,48px)] font-light leading-[1.08] tracking-[-0.96px] text-foreground"
+          >
             {content.copy.contactHeading}
           </h2>
         </Reveal>
         <Reveal delay={100}>
-          <div className="contact__links">
+          <div className="flex flex-wrap justify-center gap-3">
             {links.map((link) => (
               <a
                 key={link.label}
                 href={link.href}
-                className="contact__pill"
+                className={cn(buttonVariants({ variant: "pill" }))}
                 target={link.label !== "Email" ? "_blank" : undefined}
                 rel={link.label !== "Email" ? "noopener noreferrer" : undefined}
               >
@@ -37,7 +45,7 @@ export function Contact({ content }: ContactProps) {
             ))}
           </div>
         </Reveal>
-      </div>
-    </section>
+      </Container>
+    </Section>
   );
 }

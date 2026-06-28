@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import type { NavLink } from "@/lib/types";
+import { useScrollSpy } from "@/hooks/use-scroll-spy";
 
 function hashId(href: string) {
   const i = href.indexOf("#");
@@ -22,29 +22,7 @@ export function SectionNav({ navLinks, label }: SectionNavProps) {
     })
     .filter((s): s is { id: string; label: string } => s !== null);
 
-  const [active, setActive] = useState("");
-
-  useEffect(() => {
-    const ids = navLinks
-      .map((link) => hashId(link.href))
-      .filter((id): id is string => id !== null);
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (entry.isIntersecting) setActive(entry.target.id);
-        }
-      },
-      { rootMargin: "-45% 0px -50% 0px" },
-    );
-
-    for (const id of ids) {
-      const el = document.getElementById(id);
-      if (el) observer.observe(el);
-    }
-
-    return () => observer.disconnect();
-  }, [navLinks]);
+  const active = useScrollSpy(sections.map((s) => s.id));
 
   if (sections.length === 0) return null;
 

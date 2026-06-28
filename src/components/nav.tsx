@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Link, usePathname } from "@/i18n/navigation";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { useScrollSpy } from "@/hooks/use-scroll-spy";
 import type { Locale, NavLink, SiteCopy } from "@/lib/types";
 
 interface NavProps {
@@ -41,9 +42,18 @@ function GlobeIcon() {
 export function Nav({ locale, navLinks, copy }: NavProps) {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [activeSection, setActiveSection] = useState("");
   const pathname = usePathname();
   const targetLocale = locale === "ar" ? "en" : "ar";
+
+  // Scroll-spy only applies on the home page, where the nav links are in-page
+  // anchors. The shared hook returns the most-visible section id ("" elsewhere).
+  const sectionIds =
+    pathname === "/"
+      ? navLinks
+          .map((link) => getHash(link.href)?.replace("#", ""))
+          .filter((id): id is string => Boolean(id))
+      : [];
+  const activeSection = useScrollSpy(sectionIds);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
@@ -51,34 +61,6 @@ export function Nav({ locale, navLinks, copy }: NavProps) {
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
-
-  useEffect(() => {
-    if (pathname !== "/") {
-      return;
-    }
-
-    const sectionIds = navLinks
-      .map((link) => getHash(link.href)?.replace("#", ""))
-      .filter((id): id is string => Boolean(id));
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (entry.isIntersecting) {
-            setActiveSection(`#${entry.target.id}`);
-          }
-        }
-      },
-      { rootMargin: "-40% 0px -55% 0px" }
-    );
-
-    for (const id of sectionIds) {
-      const el = document.getElementById(id);
-      if (el) observer.observe(el);
-    }
-
-    return () => observer.disconnect();
-  }, [navLinks, pathname]);
 
   function handleNavClick(e: React.MouseEvent<HTMLAnchorElement>, href: string) {
     setMenuOpen(false);
@@ -107,7 +89,7 @@ export function Nav({ locale, navLinks, copy }: NavProps) {
   function isActiveLink(href: string) {
     const hash = getHash(href);
     if (hash) {
-      return pathname === "/" && activeSection === hash;
+      return pathname === "/" && activeSection === hash.slice(1);
     }
 
     return href === "/blog" && pathname.startsWith("/blog");
