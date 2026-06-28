@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import { Inter, Noto_Sans_Arabic } from "next/font/google";
 import { hasLocale, NextIntlClientProvider } from "next-intl";
 import { getMessages, getTranslations, setRequestLocale } from "next-intl/server";
@@ -132,7 +133,9 @@ export default async function LocaleLayout({ children, params }: Props) {
             color-scheme keeps the native canvas/scrollbars in sync from the
             first frame; theme-ready is flipped on after paint so the body's
             color transition never animates the initial dark→light→dark fade. */}
-        <script
+        <Script
+          id="theme-init"
+          strategy="beforeInteractive"
           dangerouslySetInnerHTML={{
             __html: `(function(){try{var d=document.documentElement;var t=localStorage.getItem('theme');if(t!=='light'&&t!=='dark'){t=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}d.setAttribute('data-theme',t);d.style.colorScheme=t;requestAnimationFrame(function(){requestAnimationFrame(function(){d.classList.add('theme-ready');});});}catch(e){}})();`,
           }}
@@ -149,8 +152,10 @@ export default async function LocaleLayout({ children, params }: Props) {
           {children}
           <Footer content={content} />
         </NextIntlClientProvider>
-        <script
+        <Script
+          id="ld-json"
           type="application/ld+json"
+          strategy="beforeInteractive"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
       </body>
