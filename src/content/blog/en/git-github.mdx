@@ -1,18 +1,18 @@
 ---
-title: "Git & GitHub: Version Control Every Developer Needs"
-description: "A practical guide to Git and GitHub — what version control is, the three areas (working directory, staging, repository), staging and committing, branches and merging, conflicts, .gitignore, remotes and push/pull, the GitHub pull-request workflow, and common mistakes — with hands-on exercises and solutions."
+title: "Git & GitHub: Version Control From Zero to Hero"
+description: "A complete, practical guide to Git and GitHub — the three areas, staging and committing, inspecting history, branches and merge vs rebase, conflicts, undoing anything (amend/restore/reset/revert), stashing, interactive rebase, cherry-pick, tags, recovery with reflog and bisect, remotes and safe force-push, branching strategies, and the full GitHub workflow (reviews, draft PRs, protected branches, Actions) — with hands-on exercises and solutions."
 publishedAt: "2026-06-11"
 translationKey: "git-github"
 tags: ["Git", "GitHub", "Tooling", "Workflow"]
 ---
 
-Git is the tool every developer uses every day, and the one most people learn just enough of to get by — until a bad day with a lost change or a tangled branch. Understanding the *model* underneath the commands turns Git from a set of scary incantations into something you can reason about. This post builds that model — the three areas, branches, remotes — and the GitHub workflow built on top of it. (Pairs naturally with [ES modules & tooling](/blog/es-modules), since `package.json` and your repo live together.)
+Git is the tool every developer uses every day, and the one most people learn just enough of to get by — until a bad day with a lost change or a tangled branch. Understanding the *model* underneath the commands turns Git from a set of scary incantations into something you can reason about, and the "advanced" commands (rebase, reset, reflog, bisect) stop being intimidating once the model is solid. This is the whole toolkit, from your first commit to recovering work you thought was gone. (Pairs naturally with [ES modules & tooling](/blog/es-modules), since `package.json` and your repo live together.)
 
-> Git's whole model is **snapshots over time**. A commit is a snapshot of your project you can always return to; a branch is a movable pointer to a line of snapshots. Once you see commits as save-points and branches as parallel timelines, the commands stop being magic.
+> Git's whole model is **snapshots over time**. A commit is an immutable snapshot of your project plus a pointer to its parent; a branch is just a movable pointer to one of those snapshots, and `HEAD` points at where you are now. Almost every command — merge, rebase, reset, revert, cherry-pick — is moving or copying those pointers and snapshots. Once you see that, nothing in Git is magic.
 
 ## What Version Control Is
 
-Version control records the history of your project — every change, who made it, and why — so you can review it, undo mistakes, and collaborate without overwriting each other. **Git** is the version-control system (it runs locally); **GitHub** is a service that hosts Git repositories online for sharing and collaboration. They're related but distinct: you can use Git with no GitHub at all.
+Version control records the history of your project — every change, who made it, and why — so you can review it, undo mistakes, and collaborate without overwriting each other. **Git** is the version-control system (it runs locally, fully offline); **GitHub** is a service that *hosts* Git repositories online for sharing and collaboration. They're related but distinct: Git is the engine, GitHub is one place to park a copy.
 
 ## The Three Areas
 
@@ -29,7 +29,11 @@ git add file.js       # stage a change (working dir → staging)
 git commit -m "msg"   # record staged changes (staging → repository)
 ```
 
-The two-step `add` then `commit` is deliberate: staging lets you craft a commit from exactly the changes you choose, rather than everything at once.
+The two-step `add` then `commit` is deliberate: staging lets you craft a commit from exactly the changes you choose. You can even stage *part* of a file:
+
+```bash
+git add -p            # review each change hunk and stage it y/n — craft clean commits
+```
 
 ## Staging and Committing
 
@@ -37,33 +41,62 @@ The everyday loop. Check what changed, stage it, commit it with a clear message:
 
 ```bash
 git status            # what's changed, what's staged
-git diff              # the exact line changes (unstaged)
+git diff              # unstaged line changes
+git diff --staged     # what's staged (about to be committed)
 git add .             # stage everything changed
-git add file.js       # or stage one file
 git commit -m "Add login validation"
-git log --oneline     # browse the history
 ```
 
 A good commit is **small and focused**, with a message that says *why*, in the imperative ("Fix overflow bug", not "fixed stuff"). Commit often — each commit is a save-point you can return to.
 
+## Inspecting History
+
+Reading history well is half of using Git. The log and inspection commands:
+
+```bash
+git log --oneline --graph --all   # compact, visual branch graph
+git log -p file.js                # full diff of every change to a file
+git log --author="Ada" --since=2.weeks
+git show <commit>                 # what a specific commit changed
+git diff main..feature            # difference between two branches
+git blame file.js                 # who last changed each line (and in which commit)
+```
+
+`git blame` + `git show` is the standard "why is this line here?" investigation: blame finds the commit, show reveals the change and its message.
+
 ## Branches
 
-A **branch** is a movable pointer to a line of commits — it lets you work on a feature without disturbing the main code, then merge it back when ready:
+A **branch** is a movable pointer to a line of commits — it lets you work on a feature without disturbing the main code:
 
 ```bash
 git branch                    # list branches
 git switch -c feature/login   # create and switch to a new branch
 # ...commit work on the branch...
 git switch main               # back to main
-git merge feature/login       # bring the feature's commits into main
-git branch -d feature/login   # delete the merged branch
+git branch -d feature/login   # delete a merged branch
 ```
 
-Branching is cheap and fast in Git, which is why the normal workflow is **one branch per feature or fix** — main stays stable, work happens on branches, and finished work merges in.
+Branching is cheap and instant in Git (a branch is just a 40-byte pointer), which is why the normal workflow is **one branch per feature or fix** — main stays stable, work happens on branches.
+
+## Merge vs Rebase
+
+Two ways to bring a branch's work together with another. They produce the same *files* but a different *history*:
+
+```bash
+# MERGE — joins the two histories with a merge commit; preserves the branch shape
+git switch main
+git merge feature/login
+
+# REBASE — replays your branch's commits on top of main; linear history, no merge commit
+git switch feature/login
+git rebase main               # now feature sits cleanly on the latest main
+```
+
+**Merge** keeps a true record of when branches diverged and joined (good for shared history). **Rebase** rewrites your commits onto a new base for a clean, linear history (good for tidying *your own* branch before sharing). The golden rule: **never rebase commits you've already pushed and others may have**, because rebase rewrites history and will diverge from their copy.
 
 ## Merge Conflicts
 
-When two branches change the *same lines*, Git can't decide automatically and reports a **conflict**. It marks the spot in the file:
+When two branches change the *same lines*, Git can't decide automatically and reports a **conflict**, marking the spot in the file:
 
 ```text
 <<<<<<< HEAD
@@ -73,19 +106,114 @@ const timeout = 5000;
 >>>>>>> feature/login
 ```
 
-You resolve it by editing the file to the version you want (removing the `<<<`/`===`/`>>>` markers), then staging and committing:
+Edit the file to the version you want (removing the `<<<`/`===`/`>>>` markers), then continue:
 
 ```bash
-# edit the file to keep the right code
-git add file.js
-git commit            # completes the merge
+git add file.js       # mark it resolved
+git commit            # completes a merge
+# (during a rebase, use `git rebase --continue` instead; `git rebase --abort` bails out)
 ```
 
-Conflicts feel scary but are routine — they just mean two people touched the same lines, and Git is asking *you* to choose.
+Conflicts feel scary but are routine — they just mean two people touched the same lines, and Git is asking *you* to choose. `git merge --abort` backs out cleanly if you'd rather start over.
+
+## Undoing Almost Anything
+
+This is where confidence comes from — knowing you can reverse any step:
+
+```bash
+# Fix the LAST commit (message or forgotten file) — before pushing
+git commit --amend
+
+# Discard changes to a file in the working directory
+git restore file.js
+
+# Unstage a file (keep the edits, just remove from staging)
+git restore --staged file.js
+
+# Move the branch pointer back, keeping changes...
+git reset --soft HEAD~1     # ...staged
+git reset HEAD~1            # ...unstaged (default: --mixed)
+git reset --hard HEAD~1     # ...DISCARDED entirely (destructive)
+
+# Undo a PUSHED commit safely — makes a NEW commit that reverses it
+git revert <commit>
+```
+
+The key distinction: **`reset` rewrites history** (use it on local, unpushed commits), while **`revert` adds history** (use it on shared/pushed commits — it doesn't break anyone's copy). `reset --hard` throws work away, so reach for it deliberately.
+
+## Stashing
+
+Need to switch branches mid-change but aren't ready to commit? **Stash** shelves your work-in-progress and restores a clean tree:
+
+```bash
+git stash              # shelve uncommitted changes
+git switch main        # do the urgent thing
+git stash pop          # bring your changes back
+git stash list         # see all stashes
+```
+
+Stash is the answer to "I need to quickly check something on another branch but my work isn't commit-ready."
+
+## Rewriting History: Interactive Rebase
+
+Before sharing a branch, you can clean it up — squash "WIP" commits, reword messages, reorder, or drop commits:
+
+```bash
+git rebase -i HEAD~3   # edit the last 3 commits interactively
+```
+
+You get a list where each line can be `pick`, `reword`, `squash` (fold into the previous), `fixup`, `edit`, or `drop`. Squashing three messy "fix typo / wip / actually fix it" commits into one clean commit is the most common use. Again: **only rewrite history that hasn't been pushed**.
+
+## Cherry-pick
+
+Grab a single commit from another branch without merging the whole thing:
+
+```bash
+git cherry-pick <commit>   # apply just that commit onto the current branch
+```
+
+Useful for backporting a hotfix to a release branch, or pulling one finished commit out of a branch that isn't ready to merge.
+
+## Tags and Releases
+
+A **tag** marks a specific commit permanently — used for version releases:
+
+```bash
+git tag -a v1.2.0 -m "Release 1.2.0"   # annotated tag on the current commit
+git push origin v1.2.0                  # tags aren't pushed by default
+git push origin --tags                  # push all tags
+```
+
+Unlike branches, tags don't move. On GitHub, a tag can become a **Release** with notes and downloadable assets.
+
+## Recovery: reflog and bisect
+
+Two commands that turn "I lost my work" and "what broke this?" into solved problems.
+
+**`git reflog`** records every place `HEAD` has been — even commits you "lost" via a bad reset or branch delete are still there for a while:
+
+```bash
+git reflog                 # list recent HEAD positions with their hashes
+git reset --hard <hash>    # jump back to a "lost" commit
+```
+
+This is the safety net behind `reset --hard`: as long as a commit existed, reflog can usually get it back.
+
+**`git bisect`** binary-searches your history to find the commit that introduced a bug:
+
+```bash
+git bisect start
+git bisect bad             # current commit is broken
+git bisect good v1.0       # this old version worked
+# Git checks out the midpoint; you test and mark good/bad; repeat until found
+git bisect reset
+```
+
+Bisect finds the culprit in `log₂(n)` steps — a dozen tests across thousands of commits.
 
 ## `.gitignore`
 
-Some files shouldn't be tracked — dependencies, build output, secrets, OS junk. A **`.gitignore`** file lists patterns Git should skip:
+Some files shouldn't be tracked — dependencies, build output, secrets, OS junk:
 
 ```text
 node_modules/
@@ -95,123 +223,162 @@ dist/
 *.log
 ```
 
-Never commit `node_modules/` (it's reinstallable from `package.json`) or `.env` files (they hold secrets). Add the ignore rules *before* the first commit where possible — once a file is tracked, ignoring it later takes an extra step.
+Never commit `node_modules/` (reinstallable from `package.json`) or `.env` files (they hold secrets). Add ignore rules *before* the first commit where possible — once a file is tracked, `.gitignore` won't untrack it (use `git rm --cached file` for that).
 
-## Remotes: Push and Pull
+## Remotes: Push, Pull, Fetch
 
-A **remote** is a copy of your repo hosted elsewhere (usually on GitHub). You sync your local commits with it:
+A **remote** is a copy of your repo hosted elsewhere (usually GitHub):
 
 ```bash
-git clone https://github.com/user/repo.git   # copy a remote repo locally
-git remote add origin <url>                    # link an existing local repo to a remote
-git push origin main                           # send your commits up
-git pull origin main                           # fetch others' commits and merge them
-git fetch                                       # download remote changes WITHOUT merging
+git clone <url>                # copy a remote repo locally
+git remote add origin <url>    # link a local repo to a remote
+git push -u origin main        # push and set up tracking (so later just `git push`)
+git fetch                      # download remote changes WITHOUT merging
+git pull                       # fetch + merge in one step
 ```
 
-`origin` is the conventional name for your main remote. **Push** uploads your commits; **pull** downloads and merges others'. Pull before you start work so you're building on the latest, and push when you've got something worth sharing.
+`origin` is the conventional name for your main remote. Prefer `git fetch` then review, over a blind `git pull`, when you want to see what's incoming first. When you've rebased and *must* update a pushed branch, use the **safe** force:
 
-## The GitHub Pull-Request Workflow
+```bash
+git push --force-with-lease    # refuses if someone else pushed since you last fetched
+```
 
-This is how teams (and open source) collaborate. The cycle:
+`--force-with-lease` is the responsible force-push — it won't silently clobber a teammate's work the way bare `--force` can.
 
-1. **Branch** off main for your change (`git switch -c fix/typo`).
-2. **Commit** your work and **push** the branch to GitHub.
-3. Open a **pull request (PR)** — a proposal to merge your branch into main, where others review the diff, comment, and approve.
-4. Once approved (and checks pass), **merge** the PR; the branch is deleted.
+## Branching Strategies
 
-For repos you don't have write access to, you **fork** (your own copy on GitHub), push to your fork, and open a PR from it. The PR is where code review, discussion, and automated tests happen before code reaches main — the heart of collaborative development.
+How a team organizes branches:
+
+- **Feature branching** — one short-lived branch per feature/fix, merged via PR. The common default.
+- **Trunk-based development** — everyone integrates into `main` frequently behind small PRs and feature flags; minimizes long-lived divergence. Favoured by fast-moving teams and CI-heavy shops.
+- **GitFlow** — long-lived `develop`, `release`, and `hotfix` branches; heavier, suited to scheduled releases and versioned products.
+
+Most modern web teams use short-lived feature branches or trunk-based — keep branches small and merge often to avoid painful conflicts.
+
+## The GitHub Workflow
+
+This is how teams (and open source) collaborate:
+
+1. **Branch** off main (`git switch -c fix/typo`), commit, and **push** with `-u`.
+2. Open a **pull request (PR)** — a proposal to merge your branch, where the diff is reviewed.
+3. Reviewers comment, request changes, or approve; **CI checks** (GitHub Actions) run tests/lint automatically on the PR.
+4. Once approved and green, **merge** (often *squash-merge* for a clean main history); the branch is deleted.
+
+Things worth knowing on top:
+
+- **Draft PRs** — open early to share work-in-progress without requesting review yet.
+- **Fork + PR** — for repos you can't write to: fork your own copy, push there, open a PR from the fork. The open-source contribution flow.
+- **Protected branches** — `main` can require PRs, passing checks, and approvals before merge — no direct pushes.
+- **Issues** — track bugs and tasks; reference them in commits/PRs (`Fixes #42` auto-closes the issue on merge).
+- **GitHub Actions** — CI/CD: run tests on every PR, deploy on merge to main.
+
+The PR is the heart of collaboration — where review, discussion, and automated checks happen before code reaches main.
 
 ## Common Mistakes
 
 - Committing `node_modules/`, build output, or `.env` secrets — add a `.gitignore` first.
-- Vague commit messages ("update", "fix") that say nothing about *why* — write intent.
-- Huge commits mixing many unrelated changes — keep them small and focused.
-- Working directly on `main` instead of a branch, making changes hard to review and revert.
-- Forgetting to `pull` before starting, then hitting avoidable conflicts.
-- Panicking at a merge conflict — it's routine; just edit, stage, and commit.
-- Force-pushing (`git push --force`) to a shared branch, overwriting others' work.
-- Confusing Git (the local tool) with GitHub (the host) — you can use Git entirely offline.
+- Vague commit messages ("update", "fix") that say nothing about *why*.
+- Huge commits mixing unrelated changes — keep them small and focused (use `git add -p`).
+- Working directly on `main` instead of a branch.
+- **Rebasing or amending commits that were already pushed** and shared — it rewrites history and diverges from everyone's copy.
+- Reaching for `reset --hard` when you meant `revert` (or vice versa) — reset rewrites, revert adds.
+- Bare `git push --force` to a shared branch — use `--force-with-lease`.
+- Panicking after a bad reset or deleted branch — check `git reflog` first; the commit is usually recoverable.
+- Confusing Git (the local tool) with GitHub (the host) — Git works entirely offline.
 
 ## Exercises
 
 Try each before opening the solution.
 
-### Exercise 1 — Start and save
+### Exercise 1 — Fix the last commit
 
-You have a new project folder. Initialize Git and make a first commit.
+You committed but forgot to include `styles.css` and want a better message — and you haven't pushed yet.
 
 <details>
 
 <summary>Show solution</summary>
 
 ```bash
-git init
-git add .
-git commit -m "Initial commit"
+git add styles.css
+git commit --amend -m "Add login form with styles"
 ```
 
-`init` creates the repository, `add .` stages all current files into the staging area, and `commit` records them as the first snapshot.
+`--amend` replaces the previous commit with a new one that includes the staged file and the new message. Safe *because you haven't pushed* — amending shared commits rewrites history.
 
 </details>
 
-### Exercise 2 — Feature branch
+### Exercise 2 — Undo a pushed commit
 
-Create a branch for a new feature, knowing you'll merge it later.
+A commit you already pushed to `main` introduced a bug. Reverse it without rewriting shared history.
 
 <details>
 
 <summary>Show solution</summary>
 
 ```bash
-git switch -c feature/search
-# ...edit, git add, git commit...
+git revert <commit>
+git push
+```
+
+`revert` creates a *new* commit that undoes the changes, so everyone's history stays consistent. (`reset` would rewrite history and break collaborators' copies — wrong tool for a pushed commit.)
+
+</details>
+
+### Exercise 3 — Squash messy commits
+
+Your branch has three commits: "wip", "fix typo", "actually works". Combine them into one before opening a PR.
+
+<details>
+
+<summary>Show solution</summary>
+
+```bash
+git rebase -i HEAD~3
+# in the editor: keep the first as `pick`, change the other two to `squash` (or `fixup`)
+# then write one clean commit message
+```
+
+Interactive rebase folds the three into a single tidy commit. Fine here because the branch hasn't been merged/shared yet.
+
+</details>
+
+### Exercise 4 — Recover a "lost" commit
+
+You ran `git reset --hard HEAD~1` and realize you needed that commit. Get it back.
+
+<details>
+
+<summary>Show solution</summary>
+
+```bash
+git reflog                  # find the hash of the commit before the reset
+git reset --hard <hash>     # or: git cherry-pick <hash> to bring just it back
+```
+
+`reflog` lists every recent `HEAD` position, including the one you reset away from — the commit isn't gone, just unreferenced.
+
+</details>
+
+### Exercise 5 — Switch branches mid-change
+
+You're halfway through editing and a teammate needs an urgent fix on `main`. Park your work, fix main, come back.
+
+<details>
+
+<summary>Show solution</summary>
+
+```bash
+git stash               # shelve your in-progress edits
 git switch main
-git merge feature/search
+# ...make and commit the urgent fix...
+git switch feature/x
+git stash pop           # restore your edits
 ```
 
-`switch -c` creates and moves to the branch; you commit work there, then merge it back into `main` — main stays clean while you build.
-
-</details>
-
-### Exercise 3 — Ignore the right things
-
-What belongs in a `.gitignore` for a typical Node/web project, and why?
-
-<details>
-
-<summary>Show solution</summary>
-
-```text
-node_modules/   # reinstallable from package.json — huge and pointless to track
-dist/           # build output — generated, not source
-.env            # secrets — never commit these
-.DS_Store       # OS junk
-```
-
-The rule: ignore anything generated, reinstallable, or secret. Source files and `package.json` are what you track; everything derivable from them is not.
-
-</details>
-
-### Exercise 4 — Share your work
-
-You've committed locally and want it on GitHub for a teammate to review. What's the flow?
-
-<details>
-
-<summary>Show solution</summary>
-
-```bash
-git switch -c fix/header        # branch
-# ...commit your work...
-git push origin fix/header      # push the branch to GitHub
-# then open a Pull Request on GitHub for review
-```
-
-Push the branch (not directly to main), then open a PR so the change can be reviewed and discussed before merging — the standard collaboration flow.
+`stash` cleans your working tree without committing half-done work, then `pop` restores it exactly when you return.
 
 </details>
 
 ## The Mental Model to Keep
 
-Git is **snapshots over time**. Files flow through three areas — **working directory → staging (`add`) → repository (`commit`)** — and each commit is a save-point you can return to. A **branch** is a movable pointer to a line of commits, so the everyday workflow is *branch per feature, commit small and often, merge back* — and a **conflict** is just Git asking you to choose when two branches touched the same lines. A **remote** (GitHub) is a hosted copy you **push** to and **pull** from, and the **pull request** is where collaboration happens: branch, push, open a PR, review, merge. Keep secrets and generated files out with **`.gitignore`**, write commit messages that explain *why*, and Git stops being a source of dread and becomes the safety net that lets you work fearlessly.
+Git is **snapshots over time**: each commit is an immutable snapshot pointing at its parent, a **branch** is a movable pointer, and most commands just move or copy those pointers. Files flow **working dir → staging (`add`) → repository (`commit`)**. Build the everyday habit — *branch per feature, commit small, merge or rebase back* — and lean on the rest by category: **inspect** with `log`/`show`/`blame`/`bisect`; **undo** with `amend`/`restore`/`reset` (rewrites history — local only) vs `revert` (adds history — safe for pushed); **rewrite** local branches with interactive `rebase`; **recover** with `reflog`. Collaborate through **remotes** (`fetch`/`pull`/`push`, force only with `--force-with-lease`) and the **GitHub PR workflow** (review + CI before merge). The one rule that prevents most disasters: **don't rewrite history that's already been pushed and shared.** Hold that, and Git stops being a source of dread and becomes the safety net that lets you work fearlessly.

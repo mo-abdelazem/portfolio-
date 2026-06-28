@@ -33,6 +33,7 @@ import {
   getBlogPostAlternates,
   getBlogPostToc,
   getBlogPostUrl,
+  tagSlug,
 } from "@/lib/blog";
 import { getCurriculumNeighbors } from "@/lib/curriculum";
 import { categoryKeyForTopic } from "@/lib/curriculum-structure";
@@ -148,9 +149,13 @@ export default async function BlogPostPage({ params }: Props) {
               <p className="blog-post__description">{post.metadata.description}</p>
               <div className="blog-post__tags" aria-label={t("tagsLabel")}>
                 {post.metadata.tags.map((tag) => (
-                  <span key={tag} className="tag-chip tag-chip--static">
+                  <Link
+                    key={tag}
+                    href={`/blog/tag/${tagSlug(tag)}`}
+                    className="tag-chip"
+                  >
                     {tag}
-                  </span>
+                  </Link>
                 ))}
               </div>
             </header>

@@ -21,29 +21,106 @@
       "heroDescription": "أحوّل التصميمات إلى واجهات احترافية متجاوبة، سهلة الاستخدام، وسريعة التحميل، مع اهتمام بالتفاصيل، الأداء، وتجربة المستخدم."
     },
     "navLinks": [
-      { "label": "نبذة", "href": "/#about" },
-      { "label": "المهارات", "href": "/#skills" },
-      { "label": "الخبرة", "href": "/#experience" },
-      { "label": "المشاريع", "href": "/#projects" },
-      { "label": "المدونة", "href": "/blog" },
-      { "label": "التعليم", "href": "/#education" },
-      { "label": "تواصل", "href": "/#contact" }
+      {
+        "label": "نبذة",
+        "href": "/#about"
+      },
+      {
+        "label": "المهارات",
+        "href": "/#skills"
+      },
+      {
+        "label": "الخبرة",
+        "href": "/#experience"
+      },
+      {
+        "label": "المشاريع",
+        "href": "/#projects"
+      },
+      {
+        "label": "المدونة",
+        "href": "/blog"
+      },
+      {
+        "label": "التعليم",
+        "href": "/#education"
+      },
+      {
+        "label": "تواصل",
+        "href": "/#contact"
+      }
     ],
     "details": [
-      { "label": "الموقع", "value": "دمياط، مصر" },
-      { "label": "اللغات", "value": "العربية، الإنجليزية" },
-      { "label": "نوع المشاريع", "value": "مواقع ويب، تطبيقات واجهة واحدة، مواقع SSR/SSG" },
-      { "label": "أهم ما أركز عليه", "value": "السرعة، سهولة الاستخدام، وتجربة المستخدم" }
+      {
+        "label": "الموقع",
+        "value": "دمياط، مصر"
+      },
+      {
+        "label": "اللغات",
+        "value": "العربية، الإنجليزية"
+      },
+      {
+        "label": "نوع المشاريع",
+        "value": "مواقع ويب، تطبيقات واجهة واحدة، مواقع SSR/SSG"
+      },
+      {
+        "label": "أهم ما أركز عليه",
+        "value": "السرعة، سهولة الاستخدام، وتجربة المستخدم"
+      }
     ],
     "skills": {
-      "لغات البرمجة": ["JavaScript (ES6+)", "TypeScript", "HTML5", "CSS3"],
-      "أطر العمل": ["React.js", "Next.js", "Vue.js", "Nuxt.js"],
-      "تصميم الواجهات": ["Tailwind CSS", "Shadcn/ui", "Material UI", "Chakra UI", "SASS/LESS", "Framer Motion"],
-      "إدارة البيانات والحالة": ["Redux Toolkit", "Pinia", "Context API", "TanStack Query", "REST APIs"],
-      "الاختبار": ["Jest", "React Testing Library", "Cypress"],
-      "الأدوات والنشر": ["Git", "GitHub Actions", "Vercel", "Docker", "Figma"],
-      "المتاجر وأنظمة المحتوى": ["WordPress", "Shopify", "Salla", "Zid"],
-      "ممارسات العمل": ["دعم العربية والإنجليزية", "تحسين محركات البحث", "تحسين سرعة الموقع", "سهولة الوصول", "Agile/Scrum"]
+      "لغات البرمجة": [
+        "JavaScript (ES6+)",
+        "TypeScript",
+        "HTML5",
+        "CSS3"
+      ],
+      "أطر العمل": [
+        "React.js",
+        "Next.js",
+        "Vue.js",
+        "Nuxt.js"
+      ],
+      "تصميم الواجهات": [
+        "Tailwind CSS",
+        "Shadcn/ui",
+        "Material UI",
+        "Chakra UI",
+        "SASS/LESS",
+        "Framer Motion"
+      ],
+      "إدارة البيانات والحالة": [
+        "Redux Toolkit",
+        "Pinia",
+        "Context API",
+        "TanStack Query",
+        "REST APIs"
+      ],
+      "الاختبار": [
+        "Jest",
+        "React Testing Library",
+        "Cypress"
+      ],
+      "الأدوات والنشر": [
+        "Git",
+        "GitHub Actions",
+        "Vercel",
+        "Docker",
+        "Figma"
+      ],
+      "المتاجر وأنظمة المحتوى": [
+        "WordPress",
+        "Shopify",
+        "Salla",
+        "Zid"
+      ],
+      "ممارسات العمل": [
+        "دعم العربية والإنجليزية",
+        "تحسين محركات البحث",
+        "تحسين سرعة الموقع",
+        "سهولة الوصول",
+        "Agile/Scrum"
+      ]
     },
     "experience": [
       {
@@ -73,21 +150,33 @@
         "name": "Argatall - نظام إشعارات واتساب",
         "period": "02/2026 - 05/2026",
         "description": "نظام لإدارة حملات إشعارات واتساب، يساعد على تنظيم جهات الاتصال، إرسال التنبيهات، متابعة المهام، وإدارة صلاحيات المستخدمين، مع دعم للغتين العربية والإنجليزية.",
-        "tags": ["Next.js 16", "React 19", "WaSender API"],
+        "tags": [
+          "Next.js 16",
+          "React 19",
+          "WaSender API"
+        ],
         "url": "http://argatall.cloud/"
       },
       {
         "name": "Emtethal - منصة امتثال SaaS",
         "period": "11/2025 - 12/2025",
         "description": "منصة SaaS للامتثال تم تطوير واجهتها مع التركيز على سرعة التحميل، دعم اللغتين العربية والإنجليزية، وتحسين تجربة المستخدم على مختلف الأجهزة.",
-        "tags": ["Next.js", "Framer Motion", "i18n"],
+        "tags": [
+          "Next.js",
+          "Framer Motion",
+          "i18n"
+        ],
         "url": "https://www.emtethal.com/"
       },
       {
         "name": "Napeeh - منصة تعليمية للتحديات",
         "period": "10/2025 - 12/2025",
         "description": "منصة تعليمية للاختبارات والتحديات التفاعلية، تدعم متابعة أداء المستخدمين، تغيير مستوى الصعوبة، وتجربة استخدام مناسبة للطلاب باللغتين العربية والإنجليزية.",
-        "tags": ["Nuxt.js", "SSR", "i18n"],
+        "tags": [
+          "Nuxt.js",
+          "SSR",
+          "i18n"
+        ],
         "url": "https://www.napeeh.net/"
       }
     ],
@@ -177,7 +266,16 @@
     "emptyArticles": "لا توجد مقالات بعد.",
     "taggedTitle": "الموسومة بـ: {tag}",
     "taggedDescription": "مقالات موسومة بـ {tag}.",
-    "allArticles": "كل المقالات"
+    "allArticles": "كل المقالات",
+    "progressLabel": "تقدّمك",
+    "continueLearning": "تابِع التعلّم",
+    "searchLabel": "ابحث في المقالات…",
+    "allTopics": "كل المقالات",
+    "topicCount": "{count} موضوعات",
+    "sectionSoon": "قريبًا",
+    "noResults": "لا توجد مقالات تطابق بحثك.",
+    "showAllTags": "+{count} أخرى",
+    "showFewerTags": "إظهار أقل"
   },
   "Roadmap": {
     "indexTitle": "مسارات التعلّم",
@@ -190,84 +288,213 @@
         "title": "كن مطوّر واجهات أمامية محترفا",
         "description": "مسار موجّه من أساسيات الويب حتى تصبح مطوّر واجهات أمامية جاهزا لسوق العمل.",
         "sections": [
-      {
-        "key": "core-frontend",
-        "title": "أساسيات الواجهة الأمامية",
-        "description": "الأساسيات التي يجب أن يتقنها كل مطوّر واجهات أمامية.",
-        "topics": [
-          { "key": "html-semantic", "title": "HTML الدلالي" },
-          { "key": "css-box-model", "title": "CSS Box Model" },
-          { "key": "css-selectors-specificity-cascade", "title": "محدّدات CSS والتخصيص والتتالي" },
-          { "key": "css-positioning", "title": "تموضع CSS والتكديس" },
-          { "key": "flexbox", "title": "Flexbox" },
-          { "key": "grid", "title": "Grid" },
-          { "key": "responsive-media-queries", "title": "Media Queries والتجاوب" },
-          { "key": "css-typography", "title": "الطباعة وخطوط الويب" },
-          { "key": "css-color-gradients", "title": "الألوان والتدرّجات" },
-          { "key": "css-transitions-animations", "title": "الانتقالات والحركات" },
-          { "key": "modern-css", "title": "ميزات CSS الحديثة" },
-          { "key": "javascript-fundamentals", "title": "أساسيات JavaScript" },
-          { "key": "dom-manipulation", "title": "DOM" },
-          { "key": "forms", "title": "النماذج (Forms)" },
-          { "key": "promises", "title": "Promises" },
-          { "key": "async-await", "title": "Async / await" },
-          { "key": "http-basics", "title": "أساسيات HTTP" },
-          { "key": "git-github", "title": "Git / GitHub" }
-        ]
-      },
-      {
-        "key": "javascript-in-depth",
-        "title": "JavaScript بعمق",
-        "description": "تجاوز الأساسيات — آليات اللغة والأنماط والأدوات التي تفصل المتوسّط عن المتقدّم.",
-        "topics": [
-          { "key": "closures-scope-this", "title": "الإغلاقات والنطاق وthis" },
-          { "key": "prototypes-classes", "title": "النماذج الأولية والأصناف والبرمجة الكائنية" },
-          { "key": "es-modules", "title": "وحدات ES والأدوات" },
-          { "key": "functional-javascript", "title": "JavaScript الوظيفية" },
-          { "key": "iterators-generators", "title": "المُكرِّرات والمولّدات" },
-          { "key": "regular-expressions", "title": "التعبيرات النمطية" },
-          { "key": "error-handling-debugging", "title": "معالجة الأخطاء والتنقيح" },
-          { "key": "browser-storage", "title": "تخزين المتصفح والحالة" },
-          { "key": "javascript-performance", "title": "الأداء والذاكرة" },
-          { "key": "typescript-intro", "title": "مقدّمة TypeScript" },
-          { "key": "testing-javascript", "title": "اختبار JavaScript" }
-        ]
-      },
-      {
-        "key": "framework",
-        "title": "أطر العمل",
-        "description": "ابنِ واجهات حقيقية باستخدام إطار عمل حديث للمكوّنات.",
-        "topics": [
-          { "key": "react-fundamentals", "title": "أساسيات React" },
-          { "key": "components-props", "title": "المكوّنات والـ props" },
-          { "key": "state-and-hooks", "title": "State والـ hooks" },
-          { "key": "routing", "title": "التوجيه (Routing)" },
-          { "key": "data-fetching", "title": "جلب البيانات" },
-          { "key": "nextjs-basics", "title": "أساسيات Next.js" }
-        ]
-      },
-      {
-        "key": "projects",
-        "title": "المشاريع",
-        "description": "حوّل المعرفة إلى أعمال منشورة جاهزة لمعرض أعمالك.",
-        "topics": [
-          { "key": "project-setup", "title": "إعداد المشروع والأدوات" },
-          { "key": "ui-from-figma", "title": "بناء واجهة من Figma" },
-          { "key": "api-integration", "title": "ربط الـ API" },
-          { "key": "deployment", "title": "النشر (Deployment)" }
-        ]
-      },
-      {
-        "key": "job-prep",
-        "title": "التحضير للوظيفة",
-        "description": "كي تُوظَّف: الأداء، معرض الأعمال، والمقابلات.",
-        "topics": [
-          { "key": "portfolio", "title": "بناء معرض أعمالك" },
-          { "key": "resume", "title": "السيرة الذاتية للمطوّرين" },
-          { "key": "interview-questions", "title": "أسئلة المقابلات" },
-          { "key": "system-design-basics", "title": "أساسيات تصميم الأنظمة" }
-        ]
-      }
+          {
+            "key": "core-frontend",
+            "title": "أساسيات الواجهة الأمامية",
+            "description": "الأساسيات التي يجب أن يتقنها كل مطوّر واجهات أمامية.",
+            "topics": [
+              {
+                "key": "html-semantic",
+                "title": "HTML الدلالي"
+              },
+              {
+                "key": "css-box-model",
+                "title": "CSS Box Model"
+              },
+              {
+                "key": "css-selectors-specificity-cascade",
+                "title": "محدّدات CSS والتخصيص والتتالي"
+              },
+              {
+                "key": "css-positioning",
+                "title": "تموضع CSS والتكديس"
+              },
+              {
+                "key": "flexbox",
+                "title": "Flexbox"
+              },
+              {
+                "key": "grid",
+                "title": "Grid"
+              },
+              {
+                "key": "responsive-media-queries",
+                "title": "Media Queries والتجاوب"
+              },
+              {
+                "key": "css-typography",
+                "title": "الطباعة وخطوط الويب"
+              },
+              {
+                "key": "css-color-gradients",
+                "title": "الألوان والتدرّجات"
+              },
+              {
+                "key": "css-transitions-animations",
+                "title": "الانتقالات والحركات"
+              },
+              {
+                "key": "modern-css",
+                "title": "ميزات CSS الحديثة"
+              },
+              {
+                "key": "javascript-fundamentals",
+                "title": "أساسيات JavaScript"
+              },
+              {
+                "key": "dom-manipulation",
+                "title": "DOM"
+              },
+              {
+                "key": "forms",
+                "title": "النماذج (Forms)"
+              },
+              {
+                "key": "promises",
+                "title": "Promises"
+              },
+              {
+                "key": "async-await",
+                "title": "Async / await"
+              },
+              {
+                "key": "http-basics",
+                "title": "أساسيات HTTP"
+              },
+              {
+                "key": "git-github",
+                "title": "Git / GitHub"
+              }
+            ]
+          },
+          {
+            "key": "javascript-in-depth",
+            "title": "JavaScript بعمق",
+            "description": "تجاوز الأساسيات — آليات اللغة والأنماط والأدوات التي تفصل المتوسّط عن المتقدّم.",
+            "topics": [
+              {
+                "key": "closures-scope-this",
+                "title": "الإغلاقات والنطاق وthis"
+              },
+              {
+                "key": "prototypes-classes",
+                "title": "النماذج الأولية والأصناف والبرمجة الكائنية"
+              },
+              {
+                "key": "es-modules",
+                "title": "وحدات ES والأدوات"
+              },
+              {
+                "key": "functional-javascript",
+                "title": "JavaScript الوظيفية"
+              },
+              {
+                "key": "iterators-generators",
+                "title": "المُكرِّرات والمولّدات"
+              },
+              {
+                "key": "regular-expressions",
+                "title": "التعبيرات النمطية"
+              },
+              {
+                "key": "error-handling-debugging",
+                "title": "معالجة الأخطاء والتنقيح"
+              },
+              {
+                "key": "browser-storage",
+                "title": "تخزين المتصفح والحالة"
+              },
+              {
+                "key": "javascript-performance",
+                "title": "الأداء والذاكرة"
+              },
+              {
+                "key": "typescript-intro",
+                "title": "مقدّمة TypeScript"
+              },
+              {
+                "key": "testing-javascript",
+                "title": "اختبار JavaScript"
+              }
+            ]
+          },
+          {
+            "key": "framework",
+            "title": "أطر العمل",
+            "description": "ابنِ واجهات حقيقية باستخدام إطار عمل حديث للمكوّنات.",
+            "topics": [
+              {
+                "key": "react-fundamentals",
+                "title": "أساسيات React"
+              },
+              {
+                "key": "components-props",
+                "title": "المكوّنات والـ props"
+              },
+              {
+                "key": "state-and-hooks",
+                "title": "State والـ hooks"
+              },
+              {
+                "key": "routing",
+                "title": "التوجيه (Routing)"
+              },
+              {
+                "key": "data-fetching",
+                "title": "جلب البيانات"
+              },
+              {
+                "key": "nextjs-basics",
+                "title": "أساسيات Next.js"
+              }
+            ]
+          },
+          {
+            "key": "projects",
+            "title": "المشاريع",
+            "description": "حوّل المعرفة إلى أعمال منشورة جاهزة لمعرض أعمالك.",
+            "topics": [
+              {
+                "key": "project-setup",
+                "title": "إعداد المشروع والأدوات"
+              },
+              {
+                "key": "ui-from-figma",
+                "title": "بناء واجهة من Figma"
+              },
+              {
+                "key": "api-integration",
+                "title": "ربط الـ API"
+              },
+              {
+                "key": "deployment",
+                "title": "النشر (Deployment)"
+              }
+            ]
+          },
+          {
+            "key": "job-prep",
+            "title": "التحضير للوظيفة",
+            "description": "كي تُوظَّف: الأداء، معرض الأعمال، والمقابلات.",
+            "topics": [
+              {
+                "key": "portfolio",
+                "title": "بناء معرض أعمالك"
+              },
+              {
+                "key": "resume",
+                "title": "السيرة الذاتية للمطوّرين"
+              },
+              {
+                "key": "interview-questions",
+                "title": "أسئلة المقابلات"
+              },
+              {
+                "key": "system-design-basics",
+                "title": "أساسيات تصميم الأنظمة"
+              }
+            ]
+          }
         ]
       }
     ]

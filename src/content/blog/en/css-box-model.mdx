@@ -200,6 +200,76 @@ Open the element inspector and look at the **Computed** tab's box-model diagram.
 - Reaching for `margin` to space flex/grid children when `gap` is cleaner and collapse-free.
 - Using `margin-left`/`right` on a bidirectional site instead of logical `inline-start`/`inline-end`.
 
+## Exercises
+
+Try each before opening the solution.
+
+### Exercise 1 — Predict the rendered width
+
+With the default `box-sizing: content-box`, how wide does this element actually render — and how do you make it exactly 200px?
+
+```css
+.box { width: 200px; padding: 20px; border: 2px solid; }
+```
+
+<details>
+
+<summary>Show solution</summary>
+
+**244px** — content (200) + padding (20 × 2) + border (2 × 2). Under `content-box`, `width` sizes the *content* only, so padding and border add on top. To make the box exactly 200px:
+
+```css
+.box { box-sizing: border-box; width: 200px; padding: 20px; border: 2px solid; }
+```
+
+Now `width` includes padding and border, and the content shrinks to fit.
+
+</details>
+
+### Exercise 2 — Why is the gap 30px, not 50px?
+
+Two stacked block elements: `.a` (with `margin-bottom: 30px`) above `.b` (with `margin-top: 20px`). What's the vertical gap between them, and why?
+
+<details>
+
+<summary>Show solution</summary>
+
+**30px**, not 50px. Adjacent vertical margins **collapse** to the larger of the two, never the sum. For a predictable 50px, put them in a flex or grid container with `gap: 50px` (gaps never collapse), or place a border/padding between them.
+
+</details>
+
+### Exercise 3 — Center a card
+
+Center a `.card` horizontally in its parent, given it has a fixed width.
+
+<details>
+
+<summary>Show solution</summary>
+
+```css
+.card { width: 600px; margin-inline: auto; }
+```
+
+A fixed width plus `auto` left/right margins (here the logical `margin-inline: auto`) splits the leftover space evenly, centering the block. Vertical `auto` margins don't center in normal flow — only in flex/grid.
+
+</details>
+
+### Exercise 4 — RTL-safe spacing
+
+Add 16px of space on the *start* edge of an element so it works in both English (LTR) and Arabic (RTL).
+
+<details>
+
+<summary>Show solution</summary>
+
+```css
+.el { margin-inline-start: 16px; }
+```
+
+`margin-inline-start` maps to `margin-left` in LTR and automatically flips to `margin-right` in RTL — so one rule spaces the correct edge in both directions, unlike physical `margin-left`.
+
+</details>
+
 ## The Mental Model to Keep
 
 The box is **content → padding → border → margin**, measured according to `box-sizing`. Set `border-box` globally so the number you write is the number you get. Use `gap` and logical properties for spacing, reach for DevTools' box diagram when something is off, and most layout mysteries disappear. Every box here sits in the **normal flow**; when you need to lift one out of it — a badge, a sticky header, a modal — that's [CSS positioning](/blog/css-positioning).

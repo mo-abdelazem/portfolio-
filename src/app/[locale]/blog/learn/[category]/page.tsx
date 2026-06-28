@@ -93,7 +93,7 @@ export default async function LearningPathPage({ params }: Props) {
   return (
     <main id="main" className="blog-index roadmap">
       <section className="blog-hero">
-        <div className="blog-shell">
+        <div className="roadmap__container">
           <Link href="/blog" className="blog-post__back">
             <Arrow className="blog-post__nav-arrow" dir="prev" />
             {tb("indexTitle")}
@@ -109,10 +109,38 @@ export default async function LearningPathPage({ params }: Props) {
         </div>
       </section>
 
-      <div className="blog-shell roadmap__shell">
-        {curriculum.map((section, si) => (
-          <section key={section.key} className="roadmap-section">
-            <header className="roadmap-section__head">
+      <div className="roadmap__container roadmap__layout">
+        <aside className="roadmap-nav" aria-label={tb("onThisPage")}>
+          <p className="roadmap-nav__heading">{tb("onThisPage")}</p>
+          <ol className="roadmap-nav__list">
+            {curriculum.map((section, si) => {
+              const total = section.topics.length;
+              const complete = total > 0 && section.doneCount === total;
+              return (
+                <li key={section.key}>
+                  <a href={`#sec-${section.key}`} className="roadmap-nav__link">
+                    <span className="roadmap-nav__num" aria-hidden="true">
+                      {String(si + 1).padStart(2, "0")}
+                    </span>
+                    <span className="roadmap-nav__name">{section.title}</span>
+                    <span className="roadmap-nav__count">
+                      {complete ? "✓" : `${section.doneCount}/${total}`}
+                    </span>
+                  </a>
+                </li>
+              );
+            })}
+          </ol>
+        </aside>
+
+        <div className="roadmap__shell">
+          {curriculum.map((section, si) => (
+            <section
+              key={section.key}
+              id={`sec-${section.key}`}
+              className="roadmap-section"
+            >
+              <header className="roadmap-section__head">
               <span className="roadmap-section__index" aria-hidden="true">
                 {String(si + 1).padStart(2, "0")}
               </span>
@@ -163,9 +191,10 @@ export default async function LearningPathPage({ params }: Props) {
                   </li>
                 );
               })}
-            </ol>
-          </section>
-        ))}
+              </ol>
+            </section>
+          ))}
+        </div>
       </div>
     </main>
   );

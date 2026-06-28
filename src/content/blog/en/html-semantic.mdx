@@ -466,4 +466,87 @@ Before shipping a page, ask:
 
 If the answer is yes, your HTML is not just valid. It is meaningful.
 
-With the structure meaningful and the styling in place, the next layer is behaviour — and that's where [JavaScript](/blog/javascript-fundamentals) comes in, turning a well-built page into something interactive.
+## Exercises
+
+Try each before opening the solution.
+
+### Exercise 1 — Fix the div soup
+
+Rewrite this with semantic elements:
+
+```html
+<div class="top">
+  <div class="logo">Site</div>
+  <div class="menu"><a href="/">Home</a></div>
+</div>
+<div class="main"><div class="post">…</div></div>
+<div class="bottom">© 2026</div>
+```
+
+<details>
+
+<summary>Show solution</summary>
+
+```html
+<header>
+  <div class="logo">Site</div>
+  <nav><a href="/">Home</a></nav>
+</header>
+<main>
+  <article>…</article>
+</main>
+<footer>© 2026</footer>
+```
+
+Each landmark (`<header>`, `<nav>`, `<main>`, `<footer>`) and `<article>` tells the browser and screen readers what the region *is* — something `<div class="menu">` never communicates.
+
+</details>
+
+### Exercise 2 — Heading order
+
+A card's title visually looks small, so a developer marks it `<h4>` "because it's the right size." Why is that wrong, and what should they do?
+
+<details>
+
+<summary>Show solution</summary>
+
+Headings convey **structure, not size** — jumping from `<h1>` to `<h4>` breaks the document outline that screen readers and SEO depend on. Use the level that matches the hierarchy (`<h2>` for a direct sub-section), then make it *small* with CSS (`font-size`), never by picking a deeper heading tag.
+
+</details>
+
+### Exercise 3 — Button or link?
+
+A control runs a JavaScript function to delete a row — it doesn't navigate anywhere. Should it be `<a>` or `<button>`, and why?
+
+<details>
+
+<summary>Show solution</summary>
+
+A **`<button>`**. Links navigate to a URL; buttons perform an action. A `<button>` is focusable, fires on both Enter and Space, and is announced as a button to assistive tech — none of which an `<a href="#">` with a click handler gets right. Rule: navigates → link; does something → button.
+
+</details>
+
+### Exercise 4 — Label a field
+
+Make this input accessible:
+
+```html
+<input type="email" placeholder="Email">
+```
+
+<details>
+
+<summary>Show solution</summary>
+
+```html
+<label for="email">Email</label>
+<input id="email" type="email">
+```
+
+A placeholder is not a label — it disappears on input and many screen readers skip it. A real `<label>` tied via `for`/`id` names the field and makes its larger area focus the input.
+
+</details>
+
+## The Mental Model to Keep
+
+Semantic HTML means choosing elements for what content *is*, not how it looks. Build the page from **landmarks** (`<header>`, `<nav>`, `<main>`, `<footer>`, `<article>`, `<aside>`) so its regions are announced and navigable; keep **headings in order** (`<h1>` → `<h2>` → …) because they're the document's outline, not font sizes; use **`<button>` for actions and `<a>` for navigation**; and give every input a real **`<label>`**. Reach for a bare `<div>`/`<span>` only when no meaningful element fits. Do this and accessibility, SEO, and keyboard support come mostly for free — the browser already understands what your elements mean. With the structure meaningful, [CSS](/blog/css-box-model) styles it and [JavaScript](/blog/javascript-fundamentals) makes it interactive.

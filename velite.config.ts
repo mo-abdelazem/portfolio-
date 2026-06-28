@@ -1,6 +1,8 @@
 import { defineConfig, defineCollection, s } from "velite";
 import remarkGfm from "remark-gfm";
 import rehypeSlug from "rehype-slug";
+import rehypeShiki from "@shikijs/rehype";
+import rehypeAutolinkHeadings from "rehype-autolink-headings";
 
 const posts = defineCollection({
   name: "Post",
@@ -62,6 +64,24 @@ export default defineConfig({
   collections: { posts },
   mdx: {
     remarkPlugins: [remarkGfm],
-    rehypePlugins: [rehypeSlug],
+    rehypePlugins: [
+      rehypeSlug,
+      // Syntax highlighting at build time (Shiki). A single dark theme keeps
+      // code blocks dark in both site themes, matching the existing design.
+      [rehypeShiki, { theme: "github-dark" }],
+      // Append a "#" anchor to each heading so sections are deep-linkable.
+      [
+        rehypeAutolinkHeadings,
+        {
+          behavior: "append",
+          properties: {
+            className: "heading-anchor",
+            ariaHidden: "true",
+            tabIndex: -1,
+          },
+          content: { type: "text", value: "#" },
+        },
+      ],
+    ],
   },
 });

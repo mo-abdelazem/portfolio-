@@ -1561,6 +1561,77 @@ button {
   font-feature-settings: "liga" 0;
 }
 
+/* Copy-to-clipboard wrapper around each highlighted code block */
+.code-block {
+  position: relative;
+}
+
+.blog-content .code-block > pre {
+  margin-top: 0;
+}
+
+.code-block__copy {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.08);
+  color: #e4e4e7;
+  cursor: pointer;
+  opacity: 0;
+  transition:
+    opacity 0.2s,
+    background 0.2s,
+    color 0.2s;
+}
+
+.code-block:hover .code-block__copy,
+.code-block__copy:focus-visible {
+  opacity: 1;
+}
+
+/* Touch devices can't hover — keep the button reachable. */
+@media (hover: none) {
+  .code-block__copy {
+    opacity: 0.7;
+  }
+}
+
+.code-block__copy:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.code-block__copy--copied {
+  color: #4ade80;
+  opacity: 1;
+}
+
+/* Deep-link anchor appended to each heading by rehype-autolink-headings */
+.blog-content :is(h2, h3) {
+  position: relative;
+}
+
+.heading-anchor {
+  margin-inline-start: 0.4em;
+  color: var(--text-muted);
+  font-weight: 400;
+  text-decoration: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.blog-content :is(h2, h3):hover .heading-anchor,
+.heading-anchor:focus-visible {
+  opacity: 1;
+}
+
 /* Slim, theme-matched scrollbar for code blocks */
 .blog-content pre::-webkit-scrollbar {
   height: 8px;
@@ -1924,11 +1995,6 @@ button {
   margin: 0 auto;
 }
 
-.blog-home__hero {
-  max-width: 740px;
-  padding: 24px 0 44px;
-}
-
 .blog-home__eyebrow {
   margin-bottom: 18px;
   color: var(--text-muted);
@@ -1946,17 +2012,335 @@ button {
   letter-spacing: -0.5px;
 }
 
-.blog-home__layout {
+/* ===== Curriculum-first hero (blog index) ===== */
+.blog-index-hero {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 48px;
+  gap: 32px;
+  padding: 24px 0 8px;
 }
 
-.blog-home__main {
+.blog-index-hero__intro {
+  max-width: 640px;
+}
+
+.progress-card {
   display: flex;
   flex-direction: column;
-  gap: 44px;
+  gap: 14px;
+  padding: 22px 24px;
+  border-radius: 16px;
+  box-shadow: var(--shadow-card);
+}
+
+.progress-card__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.progress-card__label {
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.progress-card__count {
+  color: var(--text);
+  font-size: 17px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.progress-card__track {
+  height: 6px;
+  border-radius: 9999px;
+  background: var(--bg-secondary);
+  overflow: hidden;
+}
+
+.progress-card__fill {
+  display: block;
+  height: 100%;
+  border-radius: 9999px;
+  background: var(--text);
+  transition: width 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.progress-card__cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  align-self: start;
+  margin-top: 2px;
+  padding: 10px 18px;
+  border-radius: 9999px;
+  background: var(--text);
+  color: var(--bg);
+  font-size: 14px;
+  font-weight: 500;
+  transition:
+    background 0.2s,
+    transform 0.2s;
+}
+
+.progress-card__cta:hover {
+  background: var(--text-secondary);
+  transform: translateY(-1px);
+}
+
+.progress-card__cta svg {
+  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.progress-card__cta:hover svg {
+  transform: translateX(3px);
+}
+
+[dir="rtl"] .progress-card__cta svg {
+  transform: scaleX(-1);
+}
+
+[dir="rtl"] .progress-card__cta:hover svg {
+  transform: translateX(-3px) scaleX(-1);
+}
+
+@media (min-width: 860px) {
+  .blog-index-hero {
+    grid-template-columns: minmax(0, 1.4fr) minmax(260px, 1fr);
+    align-items: center;
+    gap: 48px;
+  }
+}
+
+/* ===== Path section tiles ===== */
+.path-section,
+.posts-section {
+  margin-top: 52px;
+}
+
+.path-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.path-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px 18px 20px;
+  border-radius: 14px;
+  box-shadow: var(--shadow-ring);
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s,
+    background 0.2s;
+}
+
+.path-tile:hover {
+  transform: translateY(-2px);
+  background: var(--bg);
+  box-shadow:
+    var(--shadow-ring),
+    rgba(0, 0, 0, 0.05) 0px 6px 16px;
+}
+
+.path-tile__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.path-tile__name {
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.25;
+}
+
+.path-tile__badge {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.path-tile__badge--soon {
+  color: var(--text-muted);
+  box-shadow: var(--shadow-ring);
+}
+
+.path-tile__count {
+  color: var(--text-muted);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.path-tile__track {
+  height: 4px;
+  border-radius: 9999px;
+  background: var(--bg-secondary);
+  overflow: hidden;
+}
+
+.path-tile__fill {
+  display: block;
+  height: 100%;
+  border-radius: 9999px;
+  background: var(--text);
+}
+
+/* ===== Search + tag filter + post grid ===== */
+.explorer__search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 16px;
+  height: 48px;
+  border-radius: 12px;
+  box-shadow: var(--shadow-ring);
+  color: var(--text-muted);
+}
+
+.explorer__search:focus-within {
+  box-shadow:
+    var(--shadow-ring),
+    var(--text) 0 0 0 1.5px;
+}
+
+.explorer__search svg {
+  flex: 0 0 auto;
+}
+
+.explorer__search input {
+  flex: 1 1 auto;
   min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 15px;
+  outline: none;
+}
+
+.explorer__search input::placeholder {
+  color: var(--text-muted);
+}
+
+.explorer__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.explorer__tags .tag-chip {
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+}
+
+.explorer__more {
+  border: 0;
+  cursor: pointer;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  transition:
+    color 0.2s,
+    background 0.2s;
+}
+
+.explorer__more:hover {
+  color: var(--text);
+  background: var(--border-subtle);
+}
+
+/* Doubled class so this beats the base `.tag-chip` color, which is defined
+   later in the file (equal specificity would otherwise lose on source order). */
+.tag-chip.tag-chip--active {
+  background: var(--text);
+  color: var(--bg);
+}
+
+.tag-chip.tag-chip--active .tag-chip__count {
+  color: var(--bg);
+  opacity: 0.7;
+}
+
+.post-grid {
+  margin-top: 28px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+}
+
+.grid-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 24px;
+  border-radius: 16px;
+  box-shadow: var(--shadow-ring);
+  transition:
+    transform 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.25s;
+}
+
+.grid-card:hover {
+  transform: translateY(-3px);
+  box-shadow:
+    var(--shadow-ring),
+    rgba(0, 0, 0, 0.06) 0px 8px 22px;
+}
+
+.grid-card__meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.grid-card__title {
+  color: var(--text);
+  font-size: 20px;
+  font-weight: 400;
+  line-height: 1.3;
+  letter-spacing: -0.2px;
+}
+
+.grid-card__title a::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+
+.grid-card__desc {
+  color: var(--text-secondary);
+  font-size: 14.5px;
+  line-height: 1.6;
+}
+
+.grid-card__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: auto;
+  padding-top: 4px;
 }
 
 .blog-home__list {
@@ -1964,8 +2348,7 @@ button {
   flex-direction: column;
 }
 
-.blog-home__heading,
-.sidebar-block__title {
+.blog-home__heading {
   color: var(--text-muted);
   font-size: 12px;
   font-weight: 600;
@@ -1977,12 +2360,6 @@ button {
 .blog-home__empty {
   color: var(--text-muted);
   font-size: 16px;
-}
-
-.blog-home__sidebar {
-  display: flex;
-  flex-direction: column;
-  gap: 36px;
 }
 
 /* Article card / list row */
@@ -2095,25 +2472,6 @@ button {
 
 /* Featured (latest) article */
 
-.blog-home__featured .post-card {
-  padding: 34px;
-  border: 0;
-  border-radius: 22px;
-  background: var(--bg);
-  box-shadow: var(--shadow-card);
-  transition:
-    transform 0.3s cubic-bezier(0.22, 1, 0.36, 1),
-    box-shadow 0.3s cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.blog-home__featured .post-card:hover {
-  transform: translateY(-3px);
-  box-shadow:
-    var(--shadow-ring),
-    rgba(0, 0, 0, 0.04) 0px 4px 8px,
-    rgba(0, 0, 0, 0.03) 0px 12px 24px;
-}
-
 .post-card--featured .post-card__title {
   font-size: clamp(26px, 3.4vw, 36px);
   font-weight: 300;
@@ -2125,73 +2483,7 @@ button {
   font-size: 17px;
 }
 
-/* Sidebar — learning path card with progress */
-
-.sidebar-paths {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.path-card {
-  position: relative;
-  display: block;
-  padding: 18px;
-  border-radius: 16px;
-  background: var(--bg);
-  box-shadow: var(--shadow-card);
-  transition:
-    transform 0.2s,
-    box-shadow 0.2s;
-}
-
-.path-card:hover {
-  transform: translateY(-2px);
-  box-shadow:
-    var(--shadow-ring),
-    rgba(0, 0, 0, 0.04) 0px 4px 10px;
-}
-
-.path-card__title {
-  display: block;
-  color: var(--text);
-  font-size: 15px;
-  font-weight: 500;
-  line-height: 1.3;
-}
-
-.path-card__count {
-  display: block;
-  margin-top: 4px;
-  color: var(--text-muted);
-  font-size: 13px;
-  font-variant-numeric: tabular-nums;
-}
-
-.path-card__track {
-  display: block;
-  height: 4px;
-  margin-top: 14px;
-  border-radius: 9999px;
-  background: var(--bg-secondary);
-  overflow: hidden;
-}
-
-.path-card__fill {
-  display: block;
-  height: 100%;
-  border-radius: 9999px;
-  background: var(--text);
-  transition: width 0.4s cubic-bezier(0.22, 1, 0.36, 1);
-}
-
 /* Tags */
-
-.sidebar-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
 
 .tag-chip {
   display: inline-flex;
@@ -2227,25 +2519,100 @@ button {
   font-variant-numeric: tabular-nums;
 }
 
-@media (min-width: 920px) {
-  .blog-home__layout {
-    grid-template-columns: minmax(0, 1fr) 280px;
-    gap: 64px;
-  }
+/* ===== Roadmap (curriculum) ===== */
 
-  .blog-home__sidebar {
-    position: sticky;
-    top: 110px;
-    align-self: start;
-  }
+.roadmap__container {
+  width: min(100%, 1080px);
+  margin: 0 auto;
 }
 
-/* ===== Roadmap (curriculum) ===== */
+.roadmap__layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 40px;
+}
 
 .roadmap__shell {
   display: flex;
   flex-direction: column;
   gap: 56px;
+  min-width: 0;
+}
+
+.roadmap-section {
+  scroll-margin-top: 100px;
+}
+
+/* Sticky section-nav rail (desktop) */
+.roadmap-nav {
+  display: none;
+}
+
+.roadmap-nav__heading {
+  margin-bottom: 12px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1.4px;
+}
+
+.roadmap-nav__list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.roadmap-nav__link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  color: var(--text-secondary);
+  transition:
+    background 0.2s,
+    color 0.2s;
+}
+
+.roadmap-nav__link:hover {
+  background: var(--bg-secondary);
+  color: var(--text);
+}
+
+.roadmap-nav__num {
+  flex: 0 0 auto;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.roadmap-nav__name {
+  flex: 1 1 auto;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+.roadmap-nav__count {
+  flex: 0 0 auto;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (min-width: 1000px) {
+  .roadmap__layout {
+    grid-template-columns: 232px minmax(0, 1fr);
+    gap: 56px;
+    align-items: start;
+  }
+
+  .roadmap-nav {
+    display: block;
+    position: sticky;
+    top: 110px;
+  }
 }
 
 .roadmap-section__head {
@@ -2539,4 +2906,19 @@ button {
   font-size: 14px;
   letter-spacing: 0.14px;
   color: var(--text-muted);
+}
+
+/* ===== Accessibility: honour reduced-motion preferences ===== */
+/* Neutralises non-essential animation/transition for users who ask the OS
+   for less motion. Inline transitions (e.g. the Reveal component) are
+   overridden too, so content snaps into place instead of sliding. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

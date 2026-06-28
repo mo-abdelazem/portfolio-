@@ -21,29 +21,106 @@
       "heroDescription": "React & Vue developer focused on performance optimization, TypeScript, accessible design, and full RTL/LTR internationalization support."
     },
     "navLinks": [
-      { "label": "About", "href": "/#about" },
-      { "label": "Skills", "href": "/#skills" },
-      { "label": "Experience", "href": "/#experience" },
-      { "label": "Projects", "href": "/#projects" },
-      { "label": "Blog", "href": "/blog" },
-      { "label": "Education", "href": "/#education" },
-      { "label": "Contact", "href": "/#contact" }
+      {
+        "label": "About",
+        "href": "/#about"
+      },
+      {
+        "label": "Skills",
+        "href": "/#skills"
+      },
+      {
+        "label": "Experience",
+        "href": "/#experience"
+      },
+      {
+        "label": "Projects",
+        "href": "/#projects"
+      },
+      {
+        "label": "Blog",
+        "href": "/blog"
+      },
+      {
+        "label": "Education",
+        "href": "/#education"
+      },
+      {
+        "label": "Contact",
+        "href": "/#contact"
+      }
     ],
     "details": [
-      { "label": "Location", "value": "Damietta, Egypt" },
-      { "label": "Languages", "value": "Arabic, English" },
-      { "label": "Platforms", "value": "Web, SPA, SSR/SSG" },
-      { "label": "Focus", "value": "Performance & A11y" }
+      {
+        "label": "Location",
+        "value": "Damietta, Egypt"
+      },
+      {
+        "label": "Languages",
+        "value": "Arabic, English"
+      },
+      {
+        "label": "Platforms",
+        "value": "Web, SPA, SSR/SSG"
+      },
+      {
+        "label": "Focus",
+        "value": "Performance & A11y"
+      }
     ],
     "skills": {
-      "Languages": ["JavaScript (ES6+)", "TypeScript", "HTML5", "CSS3"],
-      "Frameworks": ["React.js", "Next.js", "Vue.js", "Nuxt.js"],
-      "Styling & UI": ["Tailwind CSS", "Shadcn/ui", "Material UI", "Chakra UI", "SASS/LESS", "Framer Motion"],
-      "State & Data": ["Redux Toolkit", "Pinia", "Context API", "TanStack Query", "REST APIs"],
-      "Testing": ["Jest", "React Testing Library", "Cypress"],
-      "Tools & DevOps": ["Git", "GitHub Actions", "Vercel", "Docker", "Figma"],
-      "E-commerce & CMS": ["WordPress", "Shopify", "Salla", "Zid"],
-      "Practices": ["i18n/RTL", "SEO", "Core Web Vitals", "Accessibility", "Agile/Scrum"]
+      "Languages": [
+        "JavaScript (ES6+)",
+        "TypeScript",
+        "HTML5",
+        "CSS3"
+      ],
+      "Frameworks": [
+        "React.js",
+        "Next.js",
+        "Vue.js",
+        "Nuxt.js"
+      ],
+      "Styling & UI": [
+        "Tailwind CSS",
+        "Shadcn/ui",
+        "Material UI",
+        "Chakra UI",
+        "SASS/LESS",
+        "Framer Motion"
+      ],
+      "State & Data": [
+        "Redux Toolkit",
+        "Pinia",
+        "Context API",
+        "TanStack Query",
+        "REST APIs"
+      ],
+      "Testing": [
+        "Jest",
+        "React Testing Library",
+        "Cypress"
+      ],
+      "Tools & DevOps": [
+        "Git",
+        "GitHub Actions",
+        "Vercel",
+        "Docker",
+        "Figma"
+      ],
+      "E-commerce & CMS": [
+        "WordPress",
+        "Shopify",
+        "Salla",
+        "Zid"
+      ],
+      "Practices": [
+        "i18n/RTL",
+        "SEO",
+        "Core Web Vitals",
+        "Accessibility",
+        "Agile/Scrum"
+      ]
     },
     "experience": [
       {
@@ -73,21 +150,33 @@
         "name": "Argatall - WhatsApp Notification System",
         "period": "02/2026 - 05/2026",
         "description": "WhatsApp bulk notification system with campaign/contact/task management, RBAC, bilingual support.",
-        "tags": ["Next.js 16", "React 19", "WaSender API"],
+        "tags": [
+          "Next.js 16",
+          "React 19",
+          "WaSender API"
+        ],
         "url": "http://argatall.cloud/"
       },
       {
         "name": "Emtethal - SaaS Compliance Platform",
         "period": "11/2025 - 12/2025",
         "description": "90-95 Lighthouse via SSR/SSG, full i18n RTL/LTR, performant scroll animations.",
-        "tags": ["Next.js", "Framer Motion", "i18n"],
+        "tags": [
+          "Next.js",
+          "Framer Motion",
+          "i18n"
+        ],
         "url": "https://www.emtethal.com/"
       },
       {
         "name": "Napeeh - Educational Challenge Platform",
         "period": "10/2025 - 12/2025",
         "description": "Exams, quizzes, real-time tracking, adaptive difficulty, bilingual.",
-        "tags": ["Nuxt.js", "SSR", "i18n"],
+        "tags": [
+          "Nuxt.js",
+          "SSR",
+          "i18n"
+        ],
         "url": "https://www.napeeh.net/"
       }
     ],
@@ -106,11 +195,26 @@
       }
     ],
     "sections": {
-      "about": { "label": "About", "title": "A bit about me" },
-      "skills": { "label": "Capabilities", "title": "Tech Stack" },
-      "experience": { "label": "Career", "title": "Experience" },
-      "projects": { "label": "Work", "title": "Key Projects" },
-      "education": { "label": "Training", "title": "Education" }
+      "about": {
+        "label": "About",
+        "title": "A bit about me"
+      },
+      "skills": {
+        "label": "Capabilities",
+        "title": "Tech Stack"
+      },
+      "experience": {
+        "label": "Career",
+        "title": "Experience"
+      },
+      "projects": {
+        "label": "Work",
+        "title": "Key Projects"
+      },
+      "education": {
+        "label": "Training",
+        "title": "Education"
+      }
     },
     "copy": {
       "skipLink": "Skip to content",
@@ -162,7 +266,16 @@
     "emptyArticles": "No articles yet.",
     "taggedTitle": "Tagged: {tag}",
     "taggedDescription": "Articles tagged {tag}.",
-    "allArticles": "All articles"
+    "allArticles": "All articles",
+    "progressLabel": "Your progress",
+    "continueLearning": "Continue learning",
+    "searchLabel": "Search posts…",
+    "allTopics": "All posts",
+    "topicCount": "{count} topics",
+    "sectionSoon": "Soon",
+    "noResults": "No posts match your search.",
+    "showAllTags": "+{count} more",
+    "showFewerTags": "Show less"
   },
   "Roadmap": {
     "indexTitle": "Learning Paths",
@@ -175,84 +288,213 @@
         "title": "Become a Professional Frontend Developer",
         "description": "A guided path from web fundamentals to a job-ready frontend developer.",
         "sections": [
-      {
-        "key": "core-frontend",
-        "title": "Core Frontend",
-        "description": "The fundamentals every frontend developer must own.",
-        "topics": [
-          { "key": "html-semantic", "title": "HTML semantic" },
-          { "key": "css-box-model", "title": "CSS box model" },
-          { "key": "css-selectors-specificity-cascade", "title": "CSS selectors, specificity & cascade" },
-          { "key": "css-positioning", "title": "CSS positioning & stacking" },
-          { "key": "flexbox", "title": "Flexbox" },
-          { "key": "grid", "title": "Grid" },
-          { "key": "responsive-media-queries", "title": "Responsive media queries" },
-          { "key": "css-typography", "title": "Typography & web fonts" },
-          { "key": "css-color-gradients", "title": "Color & gradients" },
-          { "key": "css-transitions-animations", "title": "Transitions & animations" },
-          { "key": "modern-css", "title": "Modern CSS features" },
-          { "key": "javascript-fundamentals", "title": "JavaScript fundamentals" },
-          { "key": "dom-manipulation", "title": "DOM" },
-          { "key": "forms", "title": "Forms" },
-          { "key": "promises", "title": "Promises" },
-          { "key": "async-await", "title": "Async / await" },
-          { "key": "http-basics", "title": "HTTP basics" },
-          { "key": "git-github", "title": "Git / GitHub" }
-        ]
-      },
-      {
-        "key": "javascript-in-depth",
-        "title": "JavaScript in Depth",
-        "description": "Go beyond the basics — the language mechanics, patterns, and tooling that separate intermediate from advanced.",
-        "topics": [
-          { "key": "closures-scope-this", "title": "Closures, scope & this" },
-          { "key": "prototypes-classes", "title": "Prototypes, classes & OOP" },
-          { "key": "es-modules", "title": "ES modules & tooling" },
-          { "key": "functional-javascript", "title": "Functional JavaScript" },
-          { "key": "iterators-generators", "title": "Iterators & generators" },
-          { "key": "regular-expressions", "title": "Regular expressions" },
-          { "key": "error-handling-debugging", "title": "Error handling & debugging" },
-          { "key": "browser-storage", "title": "Browser storage & state" },
-          { "key": "javascript-performance", "title": "Performance & memory" },
-          { "key": "typescript-intro", "title": "TypeScript intro" },
-          { "key": "testing-javascript", "title": "Testing JavaScript" }
-        ]
-      },
-      {
-        "key": "framework",
-        "title": "Framework",
-        "description": "Build real interfaces with a modern component framework.",
-        "topics": [
-          { "key": "react-fundamentals", "title": "React fundamentals" },
-          { "key": "components-props", "title": "Components & props" },
-          { "key": "state-and-hooks", "title": "State & hooks" },
-          { "key": "routing", "title": "Routing" },
-          { "key": "data-fetching", "title": "Data fetching" },
-          { "key": "nextjs-basics", "title": "Next.js basics" }
-        ]
-      },
-      {
-        "key": "projects",
-        "title": "Projects",
-        "description": "Turn knowledge into shipped, portfolio-ready work.",
-        "topics": [
-          { "key": "project-setup", "title": "Project setup & tooling" },
-          { "key": "ui-from-figma", "title": "Building a UI from Figma" },
-          { "key": "api-integration", "title": "API integration" },
-          { "key": "deployment", "title": "Deployment" }
-        ]
-      },
-      {
-        "key": "job-prep",
-        "title": "Job Prep",
-        "description": "Get hired: performance, portfolio, and interviews.",
-        "topics": [
-          { "key": "portfolio", "title": "Building your portfolio" },
-          { "key": "resume", "title": "Resume for developers" },
-          { "key": "interview-questions", "title": "Interview questions" },
-          { "key": "system-design-basics", "title": "System design basics" }
-        ]
-      }
+          {
+            "key": "core-frontend",
+            "title": "Core Frontend",
+            "description": "The fundamentals every frontend developer must own.",
+            "topics": [
+              {
+                "key": "html-semantic",
+                "title": "HTML semantic"
+              },
+              {
+                "key": "css-box-model",
+                "title": "CSS box model"
+              },
+              {
+                "key": "css-selectors-specificity-cascade",
+                "title": "CSS selectors, specificity & cascade"
+              },
+              {
+                "key": "css-positioning",
+                "title": "CSS positioning & stacking"
+              },
+              {
+                "key": "flexbox",
+                "title": "Flexbox"
+              },
+              {
+                "key": "grid",
+                "title": "Grid"
+              },
+              {
+                "key": "responsive-media-queries",
+                "title": "Responsive media queries"
+              },
+              {
+                "key": "css-typography",
+                "title": "Typography & web fonts"
+              },
+              {
+                "key": "css-color-gradients",
+                "title": "Color & gradients"
+              },
+              {
+                "key": "css-transitions-animations",
+                "title": "Transitions & animations"
+              },
+              {
+                "key": "modern-css",
+                "title": "Modern CSS features"
+              },
+              {
+                "key": "javascript-fundamentals",
+                "title": "JavaScript fundamentals"
+              },
+              {
+                "key": "dom-manipulation",
+                "title": "DOM"
+              },
+              {
+                "key": "forms",
+                "title": "Forms"
+              },
+              {
+                "key": "promises",
+                "title": "Promises"
+              },
+              {
+                "key": "async-await",
+                "title": "Async / await"
+              },
+              {
+                "key": "http-basics",
+                "title": "HTTP basics"
+              },
+              {
+                "key": "git-github",
+                "title": "Git / GitHub"
+              }
+            ]
+          },
+          {
+            "key": "javascript-in-depth",
+            "title": "JavaScript in Depth",
+            "description": "Go beyond the basics — the language mechanics, patterns, and tooling that separate intermediate from advanced.",
+            "topics": [
+              {
+                "key": "closures-scope-this",
+                "title": "Closures, scope & this"
+              },
+              {
+                "key": "prototypes-classes",
+                "title": "Prototypes, classes & OOP"
+              },
+              {
+                "key": "es-modules",
+                "title": "ES modules & tooling"
+              },
+              {
+                "key": "functional-javascript",
+                "title": "Functional JavaScript"
+              },
+              {
+                "key": "iterators-generators",
+                "title": "Iterators & generators"
+              },
+              {
+                "key": "regular-expressions",
+                "title": "Regular expressions"
+              },
+              {
+                "key": "error-handling-debugging",
+                "title": "Error handling & debugging"
+              },
+              {
+                "key": "browser-storage",
+                "title": "Browser storage & state"
+              },
+              {
+                "key": "javascript-performance",
+                "title": "Performance & memory"
+              },
+              {
+                "key": "typescript-intro",
+                "title": "TypeScript intro"
+              },
+              {
+                "key": "testing-javascript",
+                "title": "Testing JavaScript"
+              }
+            ]
+          },
+          {
+            "key": "framework",
+            "title": "Framework",
+            "description": "Build real interfaces with a modern component framework.",
+            "topics": [
+              {
+                "key": "react-fundamentals",
+                "title": "React fundamentals"
+              },
+              {
+                "key": "components-props",
+                "title": "Components & props"
+              },
+              {
+                "key": "state-and-hooks",
+                "title": "State & hooks"
+              },
+              {
+                "key": "routing",
+                "title": "Routing"
+              },
+              {
+                "key": "data-fetching",
+                "title": "Data fetching"
+              },
+              {
+                "key": "nextjs-basics",
+                "title": "Next.js basics"
+              }
+            ]
+          },
+          {
+            "key": "projects",
+            "title": "Projects",
+            "description": "Turn knowledge into shipped, portfolio-ready work.",
+            "topics": [
+              {
+                "key": "project-setup",
+                "title": "Project setup & tooling"
+              },
+              {
+                "key": "ui-from-figma",
+                "title": "Building a UI from Figma"
+              },
+              {
+                "key": "api-integration",
+                "title": "API integration"
+              },
+              {
+                "key": "deployment",
+                "title": "Deployment"
+              }
+            ]
+          },
+          {
+            "key": "job-prep",
+            "title": "Job Prep",
+            "description": "Get hired: performance, portfolio, and interviews.",
+            "topics": [
+              {
+                "key": "portfolio",
+                "title": "Building your portfolio"
+              },
+              {
+                "key": "resume",
+                "title": "Resume for developers"
+              },
+              {
+                "key": "interview-questions",
+                "title": "Interview questions"
+              },
+              {
+                "key": "system-design-basics",
+                "title": "System design basics"
+              }
+            ]
+          }
         ]
       }
     ]
