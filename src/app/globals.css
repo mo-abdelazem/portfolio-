@@ -2017,6 +2017,319 @@ button {
   letter-spacing: -0.5px;
 }
 
+/* ===== Curriculum-first hero ===== */
+.blog-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 32px;
+  padding: 24px 0 8px;
+}
+
+.blog-hero__intro {
+  max-width: 640px;
+}
+
+.progress-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 22px 24px;
+  border-radius: 16px;
+  box-shadow: var(--shadow-card);
+}
+
+.progress-card__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.progress-card__label {
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.progress-card__count {
+  color: var(--text);
+  font-size: 17px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.progress-card__track {
+  height: 6px;
+  border-radius: 9999px;
+  background: var(--bg-secondary);
+  overflow: hidden;
+}
+
+.progress-card__fill {
+  display: block;
+  height: 100%;
+  border-radius: 9999px;
+  background: var(--text);
+  transition: width 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.progress-card__cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  align-self: start;
+  margin-top: 2px;
+  padding: 10px 18px;
+  border-radius: 9999px;
+  background: var(--text);
+  color: var(--bg);
+  font-size: 14px;
+  font-weight: 500;
+  transition:
+    background 0.2s,
+    transform 0.2s;
+}
+
+.progress-card__cta:hover {
+  background: var(--text-secondary);
+  transform: translateY(-1px);
+}
+
+.progress-card__cta svg {
+  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.progress-card__cta:hover svg {
+  transform: translateX(3px);
+}
+
+[dir="rtl"] .progress-card__cta svg {
+  transform: scaleX(-1);
+}
+
+[dir="rtl"] .progress-card__cta:hover svg {
+  transform: translateX(-3px) scaleX(-1);
+}
+
+@media (min-width: 860px) {
+  .blog-hero {
+    grid-template-columns: minmax(0, 1.4fr) minmax(260px, 1fr);
+    align-items: center;
+    gap: 48px;
+  }
+}
+
+/* ===== Path section tiles ===== */
+.path-section,
+.posts-section {
+  margin-top: 52px;
+}
+
+.path-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.path-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px 18px 20px;
+  border-radius: 14px;
+  box-shadow: var(--shadow-ring);
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s,
+    background 0.2s;
+}
+
+.path-tile:hover {
+  transform: translateY(-2px);
+  background: var(--bg);
+  box-shadow:
+    var(--shadow-ring),
+    rgba(0, 0, 0, 0.05) 0px 6px 16px;
+}
+
+.path-tile__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.path-tile__name {
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.25;
+}
+
+.path-tile__badge {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.path-tile__badge--done {
+  background: var(--text);
+  color: var(--bg);
+}
+
+.path-tile__badge--soon {
+  color: var(--text-muted);
+  box-shadow: var(--shadow-ring);
+}
+
+.path-tile__count {
+  color: var(--text-muted);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.path-tile__track {
+  height: 4px;
+  border-radius: 9999px;
+  background: var(--bg-secondary);
+  overflow: hidden;
+}
+
+.path-tile__fill {
+  display: block;
+  height: 100%;
+  border-radius: 9999px;
+  background: var(--text);
+}
+
+/* ===== Search + tag filter + post grid ===== */
+.explorer__search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 16px;
+  height: 48px;
+  border-radius: 12px;
+  box-shadow: var(--shadow-ring);
+  color: var(--text-muted);
+}
+
+.explorer__search:focus-within {
+  box-shadow:
+    var(--shadow-ring),
+    var(--text) 0 0 0 1.5px;
+}
+
+.explorer__search svg {
+  flex: 0 0 auto;
+}
+
+.explorer__search input {
+  flex: 1 1 auto;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 15px;
+  outline: none;
+}
+
+.explorer__search input::placeholder {
+  color: var(--text-muted);
+}
+
+.explorer__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.explorer__tags .tag-chip {
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+}
+
+.tag-chip--active {
+  background: var(--text);
+  color: var(--bg);
+}
+
+.tag-chip--active .tag-chip__count {
+  color: var(--bg);
+  opacity: 0.7;
+}
+
+.post-grid {
+  margin-top: 28px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+}
+
+.grid-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 24px;
+  border-radius: 16px;
+  box-shadow: var(--shadow-ring);
+  transition:
+    transform 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.25s;
+}
+
+.grid-card:hover {
+  transform: translateY(-3px);
+  box-shadow:
+    var(--shadow-ring),
+    rgba(0, 0, 0, 0.06) 0px 8px 22px;
+}
+
+.grid-card__meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.grid-card__title {
+  color: var(--text);
+  font-size: 20px;
+  font-weight: 400;
+  line-height: 1.3;
+  letter-spacing: -0.2px;
+}
+
+.grid-card__title a::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+
+.grid-card__desc {
+  color: var(--text-secondary);
+  font-size: 14.5px;
+  line-height: 1.6;
+}
+
+.grid-card__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: auto;
+  padding-top: 4px;
+}
+
 .blog-home__layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -2050,24 +2363,10 @@ button {
   font-size: 16px;
 }
 
-/* Mobile-first: the sidebar's blocks join the single-column grid so the
-   learning paths can sit above the post list. `order` puts them in
-   paths → posts → tags order. The desktop media query below restores the
-   real two-column sidebar. */
 .blog-home__sidebar {
-  display: contents;
-}
-
-.sidebar-block--paths {
-  order: 1;
-}
-
-.blog-home__main {
-  order: 2;
-}
-
-.sidebar-block--tags {
-  order: 3;
+  display: flex;
+  flex-direction: column;
+  gap: 36px;
 }
 
 /* Article card / list row */
@@ -2319,19 +2618,9 @@ button {
   }
 
   .blog-home__sidebar {
-    display: flex;
-    flex-direction: column;
-    gap: 36px;
     position: sticky;
     top: 110px;
     align-self: start;
-  }
-
-  /* Restore natural source order in the two-column layout. */
-  .blog-home__main,
-  .sidebar-block--paths,
-  .sidebar-block--tags {
-    order: 0;
   }
 }
 
