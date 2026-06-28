@@ -2267,12 +2267,14 @@ button {
   background: var(--border-subtle);
 }
 
-.tag-chip--active {
+/* Doubled class so this beats the base `.tag-chip` color, which is defined
+   later in the file (equal specificity would otherwise lose on source order). */
+.tag-chip.tag-chip--active {
   background: var(--text);
   color: var(--bg);
 }
 
-.tag-chip--active .tag-chip__count {
+.tag-chip.tag-chip--active .tag-chip__count {
   color: var(--bg);
   opacity: 0.7;
 }
