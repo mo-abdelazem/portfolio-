@@ -6,6 +6,8 @@ import { BlogToc } from "@/components/blog-toc";
 import { MDXContent } from "@/components/mdx-content";
 import { ReadingProgress } from "@/components/reading-progress";
 import { Reveal } from "@/components/reveal";
+import { tagChipVariants } from "@/components/ui/tag-chip";
+import { cn } from "@/lib/utils";
 
 function NavArrow({ dir }: { dir: "prev" | "next" }) {
   return (
@@ -152,7 +154,7 @@ export default async function BlogPostPage({ params }: Props) {
                   <Link
                     key={tag}
                     href={`/blog/tag/${tagSlug(tag)}`}
-                    className="tag-chip"
+                    className={cn(tagChipVariants())}
                   >
                     {tag}
                   </Link>

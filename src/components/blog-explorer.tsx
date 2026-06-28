@@ -2,6 +2,9 @@
 
 import { useMemo, useState } from "react";
 import { Link } from "@/i18n/navigation";
+import { Card } from "@/components/ui/card";
+import { TagChip, TagCount, tagChipVariants } from "@/components/ui/tag-chip";
+import { cn } from "@/lib/utils";
 
 export interface ExplorerPost {
   slug: string;
@@ -94,7 +97,7 @@ export function BlogExplorer({
         <div className="explorer__tags" role="group" aria-label={tagsLabel}>
           <button
             type="button"
-            className={`tag-chip ${activeTag === null ? "tag-chip--active" : ""}`}
+            className={cn(tagChipVariants({ active: activeTag === null }))}
             aria-pressed={activeTag === null}
             onClick={() => setActiveTag(null)}
           >
@@ -106,12 +109,12 @@ export function BlogExplorer({
               <button
                 key={tag.slug}
                 type="button"
-                className={`tag-chip ${active ? "tag-chip--active" : ""}`}
+                className={cn(tagChipVariants({ active }))}
                 aria-pressed={active}
                 onClick={() => setActiveTag(active ? null : tag.tag)}
               >
                 {tag.tag}
-                <span className="tag-chip__count">{tag.count}</span>
+                <TagCount active={active}>{tag.count}</TagCount>
               </button>
             );
           })}
@@ -135,24 +138,34 @@ export function BlogExplorer({
       ) : (
         <div className="post-grid">
           {filtered.map((post) => (
-            <article key={post.slug} className="grid-card">
-              <div className="grid-card__meta">
+            <Card
+              key={post.slug}
+              as="article"
+              interactive
+              className="relative flex flex-col gap-2.5 p-6"
+            >
+              <div className="flex flex-wrap items-center gap-2.5 text-[13px] text-muted-foreground">
                 <time dateTime={post.publishedAt}>{post.date}</time>
                 <span className="post-card__sep" aria-hidden="true" />
                 <span>{post.readingLabel}</span>
               </div>
-              <h3 className="grid-card__title">
-                <Link href={`/blog/${post.slug}`}>{post.title}</Link>
+              <h3 className="text-xl font-normal leading-[1.3] tracking-[-0.2px] text-foreground">
+                <Link
+                  href={`/blog/${post.slug}`}
+                  className="after:absolute after:inset-0 after:content-['']"
+                >
+                  {post.title}
+                </Link>
               </h3>
-              <p className="grid-card__desc">{post.description}</p>
-              <div className="grid-card__tags">
+              <p className="text-[14.5px] leading-[1.6] text-secondary-foreground">
+                {post.description}
+              </p>
+              <div className="relative z-[1] mt-auto flex flex-wrap gap-[7px] pt-1">
                 {post.tags.slice(0, 3).map((tag) => (
-                  <span key={tag} className="tag-chip tag-chip--static">
-                    {tag}
-                  </span>
+                  <TagChip key={tag}>{tag}</TagChip>
                 ))}
               </div>
-            </article>
+            </Card>
           ))}
         </div>
       )}

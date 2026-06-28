@@ -1,4 +1,5 @@
 import { Link } from "@/i18n/navigation";
+import { TagChip } from "@/components/ui/tag-chip";
 import type { BlogPost } from "@/lib/blog";
 
 interface BlogCardProps {
@@ -61,9 +62,7 @@ export function BlogCard({
       <div className="post-card__footer">
         <div className="post-card__tags" aria-label={tagsLabel}>
           {post.metadata.tags.map((tag) => (
-            <span key={tag} className="tag-chip tag-chip--static">
-              {tag}
-            </span>
+            <TagChip key={tag}>{tag}</TagChip>
           ))}
         </div>
         <Arrow />

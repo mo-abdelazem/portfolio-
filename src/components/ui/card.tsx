@@ -1,14 +1,20 @@
+import type { ElementType } from "react";
 import { cn } from "@/lib/utils";
 
 /** Surface card matching the portfolio elevation system. Set `interactive`
- *  for the lift-on-hover behaviour used by project/skill/detail cards. */
+ *  for the lift-on-hover behaviour used by project/skill/detail cards. Use
+ *  `as` to render a semantic element (e.g. "article"). */
 export function Card({
   className,
   interactive = false,
+  as: Comp = "div",
   ...props
-}: React.HTMLAttributes<HTMLDivElement> & { interactive?: boolean }) {
+}: React.HTMLAttributes<HTMLDivElement> & {
+  interactive?: boolean;
+  as?: ElementType;
+}) {
   return (
-    <div
+    <Comp
       className={cn(
         "rounded-[var(--radius-xl)] bg-card text-card-foreground shadow-[var(--shadow-card)]",
         interactive &&

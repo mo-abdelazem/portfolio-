@@ -42,6 +42,7 @@ export function Projects({ content }: ProjectsProps) {
           {content.projects.map((project, i) => (
             <Reveal key={project.name} delay={100 + i * 100}>
               <Card
+                as="article"
                 interactive
                 className="group relative flex flex-col p-7 md:p-10"
               >
