@@ -498,6 +498,10 @@
                 "title": "أسئلة المقابلات"
               },
               {
+                "key": "javascript-coding-problems",
+                "title": "مسائل برمجية بـ JavaScript"
+              },
+              {
                 "key": "system-design-basics",
                 "title": "أساسيات تصميم الأنظمة"
               }

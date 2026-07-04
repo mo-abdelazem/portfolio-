@@ -1,0 +1,773 @@
+---
+title: "JavaScript Coding Problems: The Classics, Solved & Explained"
+description: "A practical drill of the JavaScript coding problems interviewers actually ask — reversing arrays and strings, implementing call/apply/bind, debounce and throttle, deep clone, memoize and curry, flatten, a Promise.all polyfill, and more. Every problem comes with how to think about it and a solution, plus the output-prediction gotchas interviewers love."
+publishedAt: "2026-07-04"
+translationKey: "javascript-coding-problems"
+tags: ["JavaScript", "Interview", "Algorithms", "Practice"]
+---
+
+Most JavaScript interview problems aren't hard because the algorithm is deep — they're hard because you're under pressure and you jump straight to code. This post is a drill of the problems that come up again and again: reversing things, re-implementing `bind`, writing `debounce`, cloning objects, flattening arrays, and the async classics. For each one you get the **statement**, **how to think about it** before you type, and a **solution** — because the reasoning is the part the interviewer is actually grading. (Assumes you're comfortable with functions, closures, and array methods from [JavaScript fundamentals](/blog/javascript-fundamentals) and [Closures, scope & `this`](/blog/closures-scope-this).)
+
+> The one habit that changes interview outcomes: **don't write code first.** Restate the problem, name the edge cases out loud, describe your approach in one sentence, *then* type. An interviewer forgives a small bug far more readily than a candidate who codes in silence and hopes.
+
+## A Method You Can Apply to Any Problem
+
+Before the specific problems, internalize a repeatable loop. It works whether the question is "reverse a string" or something you've never seen:
+
+1. **Restate it** in your own words and confirm with the interviewer. This catches misunderstandings before they cost you ten minutes.
+2. **Ask about inputs and edge cases**: empty input, one element, duplicates, negative numbers, `null`/`undefined`, huge input. Say them out loud.
+3. **Give a tiny example** with the expected output. It anchors everyone to the same target.
+4. **State the brute-force approach first.** A working `O(n²)` beats a broken `O(n)`. You can optimize after it works.
+5. **Talk while you code**, then **test with your example** and one edge case. Fixing your own bug on the whiteboard is a strong signal, not a weak one.
+
+Now the problems, grouped by the skill they exercise.
+
+## Arrays
+
+### Reverse an array
+
+**How to think:** two ways, and interviewers often want you to know both. The built-in `reverse()` mutates in place. The "prove you understand it" version swaps from both ends toward the middle — a two-pointer pattern you'll reuse constantly.
+
+```js
+// Built-in (mutates the original)
+const reversed = arr.reverse();
+
+// Manual, in place — two pointers walking inward
+function reverse(arr) {
+  let left = 0, right = arr.length - 1;
+  while (left < right) {
+    [arr[left], arr[right]] = [arr[right], arr[left]]; // swap
+    left++;
+    right--;
+  }
+  return arr;
+}
+
+// Without mutating the input (functional)
+const reversedCopy = [...arr].reverse();
+```
+
+The two-pointer swap is `O(n)` time and `O(1)` extra space. Mention that you avoided a second array on purpose.
+
+### Find the max (or min) without `Math.max`
+
+**How to think:** a single pass carrying "the best so far." This is the seed of every reduce.
+
+```js
+function max(arr) {
+  if (arr.length === 0) return undefined;   // edge case, say it out loud
+  let best = arr[0];
+  for (const n of arr) if (n > best) best = n;
+  return best;
+}
+// or: arr.reduce((best, n) => (n > best ? n : best))
+```
+
+`Math.max(...arr)` works too, but note the trap: spreading a very large array can overflow the call stack, so the loop is safer at scale.
+
+### Remove duplicates
+
+**How to think:** "have I seen this before?" is a `Set`. Reach for it the moment a question mentions uniqueness.
+
+```js
+const unique = [...new Set(arr)];
+
+// If you must explain the manual version:
+function uniqueManual(arr) {
+  const seen = new Set();
+  const out = [];
+  for (const x of arr) {
+    if (!seen.has(x)) { seen.add(x); out.push(x); }
+  }
+  return out;
+}
+```
+
+`Set` gives `O(n)`. The naive `filter((x, i) => arr.indexOf(x) === i)` is `O(n²)` — fine to mention, but say why you didn't pick it.
+
+### Flatten a nested array
+
+**How to think:** the structure is recursive (arrays inside arrays), so the solution is naturally recursive. Know the one-liner *and* the hand-rolled version, because "implement `flat` yourself" is the real question.
+
+```js
+// Built-in, any depth
+const flat = arr.flat(Infinity);
+
+// Recursive — the version they want you to derive
+function flatten(arr) {
+  return arr.reduce(
+    (acc, item) =>
+      acc.concat(Array.isArray(item) ? flatten(item) : item),
+    []
+  );
+}
+
+// Iterative with a stack (no recursion depth limit)
+function flattenIter(arr) {
+  const stack = [...arr];
+  const out = [];
+  while (stack.length) {
+    const next = stack.pop();
+    if (Array.isArray(next)) stack.push(...next);
+    else out.push(next);
+  }
+  return out.reverse(); // stack reverses order; undo it
+}
+```
+
+### Chunk an array into groups of `n`
+
+**How to think:** walk in steps of `n` and `slice` each window. Off-by-one errors live here, so test with a length that doesn't divide evenly.
+
+```js
+function chunk(arr, size) {
+  const out = [];
+  for (let i = 0; i < arr.length; i += size) {
+    out.push(arr.slice(i, i + size));
+  }
+  return out;
+}
+chunk([1, 2, 3, 4, 5], 2); // [[1,2],[3,4],[5]]
+```
+
+### Group items by a key
+
+**How to think:** build a lookup object, pushing each item into the bucket for its key. This is `reduce` accumulating into an object.
+
+```js
+function groupBy(arr, keyFn) {
+  return arr.reduce((groups, item) => {
+    const key = keyFn(item);
+    (groups[key] ??= []).push(item); // create the bucket if missing
+    return groups;
+  }, {});
+}
+groupBy([6.1, 4.2, 6.3], Math.floor); // { 6: [6.1, 6.3], 4: [4.2] }
+```
+
+### Two Sum — do any two numbers add up to a target?
+
+**How to think:** the brute force is every pair, `O(n²)`. The insight: for each number `x`, the partner you need is `target - x`. If you *remember* the numbers you've seen in a map, you can check for the partner in `O(1)`. Trading space for time is the single most common optimization interviewers look for.
+
+```js
+function twoSum(nums, target) {
+  const seen = new Map(); // value -> index
+  for (let i = 0; i < nums.length; i++) {
+    const need = target - nums[i];
+    if (seen.has(need)) return [seen.get(need), i];
+    seen.set(nums[i], i);
+  }
+  return null;
+}
+```
+
+## Strings
+
+Strings are immutable in JavaScript, so most string problems become "convert to an array, work, join back" — or a straight character walk.
+
+### Reverse a string
+
+**How to think:** no in-place option (strings are immutable), so split into characters, reverse, join.
+
+```js
+const rev = str.split("").reverse().join("");
+// Unicode-safe (handles emoji/surrogate pairs): [...str].reverse().join("")
+```
+
+### Is it a palindrome?
+
+**How to think:** a palindrome reads the same both ways — so compare it to its reverse, or two-pointer from both ends. Clarify first: do we ignore spaces, punctuation, and case? That question earns points.
+
+```js
+function isPalindrome(str) {
+  const s = str.toLowerCase().replace(/[^a-z0-9]/g, ""); // normalize
+  let l = 0, r = s.length - 1;
+  while (l < r) {
+    if (s[l] !== s[r]) return false;
+    l++; r--;
+  }
+  return true;
+}
+```
+
+### Are two strings anagrams?
+
+**How to think:** anagrams have the same letters in a different order — so their sorted forms are equal, or their letter counts match. Sorting is the shortest to write; the count map is `O(n)` vs sorting's `O(n log n)`.
+
+```js
+// Simple: same characters sorted
+const isAnagram = (a, b) =>
+  [...a].sort().join("") === [...b].sort().join("");
+
+// Faster: compare frequency maps
+function isAnagramFast(a, b) {
+  if (a.length !== b.length) return false;
+  const count = {};
+  for (const c of a) count[c] = (count[c] || 0) + 1;
+  for (const c of b) {
+    if (!count[c]) return false;
+    count[c]--;
+  }
+  return true;
+}
+```
+
+### Most frequent character
+
+**How to think:** count occurrences into a map, then find the max. "Count then scan" solves a whole family of questions.
+
+```js
+function mostFrequent(str) {
+  const count = {};
+  let best = null, max = 0;
+  for (const c of str) {
+    count[c] = (count[c] || 0) + 1;
+    if (count[c] > max) { max = count[c]; best = c; }
+  }
+  return best;
+}
+```
+
+## Functions, `this`, and Closures
+
+This is the JavaScript-specific heart of most interviews. If you can implement `bind`, `debounce`, and `memoize` from scratch, you've demonstrated closures, `this`, and higher-order functions all at once.
+
+### Implement `call`, `apply`, and `bind`
+
+**How to think:** `this` is decided by *how* a function is called. If you attach a function to an object and call it as a method, `this` becomes that object. That one fact is the whole trick: temporarily put the function on the target object, call it, then clean up.
+
+```js
+Function.prototype.myCall = function (context, ...args) {
+  context = context || globalThis;
+  const key = Symbol("fn");        // unique key so we don't clobber anything
+  context[key] = this;             // `this` is the function myCall was called on
+  const result = context[key](...args); // called as a method -> `this` = context
+  delete context[key];
+  return result;
+};
+
+// apply is call with an args array
+Function.prototype.myApply = function (context, args = []) {
+  return this.myCall(context, ...args);
+};
+
+// bind returns a NEW function that remembers context + preset args
+Function.prototype.myBind = function (context, ...preset) {
+  const fn = this;
+  return function (...later) {
+    return fn.myCall(context, ...preset, ...later);
+  };
+};
+```
+
+The key insight to say out loud: **`bind` doesn't call the function — it returns a new one** with `this` and some arguments locked in (partial application). `call`/`apply` invoke immediately; the only difference between them is args-list vs args-array.
+
+### `once` — run a function a single time
+
+**How to think:** you need to *remember* whether it has run. Memory that survives between calls but stays private = a closure over a variable.
+
+```js
+function once(fn) {
+  let called = false, result;
+  return function (...args) {
+    if (!called) {
+      called = true;
+      result = fn.apply(this, args);
+    }
+    return result; // subsequent calls return the cached first result
+  };
+}
+```
+
+### `memoize` — cache results by arguments
+
+**How to think:** same inputs → same output means you can cache. Use a `Map` keyed by the arguments; on a hit, skip the work.
+
+```js
+function memoize(fn) {
+  const cache = new Map();
+  return function (...args) {
+    const key = JSON.stringify(args); // fine for primitive args
+    if (cache.has(key)) return cache.get(key);
+    const result = fn.apply(this, args);
+    cache.set(key, result);
+    return result;
+  };
+}
+```
+
+Call out the caveat: `JSON.stringify` as a key only works for JSON-serializable arguments and is order-sensitive for object keys. For a single primitive argument, key on it directly.
+
+### `curry` — turn `f(a, b, c)` into `f(a)(b)(c)`
+
+**How to think:** keep collecting arguments until you have as many as the original function expects (`fn.length`), then call it. "Do I have enough args yet?" is the whole logic.
+
+```js
+function curry(fn) {
+  return function curried(...args) {
+    if (args.length >= fn.length) return fn.apply(this, args);
+    return (...more) => curried.apply(this, [...args, ...more]);
+  };
+}
+const add = (a, b, c) => a + b + c;
+const c = curry(add);
+c(1)(2)(3);   // 6
+c(1, 2)(3);   // 6
+```
+
+### `compose` and `pipe`
+
+**How to think:** feed the output of one function into the next. `pipe` reads left-to-right (the order things happen); `compose` reads right-to-left (the math convention). Both are just `reduce` over the function list.
+
+```js
+const pipe = (...fns) => (x) => fns.reduce((acc, fn) => fn(acc), x);
+const compose = (...fns) => (x) => fns.reduceRight((acc, fn) => fn(acc), x);
+
+const clean = pipe((s) => s.trim(), (s) => s.toLowerCase());
+clean("  HELLO  "); // "hello"
+```
+
+### `debounce` — wait until the calls stop
+
+**How to think:** "only fire after the user has been quiet for N ms." Every call cancels the previous pending timer and starts a new one. The pending timer id is the state you close over. Use it for search-as-you-type and resize handlers.
+
+```js
+function debounce(fn, delay) {
+  let timer;
+  return function (...args) {
+    clearTimeout(timer);            // cancel the previous scheduled call
+    timer = setTimeout(() => fn.apply(this, args), delay);
+  };
+}
+```
+
+### `throttle` — at most once per N ms
+
+**How to think:** debounce waits for silence; throttle guarantees a steady rate. "Has enough time passed since I last ran?" Track the last-run timestamp. Use it for scroll and mousemove handlers.
+
+```js
+function throttle(fn, limit) {
+  let last = 0;
+  return function (...args) {
+    const now = Date.now();
+    if (now - last >= limit) {
+      last = now;
+      fn.apply(this, args);
+    }
+  };
+}
+```
+
+The debounce-vs-throttle distinction is a favorite follow-up: **debounce collapses a burst into one trailing call; throttle lets one call through every interval.**
+
+### The closure counter (a warm-up classic)
+
+**How to think:** they want to see that the returned function keeps access to `count` even after `makeCounter` has returned. That's a closure — private, persistent state.
+
+```js
+function makeCounter() {
+  let count = 0;
+  return {
+    increment: () => ++count,
+    value: () => count,
+  };
+}
+const counter = makeCounter();
+counter.increment(); counter.increment();
+counter.value(); // 2  — `count` is private, reachable only through these functions
+```
+
+## Objects
+
+### Deep clone an object
+
+**How to think:** a shallow copy (`{...obj}`) shares nested references, so mutating a nested value leaks. Reach for `structuredClone` first (built in, handles cycles). If asked to implement it, recurse through arrays and objects.
+
+```js
+// Modern built-in — the right answer in real code
+const copy = structuredClone(obj);
+
+// Hand-rolled (mention it doesn't handle Dates, Maps, or cycles)
+function deepClone(value) {
+  if (value === null || typeof value !== "object") return value; // primitive
+  if (Array.isArray(value)) return value.map(deepClone);
+  return Object.fromEntries(
+    Object.entries(value).map(([k, v]) => [k, deepClone(v)])
+  );
+}
+```
+
+Avoid `JSON.parse(JSON.stringify(obj))` unless you flag its losses: it drops `undefined`, functions, and `Symbol`s, and turns `Date` into a string.
+
+### Deep equality
+
+**How to think:** two values are deeply equal if they're the same primitive, or objects with the same keys whose values are each deeply equal. The recursion mirrors the structure.
+
+```js
+function deepEqual(a, b) {
+  if (a === b) return true;
+  if (typeof a !== "object" || typeof b !== "object" || a == null || b == null)
+    return false;
+  const ka = Object.keys(a), kb = Object.keys(b);
+  if (ka.length !== kb.length) return false;
+  return ka.every((k) => deepEqual(a[k], b[k]));
+}
+```
+
+### Flatten a nested object to dotted keys
+
+**How to think:** recurse, carrying the path prefix. When you hit a non-object, emit `prefix -> value`.
+
+```js
+function flattenObject(obj, prefix = "", out = {}) {
+  for (const [k, v] of Object.entries(obj)) {
+    const path = prefix ? `${prefix}.${k}` : k;
+    if (v && typeof v === "object" && !Array.isArray(v)) {
+      flattenObject(v, path, out);
+    } else {
+      out[path] = v;
+    }
+  }
+  return out;
+}
+flattenObject({ a: { b: { c: 1 } }, d: 2 }); // { "a.b.c": 1, d: 2 }
+```
+
+## Async
+
+Async questions test whether you understand the event loop and Promises — see [Promises](/blog/promises) and [async/await](/blog/async-await) for the underlying model.
+
+### `sleep` / delay
+
+**How to think:** wrap `setTimeout` in a Promise so you can `await` it. This is the "promisify a callback" pattern in miniature.
+
+```js
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+// await sleep(1000);
+```
+
+### `promisify` a callback-style function
+
+**How to think:** Node-style callbacks are `(err, data) => ...`. Wrap the call in a Promise: reject on `err`, resolve on `data`.
+
+```js
+function promisify(fn) {
+  return (...args) =>
+    new Promise((resolve, reject) => {
+      fn(...args, (err, data) => (err ? reject(err) : resolve(data)));
+    });
+}
+```
+
+### Retry with backoff
+
+**How to think:** try, and on failure wait and try again up to N times; give up by re-throwing the last error. A loop with `await` inside a `try/catch` reads cleanly.
+
+```js
+async function retry(fn, attempts = 3, delay = 300) {
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await fn();
+    } catch (err) {
+      if (i === attempts - 1) throw err;   // last try — give up
+      await sleep(delay * 2 ** i);         // exponential backoff
+    }
+  }
+}
+```
+
+### Run promises in sequence vs in parallel
+
+**How to think:** the mistake candidates make is running things sequentially when they could be parallel. `await` inside a `for` loop is sequential; mapping to an array and `Promise.all` is parallel. Know when each is right — sequential when each step depends on the last, parallel when they're independent.
+
+```js
+// Sequential — each waits for the previous (slow, but ordered/dependent)
+async function inSequence(tasks) {
+  const results = [];
+  for (const task of tasks) results.push(await task());
+  return results;
+}
+
+// Parallel — all at once, wait for all (fast, independent)
+const inParallel = (tasks) => Promise.all(tasks.map((t) => t()));
+```
+
+### Implement `Promise.all`
+
+**How to think:** resolve with an array in the *original order* once every input has resolved; reject as soon as *any* rejects. Track a completion counter, and store each result at its own index so order is preserved despite different finish times.
+
+```js
+function promiseAll(promises) {
+  return new Promise((resolve, reject) => {
+    const results = [];
+    let remaining = promises.length;
+    if (remaining === 0) return resolve(results); // edge case: empty
+
+    promises.forEach((p, i) => {
+      Promise.resolve(p).then((value) => {   // wrap: inputs may be plain values
+        results[i] = value;                  // keep original order by index
+        if (--remaining === 0) resolve(results);
+      }, reject);                            // first rejection rejects the whole thing
+    });
+  });
+}
+```
+
+Two details win points here: **wrapping each input in `Promise.resolve`** (so non-promise values work) and **indexing results** rather than pushing (so order matches input, not finish time).
+
+## Classic Algorithm Warm-ups
+
+### FizzBuzz
+
+**How to think:** the only trap is ordering — check divisibility by 15 (both) *before* 3 and 5, or build the string incrementally.
+
+```js
+for (let i = 1; i <= 100; i++) {
+  let out = "";
+  if (i % 3 === 0) out += "Fizz";
+  if (i % 5 === 0) out += "Buzz";
+  console.log(out || i);
+}
+```
+
+### Fibonacci
+
+**How to think:** the naive recursion is `O(2ⁿ)` — it recomputes the same values exponentially. Either memoize it or, better, iterate and keep only the last two numbers (`O(n)` time, `O(1)` space).
+
+```js
+function fib(n) {
+  let a = 0, b = 1;
+  for (let i = 0; i < n; i++) [a, b] = [b, a + b];
+  return a;
+}
+```
+
+### Factorial
+
+**How to think:** the textbook recursion is fine, but mention that an iterative loop avoids stack depth for large `n`.
+
+```js
+const factorial = (n) => (n <= 1 ? 1 : n * factorial(n - 1));
+```
+
+## Advanced Implementations (Mid/Senior Level)
+
+These come up for more experienced roles. Each combines several ideas — closures, `Map` ordering, the event loop — so being able to derive one signals real fluency.
+
+### `EventEmitter` — a tiny pub/sub
+
+**How to think:** you need a registry of `event name -> list of listeners`. `on` pushes a listener, `off` removes it, `emit` calls every listener for that event. A `Map` from name to a `Set` of callbacks makes add/remove clean, and a `Set` also dedupes the same listener.
+
+```js
+class EventEmitter {
+  #events = new Map(); // event name -> Set of listeners
+
+  on(name, fn) {
+    if (!this.#events.has(name)) this.#events.set(name, new Set());
+    this.#events.get(name).add(fn);
+    return () => this.off(name, fn); // return an unsubscribe fn — a nice touch
+  }
+
+  off(name, fn) {
+    this.#events.get(name)?.delete(fn);
+  }
+
+  emit(name, ...args) {
+    this.#events.get(name)?.forEach((fn) => fn(...args));
+  }
+
+  once(name, fn) {
+    const wrapper = (...args) => {
+      this.off(name, wrapper); // remove before calling, so re-entrancy is safe
+      fn(...args);
+    };
+    this.on(name, wrapper);
+  }
+}
+```
+
+Two details that impress: **`on` returns an unsubscribe function** (how React's `useEffect` cleanup works), and **`once` removes itself before invoking** so it never fires twice even if the callback re-emits.
+
+### LRU cache — evict the least recently used
+
+**How to think:** you need `get`/`put` in `O(1)` *and* a notion of "recently used" order. The trick most people miss: a JavaScript `Map` **remembers insertion order**, so "most recently used = re-inserted last." On access, delete and re-set to move a key to the end; when over capacity, evict the first key (`map.keys().next().value`).
+
+```js
+class LRUCache {
+  constructor(capacity) {
+    this.capacity = capacity;
+    this.map = new Map();
+  }
+
+  get(key) {
+    if (!this.map.has(key)) return -1;
+    const value = this.map.get(key);
+    this.map.delete(key);          // remove...
+    this.map.set(key, value);      // ...and re-insert to mark as most-recent
+    return value;
+  }
+
+  put(key, value) {
+    if (this.map.has(key)) this.map.delete(key);       // refresh position
+    else if (this.map.size >= this.capacity) {
+      this.map.delete(this.map.keys().next().value);   // evict oldest (first key)
+    }
+    this.map.set(key, value);
+  }
+}
+```
+
+The whole solution hinges on knowing `Map` preserves insertion order — say that out loud; it's the insight being tested.
+
+### Concurrency limiter — run at most `n` promises at a time
+
+**How to think:** you have many async tasks but want only `n` in flight (e.g. don't fire 1000 API calls at once). Keep launching tasks; whenever the running count is at the limit, wait for *any* one to finish before starting the next. `Promise.race` on the active set is the "wait for the first to finish" primitive.
+
+```js
+async function limitConcurrency(tasks, limit) {
+  const results = [];
+  const running = new Set();
+
+  for (const [i, task] of tasks.entries()) {
+    const p = Promise.resolve(task()).then((res) => {
+      results[i] = res;          // store by index to preserve order
+      running.delete(p);
+    });
+    running.add(p);
+    if (running.size >= limit) await Promise.race(running); // wait for a slot
+  }
+
+  await Promise.all(running);    // let the final in-flight tasks finish
+  return results;
+}
+```
+
+The two ideas being tested: **`Promise.race` to wait for a free slot**, and **indexing results** so the output order matches the input even though tasks finish out of order.
+
+### Deep flatten with a depth parameter
+
+**How to think:** the earlier flatten went all the way down. Real `Array.prototype.flat` takes a depth. Add a `depth` argument and only recurse while `depth > 0`, decrementing as you descend.
+
+```js
+function flattenDepth(arr, depth = 1) {
+  if (depth < 1) return arr.slice();
+  return arr.reduce(
+    (acc, item) =>
+      acc.concat(
+        Array.isArray(item) ? flattenDepth(item, depth - 1) : item
+      ),
+    []
+  );
+}
+flattenDepth([1, [2, [3, [4]]]], 2); // [1, 2, 3, [4]]
+```
+
+The `depth - 1` on each recursive call is the whole idea: each level down spends one unit of allowed depth, and at `0` you stop unwrapping.
+
+## Bonus: "What does this log?" Gotchas
+
+Interviewers love output-prediction questions because they reveal whether you *understand* the language or just use it. Practice explaining the *why*.
+
+```js
+// 1) var in a loop — one shared binding
+for (var i = 0; i < 3; i++) setTimeout(() => console.log(i), 0);
+// logs 3, 3, 3 — all closures share the same `i`, which is 3 by the time they run.
+// Fix: use `let` (a fresh binding per iteration) -> 0, 1, 2.
+
+// 2) this in a regular vs arrow function
+const obj = {
+  name: "A",
+  regular() { return this.name; },      // `this` is obj
+  arrow: () => this?.name,              // arrow has no own `this` — not obj
+};
+
+// 3) hoisting
+console.log(typeof x); // "undefined" — `var x` is hoisted, assignment isn't
+var x = 5;
+
+// 4) reference equality
+console.log([1, 2] === [1, 2]); // false — different objects in memory
+```
+
+The pattern to internalize: `var` is function-scoped and hoisted, `let`/`const` are block-scoped; arrow functions inherit `this` from where they're *defined*, regular functions get `this` from how they're *called*; objects and arrays compare by reference, not value. Almost every gotcha is one of these three.
+
+## Practice — Cover the Solution First
+
+Try these before expanding. Say your approach out loud, exactly as you would in the room.
+
+### Exercise 1 — Rotate an array right by `k`
+
+Rotate `[1, 2, 3, 4, 5]` right by `2` to get `[4, 5, 1, 2, 3]`.
+
+<details>
+
+<summary>Show solution</summary>
+
+```js
+function rotate(arr, k) {
+  k %= arr.length;                 // k larger than length wraps around
+  return [...arr.slice(-k), ...arr.slice(0, -k)];
+}
+```
+
+Cut the last `k` items and move them to the front. The `k %= length` handles a `k` bigger than the array.
+
+</details>
+
+### Exercise 2 — Count occurrences into a map
+
+Given `["a", "b", "a", "c", "b", "a"]`, return `{ a: 3, b: 2, c: 1 }`.
+
+<details>
+
+<summary>Show solution</summary>
+
+```js
+const tally = (arr) =>
+  arr.reduce((acc, x) => ((acc[x] = (acc[x] || 0) + 1), acc), {});
+```
+
+The "count into an object" pattern — the same shape as `groupBy` and most frequency problems.
+
+</details>
+
+### Exercise 3 — Implement `Array.prototype.map`
+
+Write `myMap(arr, fn)` without using the built-in `map`.
+
+<details>
+
+<summary>Show solution</summary>
+
+```js
+function myMap(arr, fn) {
+  const out = [];
+  for (let i = 0; i < arr.length; i++) out.push(fn(arr[i], i, arr));
+  return out;
+}
+```
+
+Interviewers ask this to check you know `map` builds a *new* array and passes `(value, index, array)` to the callback.
+
+</details>
+
+### Exercise 4 — Flatten one level deep only
+
+Turn `[1, [2, 3], [4, [5]]]` into `[1, 2, 3, 4, [5]]` (depth 1).
+
+<details>
+
+<summary>Show solution</summary>
+
+```js
+const flattenOne = (arr) => arr.reduce((acc, x) => acc.concat(x), []);
+// or arr.flat(1)
+```
+
+`concat` spreads one level of arrays automatically, which is exactly one level of flattening.
+
+</details>
+
+## The Mental Model to Keep
+
+Interview coding problems reward a **process**, not memorized answers: restate the problem, name the edge cases, state a brute-force approach, then optimize while talking. A handful of patterns cover most of what you'll be asked — **two pointers** for reversing and palindromes, **a `Set` or `Map`** whenever you need "have I seen this?" (trading space for time), **`reduce`** for anything that accumulates (counts, groups, flattening), **recursion** for nested structures (arrays, objects, trees), and **closures** for anything that must remember state between calls (`debounce`, `memoize`, `once`, counters). The JavaScript-specific stars — implementing `bind`, `debounce`, `throttle`, and a `Promise.all` polyfill — all come down to closures, `this`, and the event loop. Learn the *why* behind each solution here, and you'll be able to derive the variation they throw at you instead of hoping you've seen it before.

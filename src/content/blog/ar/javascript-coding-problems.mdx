@@ -1,0 +1,773 @@
+---
+title: "مسائل برمجية بـ JavaScript: الكلاسيكيات محلولةً ومشروحة"
+description: "تدريب عملي على المسائل البرمجية التي يسألها المُقابِلون فعلًا في JavaScript — عكس المصفوفات والنصوص، وتنفيذ call/apply/bind، وdebounce وthrottle، والنسخ العميق، وmemoize وcurry، وتسطيح المصفوفات، وتنفيذ Promise.all يدويًا، والمزيد. كل مسألة مع كيفية التفكير فيها وحلّها، إضافةً إلى أسئلة توقّع المُخرَجات التي يعشقها المُقابِلون."
+publishedAt: "2026-07-04"
+translationKey: "javascript-coding-problems"
+tags: ["JavaScript", "Interview", "Algorithms", "Practice"]
+---
+
+معظم مسائل مقابلات JavaScript ليست صعبة لأن الخوارزمية عميقة — بل لأنك تحت ضغط وتقفز مباشرةً إلى الكود. هذه التدوينة تدريب على المسائل التي تتكرّر مرارًا: عكس الأشياء، وإعادة تنفيذ `bind`، وكتابة `debounce`، ونسخ الكائنات، وتسطيح المصفوفات، وكلاسيكيات غير المتزامن. لكل مسألة ستجد **نصّها**، و**كيف تفكّر فيها** قبل أن تكتب، ثم **الحل** — لأن طريقة التفكير هي ما يُقيّمه المُقابِل فعلًا. (يفترض أنك مرتاح مع الدوال والإغلاقات وتوابع المصفوفات من [أساسيات JavaScript](/blog/javascript-fundamentals) و[الإغلاقات والنطاق و`this`](/blog/closures-scope-this).)
+
+> العادة الوحيدة التي تغيّر نتائج المقابلات: **لا تكتب الكود أولًا.** أعِد صياغة المسألة، واذكر الحالات الحدّية بصوتٍ مسموع، وصِف نهجك في جملة واحدة، *ثم* اكتب. المُقابِل يتسامح مع خطأٍ صغير أكثر بكثير من مرشّح يكتب في صمت ويأمل خيرًا.
+
+## طريقة تصلح لأي مسألة
+
+قبل المسائل المحدّدة، رسّخ حلقةً قابلة للتكرار. تعمل سواء كان السؤال "اعكس نصًّا" أو شيئًا لم ترَه من قبل:
+
+1. **أعِد صياغتها** بكلماتك وتأكّد مع المُقابِل. هذا يكشف سوء الفهم قبل أن يكلّفك عشر دقائق.
+2. **اسأل عن المُدخَلات والحالات الحدّية**: مُدخَل فارغ، عنصر واحد، تكرارات، أعداد سالبة، `null`/`undefined`، مُدخَل ضخم. قُلها بصوتٍ مسموع.
+3. **أعطِ مثالًا صغيرًا** مع الخرج المتوقّع. يوحّد الجميع على الهدف نفسه.
+4. **اذكر النهج المباشر (brute-force) أولًا.** حلٌّ `O(n²)` يعمل خيرٌ من حلٍّ `O(n)` مكسور. تستطيع التحسين بعد أن يعمل.
+5. **تكلّم أثناء الكتابة**، ثم **اختبر بمثالك** وحالةٍ حدّية واحدة. إصلاح خطئك على السبّورة إشارة قوّة لا ضعف.
+
+والآن المسائل، مجموعةً حسب المهارة التي تدرّبها.
+
+## المصفوفات
+
+### عكس مصفوفة
+
+**كيف تفكّر:** طريقتان، وغالبًا يريدك المُقابِل أن تعرف كلتيهما. التابع الجاهز `reverse()` يعكس في المكان ويغيّر الأصل. أما نسخة "أثبت أنك تفهم" فتبدّل من الطرفين نحو المنتصف — نمط المؤشّرين الذي ستعيد استخدامه باستمرار.
+
+```js
+// Built-in (mutates the original)
+const reversed = arr.reverse();
+
+// Manual, in place — two pointers walking inward
+function reverse(arr) {
+  let left = 0, right = arr.length - 1;
+  while (left < right) {
+    [arr[left], arr[right]] = [arr[right], arr[left]]; // swap
+    left++;
+    right--;
+  }
+  return arr;
+}
+
+// Without mutating the input (functional)
+const reversedCopy = [...arr].reverse();
+```
+
+تبديل المؤشّرين زمنه `O(n)` وذاكرته الإضافية `O(1)`. اذكر أنك تجنّبت مصفوفةً ثانية عن قصد.
+
+### إيجاد الأكبر (أو الأصغر) بلا `Math.max`
+
+**كيف تفكّر:** مرور واحد يحمل "الأفضل حتى الآن". هذه بذرة كل `reduce`.
+
+```js
+function max(arr) {
+  if (arr.length === 0) return undefined;   // edge case, say it out loud
+  let best = arr[0];
+  for (const n of arr) if (n > best) best = n;
+  return best;
+}
+// or: arr.reduce((best, n) => (n > best ? n : best))
+```
+
+`Math.max(...arr)` يعمل أيضًا، لكن انتبه للفخّ: نشر مصفوفة ضخمة قد يتجاوز حدّ مكدّس الاستدعاءات، فالحلقة أأمن على النطاق الكبير.
+
+### إزالة التكرارات
+
+**كيف تفكّر:** "هل رأيت هذا من قبل؟" هي `Set`. اطلبها لحظة يذكر السؤال التفرّد.
+
+```js
+const unique = [...new Set(arr)];
+
+// If you must explain the manual version:
+function uniqueManual(arr) {
+  const seen = new Set();
+  const out = [];
+  for (const x of arr) {
+    if (!seen.has(x)) { seen.add(x); out.push(x); }
+  }
+  return out;
+}
+```
+
+تعطيك `Set` زمن `O(n)`. أما `filter((x, i) => arr.indexOf(x) === i)` الساذجة فزمنها `O(n²)` — لا بأس بذكرها، لكن اشرح لماذا لم تخترها.
+
+### تسطيح مصفوفة متداخلة
+
+**كيف تفكّر:** البنية تعاودية (مصفوفات داخل مصفوفات)، فالحل تعاودي بطبيعته. اعرف السطر الجاهز *و* النسخة اليدوية، لأن السؤال الحقيقي هو "نفّذ `flat` بنفسك".
+
+```js
+// Built-in, any depth
+const flat = arr.flat(Infinity);
+
+// Recursive — the version they want you to derive
+function flatten(arr) {
+  return arr.reduce(
+    (acc, item) =>
+      acc.concat(Array.isArray(item) ? flatten(item) : item),
+    []
+  );
+}
+
+// Iterative with a stack (no recursion depth limit)
+function flattenIter(arr) {
+  const stack = [...arr];
+  const out = [];
+  while (stack.length) {
+    const next = stack.pop();
+    if (Array.isArray(next)) stack.push(...next);
+    else out.push(next);
+  }
+  return out.reverse(); // stack reverses order; undo it
+}
+```
+
+### تقطيع مصفوفة إلى مجموعات بحجم `n`
+
+**كيف تفكّر:** امشِ بخطوات مقدارها `n` واقتطع كل نافذة بـ `slice`. أخطاء الفارق-بواحد تعيش هنا، فاختبر بطولٍ لا يقبل القسمة بالتساوي.
+
+```js
+function chunk(arr, size) {
+  const out = [];
+  for (let i = 0; i < arr.length; i += size) {
+    out.push(arr.slice(i, i + size));
+  }
+  return out;
+}
+chunk([1, 2, 3, 4, 5], 2); // [[1,2],[3,4],[5]]
+```
+
+### تجميع العناصر حسب مفتاح
+
+**كيف تفكّر:** ابنِ كائن بحث، ادفع كل عنصر إلى دلو مفتاحه. هذه `reduce` تراكم في كائن.
+
+```js
+function groupBy(arr, keyFn) {
+  return arr.reduce((groups, item) => {
+    const key = keyFn(item);
+    (groups[key] ??= []).push(item); // create the bucket if missing
+    return groups;
+  }, {});
+}
+groupBy([6.1, 4.2, 6.3], Math.floor); // { 6: [6.1, 6.3], 4: [4.2] }
+```
+
+### مجموع اثنين (Two Sum) — هل يوجد عددان مجموعهما الهدف؟
+
+**كيف تفكّر:** النهج المباشر هو كل زوج، `O(n²)`. الفكرة: لكل عدد `x`، الشريك الذي تحتاجه هو `target - x`. فإن *تذكّرت* الأعداد التي رأيتها في خريطة، أمكنك البحث عن الشريك في `O(1)`. مقايضة الذاكرة بالزمن هي أكثر تحسينٍ يبحث عنه المُقابِلون.
+
+```js
+function twoSum(nums, target) {
+  const seen = new Map(); // value -> index
+  for (let i = 0; i < nums.length; i++) {
+    const need = target - nums[i];
+    if (seen.has(need)) return [seen.get(need), i];
+    seen.set(nums[i], i);
+  }
+  return null;
+}
+```
+
+## النصوص
+
+النصوص غير قابلة للتغيير في JavaScript، فمعظم مسائلها تصير "حوّل إلى مصفوفة، اعمل، ثم اجمع" — أو مرورًا مباشرًا على الحروف.
+
+### عكس نصّ
+
+**كيف تفكّر:** لا خيار في المكان (النصوص ثابتة)، فقسّم إلى حروف، اعكس، اجمع.
+
+```js
+const rev = str.split("").reverse().join("");
+// Unicode-safe (handles emoji/surrogate pairs): [...str].reverse().join("")
+```
+
+### هل هو متناظر (palindrome)؟
+
+**كيف تفكّر:** المتناظر يُقرأ نفسه في الاتجاهين — فقارنه بمعكوسه، أو مؤشّرين من الطرفين. وضّح أولًا: هل نتجاهل المسافات والترقيم وحالة الأحرف؟ هذا السؤال يكسب نقاطًا.
+
+```js
+function isPalindrome(str) {
+  const s = str.toLowerCase().replace(/[^a-z0-9]/g, ""); // normalize
+  let l = 0, r = s.length - 1;
+  while (l < r) {
+    if (s[l] !== s[r]) return false;
+    l++; r--;
+  }
+  return true;
+}
+```
+
+### هل النصّان جناسان (anagrams)؟
+
+**كيف تفكّر:** الجناسان يملكان الحروف نفسها بترتيبٍ مختلف — فصورتاهما بعد الفرز متساويتان، أو عدّاد حروفهما متطابق. الفرز أقصر كتابةً؛ وخريطة العدّ زمنها `O(n)` مقابل `O(n log n)` للفرز.
+
+```js
+// Simple: same characters sorted
+const isAnagram = (a, b) =>
+  [...a].sort().join("") === [...b].sort().join("");
+
+// Faster: compare frequency maps
+function isAnagramFast(a, b) {
+  if (a.length !== b.length) return false;
+  const count = {};
+  for (const c of a) count[c] = (count[c] || 0) + 1;
+  for (const c of b) {
+    if (!count[c]) return false;
+    count[c]--;
+  }
+  return true;
+}
+```
+
+### أكثر الحروف تكرارًا
+
+**كيف تفكّر:** عُدّ التكرارات في خريطة، ثم جد الأكبر. "عُدّ ثم امسح" يحلّ عائلةً كاملة من الأسئلة.
+
+```js
+function mostFrequent(str) {
+  const count = {};
+  let best = null, max = 0;
+  for (const c of str) {
+    count[c] = (count[c] || 0) + 1;
+    if (count[c] > max) { max = count[c]; best = c; }
+  }
+  return best;
+}
+```
+
+## الدوال و`this` والإغلاقات
+
+هذا هو القلب الخاصّ بـ JavaScript في معظم المقابلات. إن استطعت تنفيذ `bind` و`debounce` و`memoize` من الصفر، فقد برهنت على الإغلاقات و`this` والدوال عالية الرتبة دفعةً واحدة.
+
+### تنفيذ `call` و`apply` و`bind`
+
+**كيف تفكّر:** `this` تُحدَّد بـ*كيفية* استدعاء الدالّة. إن ألحقت دالّةً بكائنٍ واستدعيتها كتابعٍ له، صارت `this` ذلك الكائن. تلك الحقيقة الواحدة هي الحيلة كلها: ضع الدالّة مؤقتًا على الكائن الهدف، استدعِها، ثم نظّف.
+
+```js
+Function.prototype.myCall = function (context, ...args) {
+  context = context || globalThis;
+  const key = Symbol("fn");        // unique key so we don't clobber anything
+  context[key] = this;             // `this` is the function myCall was called on
+  const result = context[key](...args); // called as a method -> `this` = context
+  delete context[key];
+  return result;
+};
+
+// apply is call with an args array
+Function.prototype.myApply = function (context, args = []) {
+  return this.myCall(context, ...args);
+};
+
+// bind returns a NEW function that remembers context + preset args
+Function.prototype.myBind = function (context, ...preset) {
+  const fn = this;
+  return function (...later) {
+    return fn.myCall(context, ...preset, ...later);
+  };
+};
+```
+
+الفكرة التي تُقال بصوتٍ مسموع: **`bind` لا تستدعي الدالّة — بل تُرجِع دالّةً جديدة** بـ `this` وبعض الوسائط مثبّتةً (تطبيق جزئي). أما `call`/`apply` فتستدعيان فورًا؛ والفرق الوحيد بينهما قائمة وسائط مقابل مصفوفة وسائط.
+
+### `once` — تشغيل دالّة مرّةً واحدة
+
+**كيف تفكّر:** تحتاج أن *تتذكّر* هل شُغّلت. ذاكرة تبقى بين الاستدعاءات وتظلّ خاصّة = إغلاق على متغيّر.
+
+```js
+function once(fn) {
+  let called = false, result;
+  return function (...args) {
+    if (!called) {
+      called = true;
+      result = fn.apply(this, args);
+    }
+    return result; // subsequent calls return the cached first result
+  };
+}
+```
+
+### `memoize` — تخزين النتائج حسب الوسائط
+
+**كيف تفكّر:** نفس المُدخَلات → نفس الخرج يعني إمكان التخزين المؤقّت. استخدم `Map` مفتاحها الوسائط؛ وعند الإصابة، تجاوز العمل.
+
+```js
+function memoize(fn) {
+  const cache = new Map();
+  return function (...args) {
+    const key = JSON.stringify(args); // fine for primitive args
+    if (cache.has(key)) return cache.get(key);
+    const result = fn.apply(this, args);
+    cache.set(key, result);
+    return result;
+  };
+}
+```
+
+اذكر التحذير: `JSON.stringify` كمفتاح يصلح فقط للوسائط القابلة للتحويل إلى JSON وحسّاس لترتيب مفاتيح الكائن. ولوسيطٍ أوّليٍّ واحد، اجعله المفتاح مباشرةً.
+
+### `curry` — تحويل `f(a, b, c)` إلى `f(a)(b)(c)`
+
+**كيف تفكّر:** واصِل جمع الوسائط حتى تبلغ العدد الذي تتوقّعه الدالّة الأصلية (`fn.length`)، ثم استدعِها. "هل جمعت ما يكفي من الوسائط؟" هي المنطق كله.
+
+```js
+function curry(fn) {
+  return function curried(...args) {
+    if (args.length >= fn.length) return fn.apply(this, args);
+    return (...more) => curried.apply(this, [...args, ...more]);
+  };
+}
+const add = (a, b, c) => a + b + c;
+const c = curry(add);
+c(1)(2)(3);   // 6
+c(1, 2)(3);   // 6
+```
+
+### `compose` و`pipe`
+
+**كيف تفكّر:** مرّر خرج دالّةٍ إلى التالية. `pipe` تُقرأ من اليسار لليمين (ترتيب حدوث الأشياء)؛ و`compose` من اليمين لليسار (عُرف الرياضيات). كلتاهما مجرّد `reduce` على قائمة الدوال.
+
+```js
+const pipe = (...fns) => (x) => fns.reduce((acc, fn) => fn(acc), x);
+const compose = (...fns) => (x) => fns.reduceRight((acc, fn) => fn(acc), x);
+
+const clean = pipe((s) => s.trim(), (s) => s.toLowerCase());
+clean("  HELLO  "); // "hello"
+```
+
+### `debounce` — انتظر حتى تتوقّف الاستدعاءات
+
+**كيف تفكّر:** "لا تُطلِق إلا بعد أن يهدأ المستخدم N من الملّي ثانية." كل استدعاء يُلغي المؤقّت المعلّق السابق ويبدأ واحدًا جديدًا. معرّف المؤقّت المعلّق هو الحالة التي تُغلِق عليها. استخدمها للبحث الفوري أثناء الكتابة ومعالِجات تغيير الحجم.
+
+```js
+function debounce(fn, delay) {
+  let timer;
+  return function (...args) {
+    clearTimeout(timer);            // cancel the previous scheduled call
+    timer = setTimeout(() => fn.apply(this, args), delay);
+  };
+}
+```
+
+### `throttle` — مرّة واحدة كل N من الملّي ثانية على الأكثر
+
+**كيف تفكّر:** الـ debounce تنتظر الصمت؛ والـ throttle تضمن معدّلًا ثابتًا. "هل مرّ وقتٌ كافٍ منذ آخر تشغيل؟" تتبّع ختم الزمن الأخير. استخدمها لمعالِجات التمرير وحركة الفأرة.
+
+```js
+function throttle(fn, limit) {
+  let last = 0;
+  return function (...args) {
+    const now = Date.now();
+    if (now - last >= limit) {
+      last = now;
+      fn.apply(this, args);
+    }
+  };
+}
+```
+
+التمييز بين debounce وthrottle سؤال متابعة مفضّل: **الـ debounce تطوي دفعةً من الاستدعاءات في استدعاءٍ أخيرٍ واحد؛ والـ throttle تسمح باستدعاءٍ واحد يمرّ كل فترة.**
+
+### عدّاد الإغلاق (كلاسيكية للإحماء)
+
+**كيف تفكّر:** يريدون أن يروا أن الدالّة المُرجَعة تحتفظ بالوصول إلى `count` حتى بعد أن تعود `makeCounter`. ذلك إغلاق — حالة خاصّة ودائمة.
+
+```js
+function makeCounter() {
+  let count = 0;
+  return {
+    increment: () => ++count,
+    value: () => count,
+  };
+}
+const counter = makeCounter();
+counter.increment(); counter.increment();
+counter.value(); // 2  — `count` is private, reachable only through these functions
+```
+
+## الكائنات
+
+### نسخ كائن نسخًا عميقًا
+
+**كيف تفكّر:** النسخة السطحية (`{...obj}`) تتشارك المراجع المتداخلة، فتغيير قيمةٍ متداخلة يتسرّب. اطلب `structuredClone` أولًا (جاهز، ويتعامل مع الحلقات). وإن طُلب تنفيذها، فتعاود عبر المصفوفات والكائنات.
+
+```js
+// Modern built-in — the right answer in real code
+const copy = structuredClone(obj);
+
+// Hand-rolled (mention it doesn't handle Dates, Maps, or cycles)
+function deepClone(value) {
+  if (value === null || typeof value !== "object") return value; // primitive
+  if (Array.isArray(value)) return value.map(deepClone);
+  return Object.fromEntries(
+    Object.entries(value).map(([k, v]) => [k, deepClone(v)])
+  );
+}
+```
+
+تجنّب `JSON.parse(JSON.stringify(obj))` إلا إن نبّهت إلى خسائرها: تُسقِط `undefined` والدوال و`Symbol`، وتحوّل `Date` إلى نصّ.
+
+### المساواة العميقة
+
+**كيف تفكّر:** قيمتان متساويتان عميقًا إن كانتا الأوّليّ نفسه، أو كائنين بالمفاتيح نفسها وقيمها متساوية عميقًا كلٌّ بمثيلتها. التعاود يحاكي البنية.
+
+```js
+function deepEqual(a, b) {
+  if (a === b) return true;
+  if (typeof a !== "object" || typeof b !== "object" || a == null || b == null)
+    return false;
+  const ka = Object.keys(a), kb = Object.keys(b);
+  if (ka.length !== kb.length) return false;
+  return ka.every((k) => deepEqual(a[k], b[k]));
+}
+```
+
+### تسطيح كائن متداخل إلى مفاتيح منقوطة
+
+**كيف تفكّر:** تعاوَد حاملًا بادئة المسار. وعند بلوغ قيمةٍ ليست كائنًا، أصدِر `prefix -> value`.
+
+```js
+function flattenObject(obj, prefix = "", out = {}) {
+  for (const [k, v] of Object.entries(obj)) {
+    const path = prefix ? `${prefix}.${k}` : k;
+    if (v && typeof v === "object" && !Array.isArray(v)) {
+      flattenObject(v, path, out);
+    } else {
+      out[path] = v;
+    }
+  }
+  return out;
+}
+flattenObject({ a: { b: { c: 1 } }, d: 2 }); // { "a.b.c": 1, d: 2 }
+```
+
+## غير المتزامن
+
+أسئلة غير المتزامن تختبر فهمك لحلقة الأحداث والـ Promises — راجع [الوعود](/blog/promises) و[async/await](/blog/async-await) للنموذج الأساسي.
+
+### `sleep` / التأخير
+
+**كيف تفكّر:** لُفّ `setTimeout` في Promise كي تستطيع `await`. هذا نمط "تحويل ردّ نداء إلى وعد" مصغّرًا.
+
+```js
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+// await sleep(1000);
+```
+
+### `promisify` لدالّة بنمط ردّ النداء
+
+**كيف تفكّر:** ردود نداء Node بنمط `(err, data) => ...`. لُفّ الاستدعاء في Promise: ارفض عند `err`، وحُلّ عند `data`.
+
+```js
+function promisify(fn) {
+  return (...args) =>
+    new Promise((resolve, reject) => {
+      fn(...args, (err, data) => (err ? reject(err) : resolve(data)));
+    });
+}
+```
+
+### إعادة المحاولة مع تراجع
+
+**كيف تفكّر:** حاوِل، وعند الفشل انتظر ثم أعِد المحاولة حتى N مرّة؛ استسلم بإعادة رمي آخر خطأ. حلقة مع `await` داخل `try/catch` تُقرأ بوضوح.
+
+```js
+async function retry(fn, attempts = 3, delay = 300) {
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await fn();
+    } catch (err) {
+      if (i === attempts - 1) throw err;   // last try — give up
+      await sleep(delay * 2 ** i);         // exponential backoff
+    }
+  }
+}
+```
+
+### تشغيل الوعود بالتتابع مقابل بالتوازي
+
+**كيف تفكّر:** الخطأ الذي يقع فيه المرشّحون هو تشغيل الأشياء بالتتابع بينما يمكن أن تكون بالتوازي. `await` داخل حلقة `for` تتابعيّ؛ والتحويل إلى مصفوفة ثم `Promise.all` توازيّ. اعرف متى يصحّ كلٌّ — بالتتابع حين تعتمد كل خطوة على سابقتها، وبالتوازي حين تكون مستقلّة.
+
+```js
+// Sequential — each waits for the previous (slow, but ordered/dependent)
+async function inSequence(tasks) {
+  const results = [];
+  for (const task of tasks) results.push(await task());
+  return results;
+}
+
+// Parallel — all at once, wait for all (fast, independent)
+const inParallel = (tasks) => Promise.all(tasks.map((t) => t()));
+```
+
+### تنفيذ `Promise.all`
+
+**كيف تفكّر:** حُلّ بمصفوفةٍ بالترتيب *الأصلي* بمجرّد أن يُحلّ كل مُدخَل؛ وارفض فور أن يرفض *أيّ* منها. تتبّع عدّاد إتمام، وخزّن كل نتيجة في فهرسها كي يُحفَظ الترتيب رغم اختلاف أوقات الانتهاء.
+
+```js
+function promiseAll(promises) {
+  return new Promise((resolve, reject) => {
+    const results = [];
+    let remaining = promises.length;
+    if (remaining === 0) return resolve(results); // edge case: empty
+
+    promises.forEach((p, i) => {
+      Promise.resolve(p).then((value) => {   // wrap: inputs may be plain values
+        results[i] = value;                  // keep original order by index
+        if (--remaining === 0) resolve(results);
+      }, reject);                            // first rejection rejects the whole thing
+    });
+  });
+}
+```
+
+تفصيلان يكسبان نقاطًا هنا: **لفّ كل مُدخَل بـ `Promise.resolve`** (كي تعمل القيم غير الوعود) و**الفهرسة بدل الدفع** (كي يطابق الترتيب المُدخَل لا وقت الانتهاء).
+
+## إحماءات خوارزمية كلاسيكية
+
+### FizzBuzz
+
+**كيف تفكّر:** الفخّ الوحيد هو الترتيب — تحقّق من القسمة على 15 (كليهما) *قبل* 3 و5، أو ابنِ النصّ تدريجيًّا.
+
+```js
+for (let i = 1; i <= 100; i++) {
+  let out = "";
+  if (i % 3 === 0) out += "Fizz";
+  if (i % 5 === 0) out += "Buzz";
+  console.log(out || i);
+}
+```
+
+### فيبوناتشي
+
+**كيف تفكّر:** التعاود الساذج زمنه `O(2ⁿ)` — يعيد حساب القيم نفسها أُسّيًّا. إمّا أن تُخزّنه مؤقّتًا، أو الأفضل أن تكرّر محتفظًا بآخر عددين فقط (`O(n)` زمنًا، `O(1)` ذاكرةً).
+
+```js
+function fib(n) {
+  let a = 0, b = 1;
+  for (let i = 0; i < n; i++) [a, b] = [b, a + b];
+  return a;
+}
+```
+
+### المضروب (Factorial)
+
+**كيف تفكّر:** التعاود المدرسيّ جيّد، لكن اذكر أن حلقةً تكرارية تتجنّب عمق المكدّس للـ `n` الكبير.
+
+```js
+const factorial = (n) => (n <= 1 ? 1 : n * factorial(n - 1));
+```
+
+## تنفيذات متقدّمة (مستوى متوسّط/كبير)
+
+هذه تظهر للأدوار الأكثر خبرة. كلٌّ منها يجمع أفكارًا عدّة — الإغلاقات، وترتيب `Map`، وحلقة الأحداث — فالقدرة على اشتقاق واحدٍ منها تدلّ على طلاقةٍ حقيقية.
+
+### `EventEmitter` — نشر/اشتراك صغير
+
+**كيف تفكّر:** تحتاج سجلًّا من `اسم الحدث -> قائمة المستمعين`. `on` تضيف مستمعًا، و`off` تزيله، و`emit` تستدعي كل مستمعٍ لذلك الحدث. خريطة `Map` من الاسم إلى `Set` من ردود النداء تجعل الإضافة/الإزالة نظيفة، كما تُزيل `Set` تكرار المستمع نفسه.
+
+```js
+class EventEmitter {
+  #events = new Map(); // event name -> Set of listeners
+
+  on(name, fn) {
+    if (!this.#events.has(name)) this.#events.set(name, new Set());
+    this.#events.get(name).add(fn);
+    return () => this.off(name, fn); // return an unsubscribe fn — a nice touch
+  }
+
+  off(name, fn) {
+    this.#events.get(name)?.delete(fn);
+  }
+
+  emit(name, ...args) {
+    this.#events.get(name)?.forEach((fn) => fn(...args));
+  }
+
+  once(name, fn) {
+    const wrapper = (...args) => {
+      this.off(name, wrapper); // remove before calling, so re-entrancy is safe
+      fn(...args);
+    };
+    this.on(name, wrapper);
+  }
+}
+```
+
+تفصيلان يُثيران الإعجاب: **`on` تُرجِع دالّة إلغاء اشتراك** (كما تعمل تنظيفات `useEffect` في React)، و**`once` تُزيل نفسها قبل الاستدعاء** كي لا تُطلَق مرّتين حتى لو أعاد ردّ النداء الإطلاق.
+
+### ذاكرة LRU — إخراج الأقلّ استخدامًا حديثًا
+
+**كيف تفكّر:** تحتاج `get`/`put` بزمن `O(1)` *و* مفهومًا لترتيب "الاستخدام الحديث". الحيلة التي يفوّتها معظم الناس: خريطة `Map` في JavaScript **تتذكّر ترتيب الإدراج**، فـ"الأحدث استخدامًا = المُدرَج أخيرًا." عند الوصول، احذف وأعِد الإدراج لنقل المفتاح إلى النهاية؛ وعند تجاوز السعة، أخرِج أوّل مفتاح (`map.keys().next().value`).
+
+```js
+class LRUCache {
+  constructor(capacity) {
+    this.capacity = capacity;
+    this.map = new Map();
+  }
+
+  get(key) {
+    if (!this.map.has(key)) return -1;
+    const value = this.map.get(key);
+    this.map.delete(key);          // remove...
+    this.map.set(key, value);      // ...and re-insert to mark as most-recent
+    return value;
+  }
+
+  put(key, value) {
+    if (this.map.has(key)) this.map.delete(key);       // refresh position
+    else if (this.map.size >= this.capacity) {
+      this.map.delete(this.map.keys().next().value);   // evict oldest (first key)
+    }
+    this.map.set(key, value);
+  }
+}
+```
+
+يتوقّف الحل كله على معرفة أن `Map` تحفظ ترتيب الإدراج — قُلها بصوتٍ مسموع؛ فهي الفكرة التي يُختبَر عليها.
+
+### محدِّد التزامن — تشغيل `n` وعود كحدٍّ أقصى في آنٍ واحد
+
+**كيف تفكّر:** لديك مهامّ غير متزامنة كثيرة لكنك تريد `n` فقط قيد التنفيذ (مثلًا لا تُطلِق 1000 استدعاء API دفعةً واحدة). واصِل إطلاق المهامّ؛ وكلما بلغ عدد الجارية الحدَّ، انتظر انتهاء *أيّ* منها قبل بدء التالية. `Promise.race` على المجموعة النشطة هو أوّليّة "انتظر أوّل من ينتهي".
+
+```js
+async function limitConcurrency(tasks, limit) {
+  const results = [];
+  const running = new Set();
+
+  for (const [i, task] of tasks.entries()) {
+    const p = Promise.resolve(task()).then((res) => {
+      results[i] = res;          // store by index to preserve order
+      running.delete(p);
+    });
+    running.add(p);
+    if (running.size >= limit) await Promise.race(running); // wait for a slot
+  }
+
+  await Promise.all(running);    // let the final in-flight tasks finish
+  return results;
+}
+```
+
+الفكرتان المُختبَرتان: **`Promise.race` لانتظار خانةٍ فارغة**، و**فهرسة النتائج** كي يطابق ترتيب الخرج المُدخَل رغم انتهاء المهامّ خارج الترتيب.
+
+### تسطيح عميق بمعامل عمق
+
+**كيف تفكّر:** التسطيح السابق ينزل حتى القاع. أما `Array.prototype.flat` الحقيقيّة فتأخذ عمقًا. أضِف وسيط `depth` وتعاوَد فقط طالما `depth > 0`، مُنقِصًا كلما نزلت.
+
+```js
+function flattenDepth(arr, depth = 1) {
+  if (depth < 1) return arr.slice();
+  return arr.reduce(
+    (acc, item) =>
+      acc.concat(
+        Array.isArray(item) ? flattenDepth(item, depth - 1) : item
+      ),
+    []
+  );
+}
+flattenDepth([1, [2, [3, [4]]]], 2); // [1, 2, 3, [4]]
+```
+
+الـ `depth - 1` في كل استدعاءٍ تعاوديّ هي الفكرة كلها: كل مستوًى تنزله يُنفِق وحدةً من العمق المسموح، وعند `0` تتوقّف عن فكّ التغليف.
+
+## إضافة: أسئلة "ماذا يطبع هذا؟"
+
+يعشق المُقابِلون أسئلة توقّع المُخرَجات لأنها تكشف هل *تفهم* اللغة أم تستعملها فحسب. تدرّب على شرح *السبب*.
+
+```js
+// 1) var in a loop — one shared binding
+for (var i = 0; i < 3; i++) setTimeout(() => console.log(i), 0);
+// logs 3, 3, 3 — all closures share the same `i`, which is 3 by the time they run.
+// Fix: use `let` (a fresh binding per iteration) -> 0, 1, 2.
+
+// 2) this in a regular vs arrow function
+const obj = {
+  name: "A",
+  regular() { return this.name; },      // `this` is obj
+  arrow: () => this?.name,              // arrow has no own `this` — not obj
+};
+
+// 3) hoisting
+console.log(typeof x); // "undefined" — `var x` is hoisted, assignment isn't
+var x = 5;
+
+// 4) reference equality
+console.log([1, 2] === [1, 2]); // false — different objects in memory
+```
+
+النمط الذي ترسّخه: `var` مرتبطة بالدالّة ومرفوعة، و`let`/`const` مرتبطتان بالكتلة؛ والدوال السهمية ترث `this` من حيث *تُعرَّف*، والدوال العادية تأخذ `this` من كيفية *استدعائها*؛ والكائنات والمصفوفات تُقارَن بالمرجع لا بالقيمة. تقريبًا كل مفاجأة هي واحدة من هذه الثلاث.
+
+## تدريب — غطِّ الحلّ أولًا
+
+جرّب هذه قبل توسيعها. قُل نهجك بصوتٍ مسموع، تمامًا كما ستفعل في الغرفة.
+
+### تمرين 1 — أدِر مصفوفة يمينًا بمقدار `k`
+
+أدِر `[1, 2, 3, 4, 5]` يمينًا بمقدار `2` لتحصل على `[4, 5, 1, 2, 3]`.
+
+<details>
+
+<summary>اعرض الحل</summary>
+
+```js
+function rotate(arr, k) {
+  k %= arr.length;                 // k larger than length wraps around
+  return [...arr.slice(-k), ...arr.slice(0, -k)];
+}
+```
+
+اقتطع آخر `k` عناصر وانقلها إلى الأمام. `k %= length` يعالج `k` أكبر من المصفوفة.
+
+</details>
+
+### تمرين 2 — عُدّ التكرارات في خريطة
+
+بمعطى `["a", "b", "a", "c", "b", "a"]`، أرجِع `{ a: 3, b: 2, c: 1 }`.
+
+<details>
+
+<summary>اعرض الحل</summary>
+
+```js
+const tally = (arr) =>
+  arr.reduce((acc, x) => ((acc[x] = (acc[x] || 0) + 1), acc), {});
+```
+
+نمط "العدّ في كائن" — الشكل نفسه لـ `groupBy` ومعظم مسائل التكرار.
+
+</details>
+
+### تمرين 3 — نفّذ `Array.prototype.map`
+
+اكتب `myMap(arr, fn)` دون استخدام `map` الجاهز.
+
+<details>
+
+<summary>اعرض الحل</summary>
+
+```js
+function myMap(arr, fn) {
+  const out = [];
+  for (let i = 0; i < arr.length; i++) out.push(fn(arr[i], i, arr));
+  return out;
+}
+```
+
+يسأل المُقابِلون هذا للتحقّق من أنك تعرف أن `map` تبني مصفوفةً *جديدة* وتمرّر `(value, index, array)` إلى ردّ النداء.
+
+</details>
+
+### تمرين 4 — تسطيح مستوى واحد فقط
+
+حوّل `[1, [2, 3], [4, [5]]]` إلى `[1, 2, 3, 4, [5]]` (عمق 1).
+
+<details>
+
+<summary>اعرض الحل</summary>
+
+```js
+const flattenOne = (arr) => arr.reduce((acc, x) => acc.concat(x), []);
+// or arr.flat(1)
+```
+
+`concat` تنشر مستوًى واحدًا من المصفوفات تلقائيًّا، وهو بالضبط مستوى تسطيحٍ واحد.
+
+</details>
+
+## النموذج الذهني الذي تحتفظ به
+
+مسائل المقابلات البرمجية تكافئ **العملية** لا الحلول المحفوظة: أعِد صياغة المسألة، واذكر الحالات الحدّية، واطرح نهجًا مباشرًا، ثم حسّن وأنت تتكلّم. حفنة أنماط تغطّي معظم ما تُسأل عنه — **المؤشّران** للعكس والتناظر، و**`Set` أو `Map`** كلما احتجت "هل رأيت هذا؟" (مقايضة الذاكرة بالزمن)، و**`reduce`** لأي شيء يتراكم (عدّ، تجميع، تسطيح)، و**التعاود** للبنى المتداخلة (مصفوفات، كائنات، أشجار)، و**الإغلاقات** لأي شيء يجب أن يتذكّر حالةً بين الاستدعاءات (`debounce`، `memoize`، `once`، العدّادات). أما نجوم JavaScript الخاصّة — تنفيذ `bind` و`debounce` و`throttle` وتنفيذ `Promise.all` — فترجع كلها إلى الإغلاقات و`this` وحلقة الأحداث. تعلّم *السبب* خلف كل حلٍّ هنا، وستستطيع اشتقاق النسخة التي يرمونها عليك بدل أن تأمل أنك رأيتها من قبل.
