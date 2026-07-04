@@ -498,6 +498,10 @@
                 "title": "Interview questions"
               },
               {
+                "key": "javascript-coding-problems",
+                "title": "JavaScript coding problems"
+              },
+              {
                 "key": "system-design-basics",
                 "title": "System design basics"
               }
