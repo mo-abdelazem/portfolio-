@@ -2365,8 +2365,10 @@ button {
   width: 46px;
   height: 46px;
   border-radius: 9999px;
-  background: var(--text);
-  color: var(--bg);
+  /* Match the .blog-post__back pill: light surface, subtle border, dark icon. */
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border-subtle);
   box-shadow: var(--shadow-card);
   opacity: 0;
   transform: translateY(10px);
@@ -2374,7 +2376,7 @@ button {
   transition:
     opacity 0.25s,
     transform 0.25s,
-    background 0.2s;
+    border-color 0.2s;
 }
 
 .to-top--visible {
@@ -2384,7 +2386,7 @@ button {
 }
 
 .to-top:hover {
-  background: var(--text-secondary);
+  border-color: var(--text-secondary);
 }
 
 @media (max-width: 768px) {
@@ -2452,12 +2454,18 @@ button {
     width: 48px;
     height: 48px;
     border-radius: 9999px;
-    background: var(--text);
-    color: var(--bg);
+    /* Same light pill style as the back button and to-top control. */
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border-subtle);
     box-shadow: var(--shadow-card);
     transition:
       transform 0.2s,
-      background 0.2s;
+      border-color 0.2s;
+  }
+
+  .toc-fab:hover {
+    border-color: var(--text-secondary);
   }
 
   .toc-fab:active {
