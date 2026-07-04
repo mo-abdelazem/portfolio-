@@ -246,6 +246,8 @@
     "backToTop": "Back to top",
     "featuredLabel": "Latest",
     "onThisPage": "On this page",
+    "tocOpenLabel": "Table of contents",
+    "tocCloseLabel": "Close table of contents",
     "morePostsLabel": "More posts",
     "newerPost": "Newer",
     "olderPost": "Older",

@@ -1547,6 +1547,13 @@ button {
   border-color: var(--text);
 }
 
+/* Mobile table-of-contents: floating trigger + end drawer.
+   Hidden on desktop, where the inline sticky list is used instead. */
+.toc-fab,
+.toc-drawer-root {
+  display: none;
+}
+
 /* Previous / next navigation */
 
 .blog-post__nav {
@@ -2384,6 +2391,188 @@ button {
   .to-top {
     bottom: 20px;
     inset-inline-end: 20px;
+  }
+}
+
+/* Below the desktop sidebar breakpoint: the inline TOC becomes a floating
+   button that opens an end drawer, and the back link becomes a fixed pill. */
+@media (max-width: 1099.98px) {
+  /* Hide the inline sidebar list (the drawer replaces it), but keep the aside
+     itself rendered — it hosts the fixed FAB and drawer, which would vanish if
+     an ancestor were display:none. Empty, it collapses to zero height. */
+  .blog-post__aside > .blog-toc {
+    display: none;
+  }
+
+  /* Back link: a fixed, thumb-reachable icon button at the bottom start. */
+  .blog-post__back {
+    position: fixed;
+    bottom: 20px;
+    inset-inline-start: 20px;
+    z-index: 150;
+    margin: 0;
+    width: 48px;
+    height: 48px;
+    justify-content: center;
+    gap: 0;
+    border-radius: 9999px;
+    background: var(--bg);
+    border: 1px solid var(--border-subtle);
+    box-shadow: var(--shadow-card);
+  }
+
+  .blog-post__back-label {
+    /* Collapse to an icon-only control on small screens. */
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .blog-post__back .blog-post__nav-arrow {
+    width: 20px;
+    height: 20px;
+    color: var(--text);
+  }
+
+  /* Floating "contents" trigger at the bottom end. */
+  .toc-fab {
+    position: fixed;
+    bottom: 20px;
+    inset-inline-end: 20px;
+    z-index: 150;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    border-radius: 9999px;
+    background: var(--text);
+    color: var(--bg);
+    box-shadow: var(--shadow-card);
+    transition:
+      transform 0.2s,
+      background 0.2s;
+  }
+
+  .toc-fab:active {
+    transform: scale(0.94);
+  }
+
+  /* Stack the back-to-top button above the contents trigger; all three
+     floating controls share the same 48px size. */
+  .to-top {
+    bottom: 80px;
+    inset-inline-end: 20px;
+    width: 48px;
+    height: 48px;
+  }
+
+  /* Drawer shell — fixed overlay, click-through while closed. */
+  .toc-drawer-root {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    pointer-events: none;
+  }
+
+  .toc-drawer-root.is-open {
+    pointer-events: auto;
+  }
+
+  .toc-drawer__backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    opacity: 0;
+    transition: opacity 0.28s ease;
+  }
+
+  .toc-drawer-root.is-open .toc-drawer__backdrop {
+    opacity: 1;
+  }
+
+  /* The panel itself slides in from the inline-end edge. */
+  .toc-drawer {
+    position: absolute;
+    inset-block: 0;
+    inset-inline-end: 0;
+    display: flex;
+    flex-direction: column;
+    width: min(86vw, 340px);
+    background: var(--bg);
+    border-inline-start: 1px solid var(--border-subtle);
+    box-shadow: var(--shadow-card);
+    transform: translateX(100%);
+    transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  [dir="rtl"] .toc-drawer {
+    transform: translateX(-100%);
+  }
+
+  .toc-drawer-root.is-open .toc-drawer {
+    transform: none;
+  }
+
+  .toc-drawer__head {
+    position: sticky;
+    top: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 18px 18px 12px;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  .toc-drawer__title {
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .toc-drawer__close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 9999px;
+    color: var(--text-secondary);
+    transition:
+      background 0.2s,
+      color 0.2s;
+  }
+
+  .toc-drawer__close:hover {
+    background: var(--border-subtle);
+    color: var(--text);
+  }
+
+  .toc-drawer__nav {
+    padding: 8px 18px 28px;
+  }
+
+  /* Honor reduced-motion: no slide, just fade. */
+  @media (prefers-reduced-motion: reduce) {
+    .toc-drawer {
+      transition: none;
+    }
+    .toc-drawer__backdrop {
+      transition: none;
+    }
   }
 }
 
