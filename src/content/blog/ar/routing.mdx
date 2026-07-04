@@ -1,0 +1,323 @@
+---
+title: "التوجيه في React مع React Router: من الصفر إلى الاحتراف"
+description: "دليل عملي للتوجيه على جانب العميل في React مع React Router وTypeScript — ما الذي يفعله موجّه SPA، وإعداد المسارات، والتنقّل بـ Link وNavLink، والمسارات المتداخلة والتخطيطات بـ Outlet، ومعاملات المسار الديناميكية بـ useParams، وقراءة وكتابة سلاسل الاستعلام بـ useSearchParams، والتنقّل البرمجيّ بـ useNavigate، وإعادة التوجيه والمسارات المحميّة، ومعالجة 404، والتحميل الكسول للمسارات — مع أخطاء شائعة وتمارين عملية."
+publishedAt: "2026-08-01"
+translationKey: "routing"
+tags: ["React", "TypeScript", "React Router", "Frontend"]
+---
+
+يعرض تطبيق الصفحة الواحدة "صفحاتٍ" كثيرة دون إعادة تحميلٍ كاملة للمتصفّح أبدًا — يتغيّر العنوان، وتتبدّل الواجهة، ويبدو الأمر فوريًّا. الأداة التي تربط العناوين بالمكوّنات وتُبقيهما متزامنَين هي **الموجّه** (router). في React الخيار الفعليّ هو **React Router**، وهذه التدوينة جولةٌ عملية فيه: المسارات، والروابط، والتخطيطات المتداخلة، ومعاملات المسار، وسلاسل الاستعلام، وحراسة الصفحات. تبني على [المكوّنات والخصائص](/blog/components-props) و[الحالة والخطّافات](/blog/state-and-hooks)، وكل شيءٍ بـ TypeScript. (هذه React مستقلّة عن الإطار مع Vite؛ وتدوينة **أساسيات Next.js** تغطّي التوجيه بطريقة Next على حدة.)
+
+> النموذج الذهني: الموجّه مجرّد **حالةٍ مشتقّة من العنوان**. المسار الحاليّ *هو* قطعة حالة، وتهيئة مساراتك دالّةٌ تربط ذلك المسار بشجرة المكوّنات المعروضة. التنقّل لا يعيد تحميل الصفحة — بل يحدّث العنوان ويدع React تعيد عرض المسار المطابق. وكل ما عدا ذلك (المعاملات، سلاسل الاستعلام، إعادة التوجيه) هو قراءةٌ أو كتابةٌ لحالة العنوان تلك.
+
+## ما الذي يفعله الموجّه
+
+بلا موجّه، تطبيق React صفحةٌ واحدة. الموجّه يتيح لك:
+
+- **ربط العناوين بالمكوّنات** — `/about` يعرض `<About/>`، و`/users/42` يعرض `<UserProfile/>`.
+- **التنقّل بلا إعادة تحميلٍ كاملة** — النقر على رابطٍ يبدّل الواجهة ويحدّث شريط العنوان عبر History API، محافظًا على حالة التطبيق ومتجنّبًا الوميض الأبيض.
+- **إبقاء الواجهة قابلةً للمشاركة والحفظ** — العنوان يصف كامل ما على الشاشة، فالتحديث والرجوع/التقدّم يعملان ببساطة.
+
+ثبّته في تطبيق Vite React:
+
+```bash
+npm install react-router-dom
+```
+
+## إعداد المسارات
+
+غلّف تطبيقك بـ `BrowserRouter`، ثم صرّح بكتلة `<Routes>` فيها `<Route>` واحد لكل عنوان. كل مسارٍ يربط `path` بـ `element` المعروض:
+
+```tsx
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+
+function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/about" element={<About />} />
+        <Route path="/users/:id" element={<UserProfile />} />
+        <Route path="*" element={<NotFound />} />   {/* الماسك الشامل 404 */}
+      </Routes>
+    </BrowserRouter>
+  );
+}
+```
+
+تطابق React Router العنوان الحاليّ مع هذه المسارات وتعرض أول `element` يناسب. المقطع `:id` **معاملٌ ديناميكيّ** (أيّ قيمةٍ تطابق، وتستطيع قراءته)، و`path="*"` هو الماسك الشامل الذي يعالج أيّ شيءٍ غير مطابق — صفحة 404 لديك.
+
+## التنقّل بـ `Link` و`NavLink`
+
+لا تستخدم `<a href>` عاديًّا للتنقّل الداخليّ أبدًا — فهو يُطلِق إعادة تحميلٍ كاملة ويرمي حالة تطبيقك. استخدم **`Link`**، الذي ينقّل على جانب العميل:
+
+```tsx
+import { Link } from "react-router-dom";
+
+<Link to="/about">About</Link>
+<Link to={`/users/${user.id}`}>View profile</Link>
+```
+
+لقوائم التنقّل، **`NavLink`** هو `Link` مضافًا إليه إدراك ما إذا كان المسار *النشط* — يعطيك ردّ نداءٍ لتنسيق الرابط الحاليّ:
+
+```tsx
+import { NavLink } from "react-router-dom";
+
+<NavLink
+  to="/about"
+  className={({ isActive }) => (isActive ? "nav-link nav-link--active" : "nav-link")}
+>
+  About
+</NavLink>
+```
+
+يمرّر `NavLink` الكائن `{ isActive }` كي تُبرِز الصفحة التي عليها المستخدم — النمط المعياريّ لشريط تنقّل.
+
+## المسارات المتداخلة والتخطيطات بـ `Outlet`
+
+تتشارك معظم التطبيقات هيكلًا — ترويسة، وشريط جانبيّ، وتذييل — عبر صفحاتٍ كثيرة. بدل تكراره في كل مكوّن صفحة، تُعشّق المسارات تحت **مسار تخطيط** وتحدّد أين يُعرَض الابن بـ `<Outlet/>`:
+
+```tsx
+import { Outlet } from "react-router-dom";
+
+function DashboardLayout() {
+  return (
+    <div className="dashboard">
+      <Sidebar />
+      <main>
+        <Outlet />   {/* المسار الابن المطابق يُعرَض هنا */}
+      </main>
+    </div>
+  );
+}
+
+// تهيئة مسارٍ متداخل: الأبناء يُعرَضون داخل <Outlet/> الخاصّ بـ DashboardLayout
+<Routes>
+  <Route path="/dashboard" element={<DashboardLayout />}>
+    <Route index element={<Overview />} />          {/* /dashboard */}
+    <Route path="settings" element={<Settings />} />  {/* /dashboard/settings */}
+    <Route path="team" element={<Team />} />          {/* /dashboard/team */}
+  </Route>
+</Routes>
+```
+
+يُعرَض التخطيط مرّةً ويبقى مركّبًا؛ ويتغيّر محتوى `<Outlet/>` وحده وأنت تنتقل بين `/dashboard/settings` و`/dashboard/team`. المسار **`index`** هو الابن الافتراضيّ المعروض عند مسار الأب بالضبط. ومسارات الأبناء *نسبية* — `settings` لا `/settings` — فتمدّد الأب.
+
+## قراءة معاملات المسار بـ `useParams`
+
+يُقرأ المقطع الديناميكيّ مثل `:id` بخطّاف **`useParams`**. نمِّط شكله كي لا تعمل بـ `any`:
+
+```tsx
+import { useParams } from "react-router-dom";
+
+function UserProfile() {
+  const { id } = useParams<{ id: string }>();  // من /users/:id
+  // id هو string | undefined — ضيّقه قبل الاستخدام
+  if (!id) return <p>No user selected.</p>;
+  return <h1>User {id}</h1>;
+}
+```
+
+معاملات المسار دائمًا **نصوص** (أو `undefined` إن كان المقطع اختياريًّا)، فحوّل حين تحتاج عددًا (`Number(id)`) وعالِج الحالة الغائبة. هكذا يخدم مكوّن `UserProfile` واحد كل مستخدم: العنوان يزوّد المعرّف.
+
+## سلاسل الاستعلام بـ `useSearchParams`
+
+للبيانات الاختيارية غير المرتّبة — المرشِّحات، ومصطلحات البحث، والترقيم، وترتيب الفرز — استخدم **سلسلة الاستعلام** (`?q=react&page=2`)، تُقرأ وتُكتَب بـ **`useSearchParams`**. يعمل كـ `useState`، لكن الحالة تعيش في العنوان:
+
+```tsx
+import { useSearchParams } from "react-router-dom";
+
+function ProductList() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const query = searchParams.get("q") ?? "";
+  const page = Number(searchParams.get("page") ?? "1");
+
+  return (
+    <input
+      value={query}
+      onChange={(e) => setSearchParams({ q: e.target.value, page: "1" })}
+    />
+  );
+}
+```
+
+ولأن الحالة في العنوان، فالعرض المُرشَّح/المُرقَّم **قابلٌ للمشاركة ويصمد أمام التحديث** — مكسبٌ ضخم في تجربة المستخدم مقابل حفظ تلك المرشِّحات في حالة المكوّن. الجأ إلى سلسلة الاستعلام كلما كان جواب "هل ينبغي أن يكون هذا في العنوان؟" نعم.
+
+## التنقّل البرمجيّ بـ `useNavigate`
+
+أحيانًا تنقّل استجابةً لمنطقٍ لا لنقرة — بعد إرسال نموذج، أو عند نجاح تسجيل الدخول، أو عند انتهاء مهلة. يُرجِع خطّاف **`useNavigate`** دالّةً تغيّر المسار أمريًّا:
+
+```tsx
+import { useNavigate } from "react-router-dom";
+
+function LoginForm() {
+  const navigate = useNavigate();
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    await logIn();
+    navigate("/dashboard");           // اذهب إلى مسار
+    // navigate(-1);                   // ارجع خطوة واحدة (كزرّ الرجوع)
+    // navigate("/login", { replace: true }); // استبدل، ولا تضِف إلى التاريخ
+  }
+
+  return <form onSubmit={handleSubmit}>{/* ... */}</form>;
+}
+```
+
+استخدم `replace: true` حين لا تريد الصفحة الحالية في مكدّس التاريخ — مثلًا بعد الدخول لا تريد أن يعيدك "الرجوع" إلى نموذج الدخول.
+
+## إعادة التوجيه والمسارات المحميّة
+
+لإعادة التوجيه تصريحيًّا أثناء العرض، اعرض عنصر **`<Navigate>`**. هذا لبنة **المسار المحميّ** — غلافٌ يعرض أبناءه فقط حين يُسمَح للمستخدم، ويعيد التوجيه إلى الدخول خلاف ذلك:
+
+```tsx
+import { Navigate, useLocation } from "react-router-dom";
+
+function RequireAuth({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
+  const location = useLocation();
+
+  if (!user) {
+    // أعِد التوجيه إلى الدخول، متذكّرًا وجهته المقصودة
+    return <Navigate to="/login" replace state={{ from: location }} />;
+  }
+  return <>{children}</>;
+}
+
+// غلّف العنصر المحميّ
+<Route
+  path="/dashboard"
+  element={
+    <RequireAuth>
+      <Dashboard />
+    </RequireAuth>
+  }
+/>
+```
+
+تمرير `state={{ from: location }}` يتيح لصفحة الدخول أن تعيد المستخدم حيث قصد بعد المصادقة (اقرأه بـ `useLocation()`). و`replace` يُبقي إعادة توجيه الدخول خارج التاريخ كي لا يرتدّ الرجوع بهم.
+
+## معالجة 404
+
+المسار الماسك الشامل `path="*"` يطابق أيّ عنوانٍ لم يطالب به مسارٌ آخر — ضع فيه صفحة "غير موجود". يعمل في أيّ مستوًى، بما في ذلك داخل تخطيطٍ متداخل، فتظهر مسارات الأبناء غير المطابقة كـ 404 ضمن هيكل التخطيط:
+
+```tsx
+<Route path="*" element={<NotFound />} />
+```
+
+## التحميل الكسول للمسارات من أجل الأداء
+
+لا تحتاج كود كل صفحةٍ في الحزمة الأولية. قسّم المسارات بـ `React.lazy` واحتياطيّ `<Suspense>` كي يُحمَّل كود كل صفحةٍ فقط عند أول زيارة — تنزيلٌ أوّليّ أصغر، ورسمٌ أوّل أسرع:
+
+```tsx
+import { lazy, Suspense } from "react";
+
+const Settings = lazy(() => import("./pages/Settings"));
+
+<Route
+  path="settings"
+  element={
+    <Suspense fallback={<Spinner />}>
+      <Settings />
+    </Suspense>
+  }
+/>
+```
+
+هذا من أعلى مكاسب الأداء أثرًا في SPA كبير: ينزّل المستخدم كود لوحة التحكّم فقط حين يفتحها. (المزيد في مواضيع الأداء في المنهج.)
+
+## الأخطاء الشائعة
+
+- **استخدام `<a href>` للروابط الداخلية** — يسبّب إعادة تحميلٍ كاملة ويفقد حالة التطبيق. استخدم `Link`/`NavLink`؛ واحفظ `<a>` للعناوين الخارجية.
+- **مسارات أبناءٍ مطلقة في المسارات المتداخلة** — كتابة `path="/settings"` تحت أبٍ تكسر التداخل. مسارات الأبناء نسبية: `path="settings"`.
+- **افتراض أن المعاملات أعداد** — قيم `useParams` نصوصٌ أو `undefined`. حوّل بـ `Number(...)` وعالِج الحالة الغائبة.
+- **وضع حالةٍ قابلة للمشاركة في `useState`** — المرشِّحات والتبويبات والترقيم التي ينبغي أن تصمد أمام التحديث تنتمي إلى العنوان عبر `useSearchParams`.
+- **نسيان `replace` في إعادة توجيه المصادقة** — بدونه، يعيد زرّ الرجوع إلى صفحة الدخول أو صفحةٍ لا يستطيع المستخدم الوصول إليها.
+- **غياب مسارٍ ماسكٍ شامل** — بلا `path="*"`، تعرض العناوين غير المطابقة لا شيء. أضِف دائمًا 404.
+- **استدعاء `useNavigate`/`useParams` خارج موجّه** — خطّافات الموجّه تعمل فقط داخل شجرة `<BrowserRouter>`؛ وعرض مكوّنٍ يستخدمها خارجها يرمي خطأً.
+
+## تمارين
+
+جرّب كلًّا قبل فتح الحلّ.
+
+### تمرين 1 — مسارٌ بمعامل
+
+أضِف مسارًا لـ `/posts/:slug` يعرض مكوّن `Post`، واقرأ `slug` داخله.
+
+<details>
+
+<summary>اعرض الحل</summary>
+
+```tsx
+<Route path="/posts/:slug" element={<Post />} />;
+
+function Post() {
+  const { slug } = useParams<{ slug: string }>();
+  return <h1>{slug}</h1>;
+}
+```
+
+المقطع `:slug` يطابق أيّ قيمة؛ ويقرؤه `useParams` كنصّ (ضيّق حالة `undefined` قبل الاستخدام).
+
+</details>
+
+### تمرين 2 — رابط تنقّلٍ نشط
+
+اعرض `NavLink` إلى `/about` يحصل على الصنف `active` فقط حين يكون المسار الحاليّ.
+
+<details>
+
+<summary>اعرض الحل</summary>
+
+```tsx
+<NavLink to="/about" className={({ isActive }) => (isActive ? "active" : "")}>
+  About
+</NavLink>
+```
+
+يمرّر `NavLink` القيمة `isActive`؛ أرجِع نصّ الصنف بناءً عليها. (تستطيع أيضًا تمرير نصٍّ عاديّ لـ `className` واستخدام المحدّد `&.active` الذي يضيفه React Router افتراضيًّا.)
+
+</details>
+
+### تمرين 3 — نقّل بعد فعل
+
+بعد أن يُحلّ استدعاء `saveItem()`، أرسِل المستخدم إلى `/items`.
+
+<details>
+
+<summary>اعرض الحل</summary>
+
+```tsx
+const navigate = useNavigate();
+
+async function onSave() {
+  await saveItem();
+  navigate("/items");
+}
+```
+
+يُرجِع `useNavigate` دالّةً تستدعيها أمريًّا — هنا بعد اكتمال الحفظ غير المتزامن.
+
+</details>
+
+### تمرين 4 — اقرأ معامل استعلام
+
+في صفحة، اقرأ `?tab=` من العنوان، بقيمةٍ افتراضية `"overview"` حين يغيب.
+
+<details>
+
+<summary>اعرض الحل</summary>
+
+```tsx
+const [searchParams] = useSearchParams();
+const tab = searchParams.get("tab") ?? "overview";
+```
+
+يُرجِع `useSearchParams` كائن `URLSearchParams`؛ و`.get()` يُرجِع القيمة أو `null`، فـ `?? "overview"` يزوّد الافتراضيّ.
+
+</details>
+
+## النموذج الذهني الذي تحتفظ به
+
+يحوّل الموجّه **العنوان إلى حالة**: تهيئة مساراتك تربط كل مسارٍ بشجرة مكوّنات، والتنقّل يحدّث العنوان (عبر History API) فتعيد React عرض المطابق — بلا إعادة تحميلٍ كاملة، فتصمد حالة التطبيق والتمرير. استخدم **`Link`/`NavLink`** للتنقّل (لا `<a>` أبدًا للروابط الداخلية)، وركّب الهيكل المشترك بـ**مسارات متداخلة و`<Outlet/>`**، واقرأ الأجزاء الديناميكية من العنوان بـ **`useParams`** (نصوصٌ دائمًا) و**`useSearchParams`** (للمرشِّحات والترقيم القابلة للمشاركة والتي ينبغي أن تصمد أمام التحديث). نقّل أمريًّا بـ **`useNavigate`**، وأعِد التوجيه واحرُس الصفحات بـ **`<Navigate>`** وغلاف `RequireAuth` (تذكّر `replace`)، وأضِف دائمًا مسار **`path="*"`** لـ 404، و**حمّل المسارات كسولًا** كي تُبقي الحزمة الأولية صغيرة. وحين ترى العنوان مجرّد قطعة حالةٍ أخرى تكون واجهتك دالّةً لها، يتوقّف التوجيه عن كونه نظامًا منفصلًا ويصير نفس نموذج `الواجهة = دالّة(الحالة)` مطبّقًا على شريط العنوان.
