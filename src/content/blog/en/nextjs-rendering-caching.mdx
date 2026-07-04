@@ -117,7 +117,7 @@ const getPosts = unstable_cache(
 );
 ```
 
-Now `getPosts()` is cached and revalidated like a tagged fetch — `revalidateTag("posts")` clears it too. (Next.js is moving toward a `'use cache'` directive for the same purpose; the concept is identical — mark a function's result as cacheable and tag it.)
+Now `getPosts()` is cached and revalidated like a tagged fetch — `revalidateTag("posts")` clears it too. (In Next.js 16 the modern replacement is the stable **`'use cache'` directive** — add `'use cache'` at the top of the function with `cacheLife` and `cacheTag` from `next/cache`; the concept is identical — mark a function's result as cacheable and tag it. `unstable_cache` remains available for the previous model.)
 
 ## Route Segment Config
 
@@ -156,7 +156,9 @@ The user sees the shell and the header at once, with a skeleton where the feed w
 
 ## Partial Prerendering (PPR)
 
-The newest piece ties it together. **Partial Prerendering** lets a single route be *mostly static with dynamic holes*: Next.js prerenders a static shell and streams the dynamic parts (wrapped in `<Suspense>`) into it at request time. You get the instant first paint of a static page **and** per-request data on the same route, without choosing one or the other for the whole page. It's opt-in (still stabilizing), but it's the direction the model is heading: static by default, dynamic exactly where you wrap it.
+The piece that ties it together. **Partial Prerendering** lets a single route be *mostly static with dynamic holes*: Next.js prerenders a static shell and streams the dynamic parts (wrapped in `<Suspense>`) into it at request time. You get the instant first paint of a static page **and** per-request data on the same route, without choosing one or the other for the whole page.
+
+As of **Next.js 16, PPR is stable** and is the default behavior of **Cache Components**, which you enable with `cacheComponents: true` in `next.config.ts`. In that model the caching story shifts from fetch options to the **`'use cache'` directive**: you mark data functions or whole components cacheable with `'use cache'` (plus `cacheLife`/`cacheTag`), wrap anything that reads a runtime API (`cookies`/`headers`/`searchParams`) or needs fresh data in `<Suspense>`, and Next prerenders the rest into the static shell. The four-cache model above still describes the default (non-Cache-Components) setup; Cache Components is the newer, directive-driven evolution — same principle, cleaner API: static by default, dynamic exactly where you wrap it.
 
 ## Common Mistakes
 
