@@ -133,7 +133,7 @@ export default async function ProductsPage() {
 }
 ```
 
-Compare this to the [client-side data fetching](/blog/data-fetching) post: on the server there's no request waterfall in the browser, no loading spinner for the initial data, and no secrets leaking — the fetch happens before the page reaches the user. Next.js also **caches and dedupes** these `fetch` calls automatically, and you control freshness with options like `{ cache: "no-store" }` (always fresh) or `{ next: { revalidate: 60 } }` (re-fetch at most every 60s).
+Compare this to the [client-side data fetching](/blog/data-fetching) post: on the server there's no request waterfall in the browser, no loading spinner for the initial data, and no secrets leaking — the fetch happens before the page reaches the user. Next.js **dedupes** identical `fetch` calls within a render automatically, and caching is opt-in (in Next.js 15+ `fetch` isn't cached by default) — you control it with `{ cache: "force-cache" }` or `{ next: { revalidate: 60 } }` (re-fetch at most every 60s).
 
 ## Rendering Strategies: SSG, SSR, ISR
 
