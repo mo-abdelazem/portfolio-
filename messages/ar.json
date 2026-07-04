@@ -456,6 +456,22 @@
               {
                 "key": "nextjs-basics",
                 "title": "أساسيات Next.js"
+              },
+              {
+                "key": "nextjs-rendering-caching",
+                "title": "Next.js: العرض والتخزين المؤقّت"
+              },
+              {
+                "key": "nextjs-server-actions",
+                "title": "Next.js: التعديلات وأفعال الخادم"
+              },
+              {
+                "key": "nextjs-advanced-routing",
+                "title": "Next.js: التوجيه المتقدّم"
+              },
+              {
+                "key": "nextjs-production",
+                "title": "Next.js: الإنتاج"
               }
             ]
           },

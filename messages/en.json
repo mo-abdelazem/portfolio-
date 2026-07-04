@@ -456,6 +456,22 @@
               {
                 "key": "nextjs-basics",
                 "title": "Next.js basics"
+              },
+              {
+                "key": "nextjs-rendering-caching",
+                "title": "Next.js: Rendering & Caching"
+              },
+              {
+                "key": "nextjs-server-actions",
+                "title": "Next.js: Mutations & Server Actions"
+              },
+              {
+                "key": "nextjs-advanced-routing",
+                "title": "Next.js: Advanced Routing"
+              },
+              {
+                "key": "nextjs-production",
+                "title": "Next.js: Production"
               }
             ]
           },

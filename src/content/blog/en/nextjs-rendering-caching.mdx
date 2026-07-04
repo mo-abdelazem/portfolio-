@@ -1,0 +1,237 @@
+---
+title: "Next.js Rendering & Caching, In Depth"
+description: "An expert guide to how the Next.js App Router renders and caches — static vs dynamic rendering and what triggers each, the four caching layers (Request Memoization, Data Cache, Full Route Cache, Router Cache), fetch caching in Next 15+ (uncached by default), time-based and on-demand revalidation with revalidateTag/revalidatePath, unstable_cache for non-fetch data, route segment config, streaming with Suspense and loading.tsx, and Partial Prerendering — with common mistakes and exercises."
+publishedAt: "2026-08-22"
+translationKey: "nextjs-rendering-caching"
+tags: ["Next.js", "TypeScript", "Performance", "Advanced"]
+---
+
+The single hardest thing to reason about in the Next.js App Router is *when* things render and *what* gets cached. Once you can predict that — is this page static or dynamic? is this `fetch` cached? how do I invalidate it? — the framework becomes deterministic instead of mysterious. This post is that model, at expert depth. It assumes the [Next.js basics](/blog/nextjs-basics) (Server Components, the `app/` router) and the client-side [data fetching](/blog/data-fetching) model it contrasts with. TypeScript throughout, targeting the modern App Router (Next.js 15+).
+
+> The model to hold: Next.js has **two rendering modes** (static, done ahead of time; dynamic, done per request) and **four independent caches** sitting between your code and the user. Every performance question is really "which rendering mode is this route in, and which cache is serving this data?" Learn to answer those two, and caching stops being guesswork.
+
+## Static vs Dynamic Rendering
+
+A route segment renders in one of two ways:
+
+- **Static (prerendered)** — rendered at **build time** (or in the background on revalidation) into HTML and cached. The user gets a file instantly. This is the default.
+- **Dynamic** — rendered **on each request**, on the server, because the output depends on something only known at request time.
+
+You don't usually flip a switch; a route becomes **dynamic** the moment it uses a **Dynamic API** or an uncached data request:
+
+```tsx
+import { cookies, headers } from "next/headers";
+
+export default async function Page({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>;
+}) {
+  const cookieStore = await cookies();   // Dynamic API → dynamic rendering
+  const { q } = await searchParams;      // request-specific input → dynamic
+  // ...
+}
+```
+
+The triggers for dynamic rendering: reading **`cookies()`**, **`headers()`**, **`draftMode()`**, or **`searchParams`** (all async in Next 15+), or doing an **uncached `fetch`**. Absent those, the route stays static. This is why "everything is a Server Component" doesn't mean "everything runs on every request" — most of it is prerendered once.
+
+## The Four Caches
+
+Next.js layers four caches. They're independent, and confusion almost always comes from mixing them up. From closest-to-your-code outward:
+
+| Cache | What it stores | Where | Lifetime |
+|---|---|---|---|
+| **Request Memoization** | Return values of `fetch` in one render | Server | One request |
+| **Data Cache** | Results of data fetches | Server | Persistent (until revalidated) |
+| **Full Route Cache** | Rendered HTML + RSC payload of static routes | Server | Persistent (until revalidated/redeployed) |
+| **Router Cache** | RSC payload of visited routes | Client | Session / timed |
+
+### Request Memoization
+
+Within a **single render pass**, if you call `fetch` with the same URL and options twice, Next.js runs it **once** and reuses the result. This lets you fetch the same data in a layout and a page without a double request — no need to hoist and prop-drill. It's automatic, React-level, and lasts only for that one request.
+
+### The Data Cache (and the Next 15 default)
+
+The **Data Cache** persists fetch results across requests and deployments, on the server. The critical version detail: **in Next.js 15+, `fetch` is *not* cached by default** (it was in 14). You opt in explicitly:
+
+```tsx
+// Not cached — fetched fresh every request (the Next 15 default)
+await fetch("https://api.example.com/prices");
+
+// Cached indefinitely in the Data Cache
+await fetch("https://api.example.com/config", { cache: "force-cache" });
+
+// Cached, but revalidated at most every 60s (ISR-style)
+await fetch("https://api.example.com/posts", { next: { revalidate: 60 } });
+
+// Cached and tagged, so you can invalidate it on demand
+await fetch("https://api.example.com/posts", { next: { tags: ["posts"] } });
+```
+
+So caching is now a deliberate choice per request. Reach for `force-cache` or `revalidate` for data that's shared and slow-changing; leave it uncached for per-user or real-time data.
+
+### The Full Route Cache
+
+When a route is **static**, Next.js caches its rendered output (HTML + the React Server Component payload) at build time — the **Full Route Cache**. Requests are served this cached output with no rendering at all. A route drops out of this cache automatically when it becomes dynamic (a Dynamic API or uncached fetch), or is invalidated when you revalidate its data.
+
+### The Router Cache (client-side)
+
+On the client, Next.js keeps the RSC payload of routes you've visited in memory, so navigating back is instant and doesn't hit the server. This is why client-side navigation feels immediate. It's time-limited and cleared on a full reload; you can force fresh data after a mutation with `router.refresh()`.
+
+## Revalidation: Keeping Cached Data Fresh
+
+Caching without a way to update is a bug. Two strategies:
+
+**Time-based** — the data refreshes on an interval. Set it per fetch (`next: { revalidate: 60 }`) or for a whole route segment:
+
+```tsx
+// app/blog/page.tsx — re-generate this route at most once an hour
+export const revalidate = 3600;
+```
+
+**On-demand** — you invalidate exactly when the underlying data changes (e.g. after a publish), which is more precise than guessing an interval. Call these from a Server Action or Route Handler:
+
+```tsx
+import { revalidateTag, revalidatePath } from "next/cache";
+
+// Invalidate every fetch tagged "posts"
+revalidateTag("posts");
+
+// Invalidate a specific route's cache
+revalidatePath("/blog");
+```
+
+Tag-based revalidation is the powerful one: tag related fetches (`next: { tags: ["posts"] }`), and a single `revalidateTag("posts")` after a mutation refreshes all of them, anywhere in the app. This is the backbone of a fast site that's still always up to date.
+
+## Caching Non-`fetch` Data
+
+`fetch` integrations are automatic, but database queries and other async work aren't `fetch`. Wrap them in **`unstable_cache`** to put their results in the Data Cache, with the same tags and revalidation:
+
+```tsx
+import { unstable_cache } from "next/cache";
+
+const getPosts = unstable_cache(
+  async () => db.post.findMany(),
+  ["all-posts"],                 // cache key parts
+  { tags: ["posts"], revalidate: 3600 },
+);
+```
+
+Now `getPosts()` is cached and revalidated like a tagged fetch — `revalidateTag("posts")` clears it too. (Next.js is moving toward a `'use cache'` directive for the same purpose; the concept is identical — mark a function's result as cacheable and tag it.)
+
+## Route Segment Config
+
+Each `layout.tsx`/`page.tsx` can export config that controls rendering and caching for its whole segment:
+
+```tsx
+export const dynamic = "force-dynamic";  // opt the whole route into dynamic rendering
+// export const dynamic = "force-static"; // force static, error on dynamic APIs
+export const revalidate = 60;             // segment-wide time-based revalidation
+export const fetchCache = "default-cache"; // override the per-fetch default
+export const runtime = "edge";            // run on the Edge runtime instead of Node
+```
+
+`dynamic = "force-dynamic"` is the escape hatch when you want a route rendered per request regardless of what it does; `force-static` is the opposite guarantee. Prefer letting Next.js infer from your data choices, and reach for these only to override.
+
+## Streaming with Suspense and `loading.tsx`
+
+Dynamic rendering doesn't have to block the whole page. With **streaming**, Next.js sends the static shell immediately and streams in slow parts as their data resolves. `loading.tsx` wraps a route in a Suspense boundary automatically; for finer control, wrap individual slow components in `<Suspense>`:
+
+```tsx
+import { Suspense } from "react";
+
+export default function Page() {
+  return (
+    <section>
+      <Header />                              {/* renders instantly */}
+      <Suspense fallback={<FeedSkeleton />}>
+        <Feed />                              {/* streams in when its data is ready */}
+      </Suspense>
+    </section>
+  );
+}
+```
+
+The user sees the shell and the header at once, with a skeleton where the feed will land — dramatically better perceived performance than waiting for the slowest query before showing anything.
+
+## Partial Prerendering (PPR)
+
+The newest piece ties it together. **Partial Prerendering** lets a single route be *mostly static with dynamic holes*: Next.js prerenders a static shell and streams the dynamic parts (wrapped in `<Suspense>`) into it at request time. You get the instant first paint of a static page **and** per-request data on the same route, without choosing one or the other for the whole page. It's opt-in (still stabilizing), but it's the direction the model is heading: static by default, dynamic exactly where you wrap it.
+
+## Common Mistakes
+
+- **Assuming `fetch` is cached (Next 14 muscle memory)** — in Next 15+ it isn't; opt in with `cache: "force-cache"` or `next: { revalidate }`.
+- **Expecting fresh data from a static page** — a fully static route serves cached HTML; use `revalidate`, a tag, or a Dynamic API if it must reflect changes.
+- **Accidentally making a whole route dynamic** — one `cookies()`/`headers()` call or uncached fetch high in the tree opts the entire segment out of static rendering. Push request-specific reads down and wrap them in `<Suspense>`.
+- **Guessing an interval when on-demand is right** — if you know *when* data changes, `revalidateTag` after the mutation beats a short `revalidate` window.
+- **Caching per-user data** — never `force-cache` a request that includes the current user's token/cookie; you'll serve one user's data to another.
+- **Forgetting the client Router Cache** — after a mutation, the client may show a stale visited route; `router.refresh()` (or revalidation from a Server Action) syncs it.
+- **Not tagging fetches** — untagged cached data can only be time-revalidated; tag it so a mutation can invalidate exactly what changed.
+
+## Exercises
+
+Try each before opening the solution.
+
+### Exercise 1 — Static or dynamic?
+
+Does this page render statically or dynamically, and why?
+
+```tsx
+export default async function Page() {
+  const res = await fetch("https://api.example.com/data", { next: { revalidate: 300 } });
+  return <List items={await res.json()} />;
+}
+```
+
+<details>
+
+<summary>Show solution</summary>
+
+**Static** (with ISR). It uses no Dynamic API, and the fetch is cached with a 300s revalidate — so Next prerenders the route and re-generates it in the background at most every 5 minutes. No `cookies()`/`headers()`/`searchParams`, no uncached fetch, so nothing forces dynamic rendering.
+
+</details>
+
+### Exercise 2 — Cache then invalidate
+
+Cache a `fetch` for the posts list so it can be invalidated on demand, and show the call that invalidates it after publishing.
+
+<details>
+
+<summary>Show solution</summary>
+
+```tsx
+await fetch("https://api.example.com/posts", { next: { tags: ["posts"] } });
+
+// later, in the publish Server Action:
+import { revalidateTag } from "next/cache";
+revalidateTag("posts");
+```
+
+Tagging the fetch lets a single `revalidateTag("posts")` refresh every place that data is used, exactly when it changes.
+
+</details>
+
+### Exercise 3 — Stream a slow section
+
+The page header is instant but the analytics widget is slow. Structure it so the header shows immediately.
+
+<details>
+
+<summary>Show solution</summary>
+
+```tsx
+<>
+  <Header />
+  <Suspense fallback={<WidgetSkeleton />}>
+    <Analytics />   {/* awaits its own slow data */}
+  </Suspense>
+</>
+```
+
+The `<Suspense>` boundary lets Next stream the static shell (with the header) first and send the analytics widget when its data resolves.
+
+</details>
+
+## The Mental Model to Keep
+
+Next.js renders each route either **statically** (ahead of time, cached HTML — the default) or **dynamically** (per request), and a route flips to dynamic the moment it reads a **Dynamic API** (`cookies`/`headers`/`searchParams`) or does an **uncached fetch**. Between your code and the user sit **four caches**: **Request Memoization** (dedups fetches within one render), the **Data Cache** (persistent fetch results — *opt-in* in Next 15+ via `force-cache`/`revalidate`/`tags`), the **Full Route Cache** (rendered static routes), and the client **Router Cache** (visited routes). Keep data fresh with **time-based** `revalidate` or, better, **on-demand** `revalidateTag`/`revalidatePath` after a mutation; cache non-fetch work with **`unstable_cache`**; and use **streaming** (`loading.tsx` / `<Suspense>`) and **Partial Prerendering** to serve a static shell instantly while dynamic parts stream in. Answer "which rendering mode, which cache?" for any route and its data, and the App Router's performance model is fully in your hands.
