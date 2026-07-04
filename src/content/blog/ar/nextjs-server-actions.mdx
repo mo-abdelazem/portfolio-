@@ -1,0 +1,307 @@
+---
+title: "التعديلات وأفعال الخادم في Next.js بعمق"
+description: "دليل خبير لتغيير البيانات في موجّه تطبيق Next.js بأفعال الخادم وTypeScript — ما فعل الخادم وكيف يعمل 'use server'، وأفعال النماذج والتحسين التدريجيّ، وuseActionState لحالة النموذج وأخطاء التحقّق، وuseFormStatus لواجهة الانتظار، وuseOptimistic للتحديثات التفاؤلية، وإعادة التحقّق وإعادة التوجيه بعد تعديل، وربط الوسائط الإضافية، واستدعاء الأفعال خارج النماذج، وقواعد الأمان المهمّة لأن الأفعال نقاط نهايةٍ عامّة — مع أخطاء شائعة وتمارين."
+publishedAt: "2026-08-29"
+translationKey: "nextjs-server-actions"
+tags: ["Next.js", "TypeScript", "Server Actions", "Advanced"]
+---
+
+قراءة البيانات على الخادم هي النصف السهل؛ أما *تغييرها* — إنشاءً وتحديثًا وحذفًا — فحيث تتفوّض البنية عادةً: مسار API هنا، وجلبٌ هناك، ورايات تحميلٍ في كل مكان. جواب موجّه التطبيق هو **أفعال الخادم** (Server Actions): دوالٌّ تعمل على الخادم لكنك تستدعيها مباشرةً من مكوّناتك، بلا طبقة API تبنيها. هذه التدوينة جولة الخبير — النماذج، والتحقّق، والواجهة التفاؤلية، وإعادة التحقّق، وقواعد الأمان التي لا يمكنك تخطّيها. تبني على [العرض والتخزين في Next.js](/blog/nextjs-rendering-caching) (ستعيد التحقّق من الذواكر هنا) و[الحالة والخطّافات](/blog/state-and-hooks). كل شيءٍ بـ TypeScript، وNext.js 15+ / React 19.
+
+> النموذج الذهني: فعل الخادم **نقطة نهايةٍ عامّة متنكّرة في هيئة دالّة**. تعليم دالّةٍ بـ `"use server"` يُخبِر Next.js أن يشغّلها على الخادم ويولّد سباكة الاستدعاء البعيد كي يستدعيها نموذجٌ أو نقرة. تلك "الدالّة" حقًّا نقطة نهاية HTTP يستطيع أيّ أحدٍ استدعاؤها — فكل ما تفعله في مسار API (المصادقة، التفويض، التحقّق) لا يزال ينطبق *داخل* الفعل.
+
+## ما فعل الخادم
+
+**فعل الخادم** دالّةٌ غير متزامنة مُعلَّمة بتوجيه **`"use server"`**. يعمل دائمًا على الخادم — يستطيع لمس قاعدة بياناتك، وقراءة الأسرار، وضبط الكوكيز — ويصل Next.js الاستدعاء الشبكيّ لك. عرّف واحدًا سطريًّا في مكوّن خادم، أو (أفضل لإعادة الاستخدام) في ملفّه الخاصّ:
+
+```tsx
+// app/actions.ts — كل تصديرٍ في هذا الملفّ فعل خادم
+"use server";
+
+import { db } from "@/lib/db";
+
+export async function createTodo(formData: FormData) {
+  const text = formData.get("text") as string;
+  await db.todo.create({ data: { text } });
+}
+```
+
+توجيه `"use server"` ليس نفس `"use client"`. `"use client"` يعلّم حدًّا يُرسَل عنده الكود إلى **المتصفّح**؛ و`"use server"` يعلّم دوالًّا تعمل فقط على **الخادم** وقابلةً للاستدعاء من العميل. إنهما نقيضان، والملفّ إمّا هذا أو ذاك.
+
+## أفعال النماذج والتحسين التدريجيّ
+
+مرّر فعل خادمٍ مباشرةً إلى خاصّة `action` للنموذج. يرسل Next.js النموذج إلى الفعل — ولأنه إرسال نموذجٍ حقيقيّ، **يعمل حتى قبل تحميل JavaScript** (تحسينٌ تدريجيّ)، ثم يترقّى إلى استدعاءٍ على جانب العميل بعد الترطيب:
+
+```tsx
+import { createTodo } from "@/app/actions";
+
+export default function AddTodo() {
+  return (
+    <form action={createTodo}>
+      <input name="text" required />
+      <button type="submit">Add</button>
+    </form>
+  );
+}
+```
+
+يتلقّى الفعل `FormData`. بلا `onSubmit`، بلا `fetch`، بلا حالة تحميلٍ توصلها يدويًّا — النموذج *هو* التعديل. هذا الأساس؛ والخطّافات التالية تُضيف تجربةً أغنى فوقه.
+
+## حالة النموذج والتحقّق بـ `useActionState`
+
+تحتاج النماذج الحقيقية إظهار أخطاء التحقّق والنتائج. يدير خطّاف **`useActionState`** في React 19 قيمة الفعل المُرجَعة كحالة — مثاليّ للأخطاء. يكتسب الفعل وسيط `prevState` أوّل و*يُرجِع* الحالة التالية:
+
+```tsx
+"use server";
+import { z } from "zod";
+
+const Schema = z.object({ text: z.string().min(1, "Text is required") });
+type FormState = { error?: string; success?: boolean };
+
+export async function createTodo(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const parsed = Schema.safeParse({ text: formData.get("text") });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0].message }; // خطأ تحقّق ← الواجهة
+  }
+  await db.todo.create({ data: parsed.data });
+  return { success: true };
+}
+```
+
+```tsx
+"use client";
+import { useActionState } from "react";
+import { createTodo } from "@/app/actions";
+
+export default function AddTodo() {
+  const [state, formAction, isPending] = useActionState(createTodo, {});
+
+  return (
+    <form action={formAction}>
+      <input name="text" />
+      {state.error && <p role="alert">{state.error}</p>}
+      <button disabled={isPending}>{isPending ? "Adding…" : "Add"}</button>
+    </form>
+  );
+}
+```
+
+يُرجِع `useActionState(action, initialState)` القيمة `[state, wrappedAction, isPending]`. تعرض الأخطاء من `state`، وتعطّل الزرّ بـ `isPending`، وتظلّ تحصل على التحسين التدريجيّ. تحقّق على الخادم بمخطّط (Zod) وأرجِع أخطاءً مُنمَّطة — لا تثق أبدًا بأن العميل قد تحقّق.
+
+## واجهة الانتظار بـ `useFormStatus`
+
+لزرّ إرسالٍ قابل لإعادة الاستخدام يعرف متى يُرسَل *نموذجه* — بلا حياكة `isPending` نزولًا — استخدم **`useFormStatus`** (من `react-dom`). يقرأ حالة انتظار أقرب نموذجٍ أب:
+
+```tsx
+"use client";
+import { useFormStatus } from "react-dom";
+
+export function SubmitButton() {
+  const { pending } = useFormStatus();
+  return (
+    <button disabled={pending}>{pending ? "Saving…" : "Save"}</button>
+  );
+}
+```
+
+ضع `<SubmitButton />` داخل أيّ `<form action={...}>` فيعطّل ويعيد تسمية نفسه بينما يعمل ذلك النموذج. يجب أن يكون مكوّن عميلٍ معروضًا *داخل* النموذج (يقرأ سياق النموذج).
+
+## التحديثات التفاؤلية بـ `useOptimistic`
+
+للتعديل ذهابٌ وإياب؛ وجعل الواجهة تنتظره يبدو بطيئًا. يُظهِر **`useOptimistic`** النتيجة المتوقّعة *فورًا* ويوفّق حين يستجيب الخادم (متراجعًا تلقائيًّا إن فشل الفعل):
+
+```tsx
+"use client";
+import { useOptimistic } from "react";
+
+function TodoList({ todos, addTodo }: { todos: Todo[]; addTodo: (t: string) => Promise<void> }) {
+  const [optimisticTodos, addOptimistic] = useOptimistic(
+    todos,
+    (current, newText: string) => [...current, { id: "temp", text: newText }],
+  );
+
+  async function action(formData: FormData) {
+    const text = formData.get("text") as string;
+    addOptimistic(text);        // أظهِره فورًا
+    await addTodo(text);        // ثم ثبّته؛ وإعادة التحقّق تستبدل العنصر المؤقّت
+  }
+
+  return (
+    <>
+      <ul>{optimisticTodos.map((t) => <li key={t.id}>{t.text}</li>)}</ul>
+      <form action={action}><input name="text" /><button>Add</button></form>
+    </>
+  );
+}
+```
+
+تظهر المهمّة الجديدة لحظة الإرسال؛ وحين يؤكّد الخادم وتُعاد التحقّق من البيانات، يُستبدَل المدخل التفاؤليّ بالحقيقيّ. وإن رمى الفعل، تتجاهل React الحالة التفاؤلية.
+
+## إعادة التحقّق وإعادة التوجيه بعد تعديل
+
+بعد تغيير البيانات، تكون العروض المخزّنة التي تُظهِرها قديمة. أعِد التحقّق منها من داخل الفعل كي تعكس الواجهة الحالة الجديدة — هنا يؤتي [نموذج التخزين](/blog/nextjs-rendering-caching) ثماره:
+
+```tsx
+"use server";
+import { revalidatePath, revalidateTag } from "next/cache";
+import { redirect } from "next/navigation";
+
+export async function publishPost(formData: FormData) {
+  const post = await db.post.create({ data: /* ... */ });
+
+  revalidateTag("posts");        // حدّث أيّ fetch مُوسَّم بـ "posts"
+  revalidatePath("/blog");       // أو مسارًا محدّدًا
+
+  redirect(`/blog/${post.slug}`); // انتقل إلى التدوينة الجديدة
+}
+```
+
+`revalidateTag`/`revalidatePath` يمسحان ذواكر الخادم كي يكون العرض التالي طازجًا؛ و`redirect()` يرسل المستخدم لمكانٍ جديد (يرمي داخليًّا، فضعه أخيرًا). معًا يجعلان "عدّل ← تتحدّث الواجهة في كل مكان" تلقائيًّا.
+
+## تمرير وسائط إضافية
+
+يتلقّى فعل النموذج `FormData`، لكنك غالبًا تحتاج سياقًا إضافيًّا — معرّف سجلٍّ مثلًا. **اربطه** بالفعل؛ فتُمرَّر القيمة المربوطة على جانب الخادم ولا يمكن العبث بها عبر النموذج:
+
+```tsx
+"use server";
+export async function deleteTodo(id: string) {
+  await db.todo.delete({ where: { id } });
+  revalidateTag("todos");
+}
+```
+
+```tsx
+// اربط المعرّف؛ ويظلّ النموذج يُرسَل عاديًّا
+const deleteWithId = deleteTodo.bind(null, todo.id);
+<form action={deleteWithId}>
+  <button>Delete</button>
+</form>
+```
+
+`bind` أأمن من `<input>` مخفيٍّ لأن الوسيط مُرمَّزٌ في مرجع الخادم، لا مُرسَلٌ كبيانات نموذجٍ قابلة للتحرير.
+
+## استدعاء الأفعال خارج النماذج
+
+الأفعال ليست محصورةً في النماذج. استدعِ واحدًا من معالِج حدث — غلّفه بـ `startTransition` كي تتعقّبه React كتحديثٍ غير حاجب:
+
+```tsx
+"use client";
+import { useTransition } from "react";
+
+function LikeButton({ postId }: { postId: string }) {
+  const [isPending, startTransition] = useTransition();
+  return (
+    <button
+      disabled={isPending}
+      onClick={() => startTransition(() => likePost(postId))}
+    >
+      Like
+    </button>
+  );
+}
+```
+
+## الأمان: الأفعال نقاط نهايةٍ عامّة
+
+هذه القاعدة التي يجب ألّا تنساها. يُترجَم فعل الخادم إلى **نقطة نهاية HTTP قابلة للاستدعاء**. يستطيع مهاجمٌ استدعاءها مباشرةً بأيّ وسائط، متجاوزًا واجهتك كليًّا. فيجب أن يحمي كل فعلٍ نفسه:
+
+- **صادِق** — افحص الجلسة داخل الفعل، لا تفترض أن المستدعي مسجّل دخولٍ لأن الزرّ كان مخفيًّا.
+- **فوِّض** — تحقّق أن *هذا* المستخدم يجوز له إجراء *هذا* الفعل على *هذا* السجلّ (مثلًا يملك المهمّة التي يحذفها).
+- **تحقّق** — حلّل وتحقّق من كل مُدخَل (`FormData`، الوسائط المربوطة) بمخطّط؛ لا تثق أبدًا بأشكالٍ أو أنواعٍ من العميل.
+
+```tsx
+"use server";
+export async function deleteTodo(id: string) {
+  const user = await getCurrentUser();
+  if (!user) throw new Error("Unauthorized");            // مصادقة
+  const todo = await db.todo.findUnique({ where: { id } });
+  if (todo?.userId !== user.id) throw new Error("Forbidden"); // تفويض
+  await db.todo.delete({ where: { id } });
+}
+```
+
+عامِل كل فعلٍ تمامًا كما تعامل مسار API عامًّا، لأن هذا ما هو عليه.
+
+## الأخطاء الشائعة
+
+- **تخطّي المصادقة/التحقّق داخل الفعل** — الزرّ "المخفيّ" لا يحميه؛ الأفعال نقاط نهايةٍ عامّة. صادِق وفوِّض وتحقّق في كل مرّة.
+- **الثقة بمُدخَل العميل** — تحقّق من `FormData` والوسائط المربوطة على الخادم بمخطّط؛ يستطيع العميل إرسال أيّ شيء.
+- **نسيان إعادة التحقّق** — بعد تعديل، تبقى الصفحات المخزّنة قديمة. استدعِ `revalidateTag`/`revalidatePath` (أو `redirect`) كي تتحدّث الواجهة.
+- **`redirect()` داخل `try/catch`** — يعمل `redirect` بالرمي؛ و`catch` محيطٌ يبتلعه. استدعِه خارج try، أو بعد نجاح العمل.
+- **استخدام `useFormStatus` في المكان الخطأ** — يقرأ حالة النموذج *الأب* فقط، فيجب أن يُعرَض المكوّن داخل ذلك `<form>`.
+- **خلط `"use server"` و`"use client"` في ملفٍّ واحد** — إنهما حدّان متناقضان. أبقِ الأفعال في ملفّات الخادم، والواجهة التفاعلية في ملفّات العميل.
+- **اللجوء إلى `fetch` يدويّ + مسار API** — لمعظم التعديلات، فعل الخادم كودٌ أقلّ وأأمن. استخدم معالِجات المسار لخطّافات الطرف الثالث أو العملاء غير النماذج، لا لتعديلات النماذج الروتينية.
+
+## تمارين
+
+جرّب كلًّا قبل فتح الحلّ.
+
+### تمرين 1 — فعل نموذجٍ بسيط
+
+اكتب فعل خادم `subscribe` يقرأ `email` من `FormData` ويحفظه، والنموذج الذي يستدعيه.
+
+<details>
+
+<summary>اعرض الحل</summary>
+
+```tsx
+// actions.ts
+"use server";
+export async function subscribe(formData: FormData) {
+  const email = formData.get("email") as string;
+  await db.subscriber.create({ data: { email } });
+}
+
+// المكوّن
+<form action={subscribe}>
+  <input name="email" type="email" required />
+  <button>Subscribe</button>
+</form>
+```
+
+يعمل الفعل على الخادم ويتلقّى `FormData` النموذج؛ بلا مسار API أو جلبٍ على العميل.
+
+</details>
+
+### تمرين 2 — أرجِع خطأ تحقّق
+
+كيّف `subscribe` ليعمل مع `useActionState` ويُرجِع `{ error }` حين يكون البريد فارغًا.
+
+<details>
+
+<summary>اعرض الحل</summary>
+
+```tsx
+"use server";
+type State = { error?: string };
+export async function subscribe(_prev: State, formData: FormData): Promise<State> {
+  const email = formData.get("email") as string;
+  if (!email) return { error: "Email is required" };
+  await db.subscriber.create({ data: { email } });
+  return {};
+}
+// const [state, action] = useActionState(subscribe, {});
+```
+
+يتطلّب `useActionState` التوقيع `(prevState, formData)` ويحوّل الكائن المُرجَع إلى حالةٍ تعرضها.
+
+</details>
+
+### تمرين 3 — أمِّن حذفًا
+
+ما الفحوصات الثلاثة التي يجب أن يجريها فعل `deleteComment(id)` قبل الحذف؟
+
+<details>
+
+<summary>اعرض الحل</summary>
+
+**المصادقة** (يوجد مستخدمٌ مسجّل دخول)، و**التفويض** (ذلك المستخدم يملك التعليق، أو مشرف)، و**التحقّق** (الـ `id` قيمةٌ حسنة التكوين). ولأن الفعل نقطة نهايةٍ عامّة، لا يمكن افتراض أيٍّ منها من الواجهة — بل يجب فحصها داخل الفعل.
+
+</details>
+
+## النموذج الذهني الذي تحتفظ به
+
+**فعل الخادم** دالّةٌ مُعلَّمة بـ `"use server"` تعمل على الخادم وقابلة للاستدعاء من مكوّناتك — حقًّا **نقطة نهايةٍ عامّة متنكّرة في هيئة دالّة**، فصادِق وفوِّض وتحقّق *داخل كلٍّ منها*. مرّر فعلًا إلى `<form action={...}>` لتعديلٍ يعمل حتى قبل تحميل JS؛ وأضِف **`useActionState`** لأخطاء التحقّق والقيم المُرجَعة، و**`useFormStatus`** لزرّ انتظارٍ قابل لإعادة الاستخدام، و**`useOptimistic`** لإظهار النتيجة فورًا والتوفيق عند الاستجابة. بعد تغيير البيانات، **أعِد التحقّق** من الذواكر المتأثّرة (`revalidateTag`/`revalidatePath`) واختياريًّا **`redirect`** كي تعكس الواجهة في كل مكانٍ الحالة الجديدة. **اربط** الوسائط الإضافية بدل الثقة بمُدخَلاتٍ مخفية، واستدعِ الأفعال خارج النماذج عبر `startTransition`. وحين ترى الأفعال نقاط نهايةِ تعديلٍ خادميّة مُنمَّطة تستدعيها مكوّناتك مباشرةً، تصير قصة القراءة والكتابة كاملةً في موجّه التطبيق — مكوّنات الخادم تجلب، وأفعال الخادم تعدّل، وإعادة التحقّق تزامن — حلقةً واحدة متماسكة.

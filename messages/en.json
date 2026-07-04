@@ -246,6 +246,8 @@
     "backToTop": "Back to top",
     "featuredLabel": "Latest",
     "onThisPage": "On this page",
+    "tocOpenLabel": "Table of contents",
+    "tocCloseLabel": "Close table of contents",
     "morePostsLabel": "More posts",
     "newerPost": "Newer",
     "olderPost": "Older",
@@ -454,6 +456,22 @@
               {
                 "key": "nextjs-basics",
                 "title": "Next.js basics"
+              },
+              {
+                "key": "nextjs-rendering-caching",
+                "title": "Next.js: Rendering & Caching"
+              },
+              {
+                "key": "nextjs-server-actions",
+                "title": "Next.js: Mutations & Server Actions"
+              },
+              {
+                "key": "nextjs-advanced-routing",
+                "title": "Next.js: Advanced Routing"
+              },
+              {
+                "key": "nextjs-production",
+                "title": "Next.js: Production"
               }
             ]
           },

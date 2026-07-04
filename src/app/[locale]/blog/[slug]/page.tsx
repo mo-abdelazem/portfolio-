@@ -127,9 +127,13 @@ export default async function BlogPostPage({ params }: Props) {
       <ReadingProgress topLabel={t("backToTop")} />
       <div className="blog-post__layout">
         <article className="blog-post__main">
-          <Link href={backHref} className="blog-post__back">
+          <Link
+            href={backHref}
+            className="blog-post__back"
+            aria-label={backLabel}
+          >
             <NavArrow dir="prev" />
-            {backLabel}
+            <span className="blog-post__back-label">{backLabel}</span>
           </Link>
           <Reveal>
             <header className="blog-post__header">
@@ -201,7 +205,12 @@ export default async function BlogPostPage({ params }: Props) {
         </article>
 
         <aside className="blog-post__aside">
-          <BlogToc items={toc} label={t("onThisPage")} />
+          <BlogToc
+            items={toc}
+            label={t("onThisPage")}
+            openLabel={t("tocOpenLabel")}
+            closeLabel={t("tocCloseLabel")}
+          />
         </aside>
       </div>
     </main>

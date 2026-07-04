@@ -1,0 +1,239 @@
+---
+title: "Next.js Advanced Routing, In Depth"
+description: "An expert guide to the Next.js App Router's powerful routing features with TypeScript — route groups for organization and multiple root layouts, dynamic and catch-all segments with generateStaticParams, parallel routes with named slots, intercepting routes for modals, route handlers (route.ts) as API endpoints, middleware for auth and redirects, template vs layout, and metadata files — with common mistakes and exercises."
+publishedAt: "2026-09-05"
+translationKey: "nextjs-advanced-routing"
+tags: ["Next.js", "TypeScript", "Routing", "Advanced"]
+---
+
+The [basics](/blog/nextjs-basics) covered folders-become-routes, layouts, and dynamic segments. But the App Router's filesystem router has a second layer that most people never learn — route groups, parallel and intercepting routes, route handlers, and middleware — and it's what lets you build things that feel impossible elsewhere: a URL-driven modal, two independent panes in one layout, per-request auth without a server. This post is that layer, at expert depth. It assumes the basics and [rendering & caching](/blog/nextjs-rendering-caching). TypeScript throughout, Next.js 15+.
+
+> The mental model: in the App Router, **special folder and file names are the API.** Brackets, parentheses, `@`, and reserved filenames (`route`, `middleware`, `template`, `default`) each unlock a routing feature. You're not configuring a router — you're *naming* folders in a way the framework understands. Learn the vocabulary and the advanced behaviors follow.
+
+## Route Groups: Organize Without Affecting the URL
+
+Wrap a folder name in parentheses — `(marketing)` — and it becomes a **route group**: a way to organize files (and share a layout) *without* adding a segment to the URL. `app/(marketing)/about/page.tsx` still serves `/about`, not `/marketing/about`.
+
+```
+app/
+  (marketing)/
+    layout.tsx        ← layout for marketing pages only
+    about/page.tsx    → /about
+    pricing/page.tsx  → /pricing
+  (app)/
+    layout.tsx        ← a different layout for the app
+    dashboard/page.tsx → /dashboard
+```
+
+Two big uses: **scoping a layout to a subset of routes** (marketing pages get one shell, the app gets another) and, because each group can have its own `layout.tsx` including `<html>`/`<body>`, **multiple root layouts** in one app. The parentheses are invisible in the URL — purely an organizational tool.
+
+## Dynamic, Catch-All, and Static Params
+
+Beyond a single `[id]`, dynamic segments come in three shapes:
+
+```
+app/shop/[category]/page.tsx        → /shop/shoes        (one segment)
+app/docs/[...slug]/page.tsx         → /docs/a/b/c        (catch-all: slug = ["a","b","c"])
+app/docs/[[...slug]]/page.tsx       → /docs AND /docs/a  (optional catch-all: also matches the base)
+```
+
+For dynamic routes you can render **statically at build time** by exporting **`generateStaticParams`** — Next prerenders one HTML file per returned param, turning a dynamic route into many static pages:
+
+```tsx
+// app/blog/[slug]/page.tsx
+export async function generateStaticParams() {
+  const posts = await getAllPosts();
+  return posts.map((post) => ({ slug: post.slug })); // one static page per post
+}
+```
+
+This is how a blog with a dynamic `[slug]` route ships as fully static, fast pages. Params not returned here are rendered on demand (and can be cached), controlled by `dynamicParams`.
+
+## Parallel Routes: Multiple Pages in One Layout
+
+**Parallel routes** let a single layout render *several* independent route trees at once, each in its own **named slot** (a folder prefixed with `@`). The slots arrive as props to the layout:
+
+```
+app/dashboard/
+  layout.tsx
+  @team/page.tsx       ← the "team" slot
+  @analytics/page.tsx  ← the "analytics" slot
+  page.tsx             ← the default children slot
+```
+
+```tsx
+// app/dashboard/layout.tsx — slots are props, not children
+export default function Layout({
+  children,
+  team,
+  analytics,
+}: {
+  children: React.ReactNode;
+  team: React.ReactNode;
+  analytics: React.ReactNode;
+}) {
+  return (
+    <div className="grid">
+      <section>{children}</section>
+      <aside>{team}</aside>
+      <aside>{analytics}</aside>
+    </div>
+  );
+}
+```
+
+Each slot navigates, loads, and errors **independently** — one can show a spinner while another is ready. You add a `default.tsx` per slot to define what renders when a slot doesn't match the current URL. Parallel routes power dashboards, split views, and conditional UI (render `@login` or `@dashboard` based on auth) without cramming it into one component.
+
+## Intercepting Routes: URL-Driven Modals
+
+**Intercepting routes** let you *intercept* a navigation and show different UI while keeping the destination URL — the classic case is opening a photo in a modal from a feed, where the URL becomes `/photo/123` but the feed stays behind it. You mark the interceptor with a parenthesized prefix that means "match this segment from *here*":
+
+- `(.)` — same level
+- `(..)` — one level up
+- `(...)` — from the app root
+
+Combined with a parallel route slot, you get: clicking a link opens a modal (intercepted), but visiting `/photo/123` directly (or refreshing) shows the full page. Same URL, two presentations depending on how you arrived — impossible to do cleanly without the router's help.
+
+```
+app/
+  feed/page.tsx
+  @modal/(.)photo/[id]/page.tsx   ← intercepts /photo/[id] as a modal over the feed
+  photo/[id]/page.tsx             ← the full page (direct visit / refresh)
+```
+
+## Route Handlers: API Endpoints in the App Router
+
+Not every server endpoint is a form mutation. **Route handlers** are `route.ts` files that respond to HTTP methods with the Web `Request`/`Response` APIs — the App Router's version of API routes. A folder with a `route.ts` (instead of `page.tsx`) becomes an endpoint:
+
+```tsx
+// app/api/products/route.ts  →  GET/POST /api/products
+import { NextResponse } from "next/server";
+
+export async function GET(request: Request) {
+  const products = await db.product.findMany();
+  return NextResponse.json(products);
+}
+
+export async function POST(request: Request) {
+  const body = await request.json();
+  const created = await db.product.create({ data: body });
+  return NextResponse.json(created, { status: 201 });
+}
+```
+
+Export a function per method (`GET`, `POST`, `PUT`, `DELETE`, …). Use route handlers for things Server Actions don't fit: **webhooks**, **public JSON APIs** consumed by non-React clients, streaming responses, and OAuth callbacks. For ordinary form mutations, prefer a [Server Action](/blog/nextjs-server-actions) — less boilerplate and typed end to end.
+
+## Middleware: Code Before the Request Resolves
+
+**Middleware** runs on the edge *before* a request reaches a route — perfect for auth gates, redirects, rewrites, and setting headers. One `middleware.ts` at the project root, with a `matcher` to scope which paths it runs on:
+
+```tsx
+// middleware.ts
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+
+export function middleware(request: NextRequest) {
+  const token = request.cookies.get("session")?.value;
+
+  // Protect the dashboard: redirect unauthenticated users to login
+  if (!token && request.nextUrl.pathname.startsWith("/dashboard")) {
+    return NextResponse.redirect(new URL("/login", request.url));
+  }
+  return NextResponse.next(); // continue
+}
+
+export const config = {
+  matcher: ["/dashboard/:path*"], // only run on these routes
+};
+```
+
+Middleware is fast but limited: it runs on the Edge runtime, can't use Node-only APIs or query a database directly, and should stay lightweight (it's on the hot path of every matched request). Use it for coarse gating and redirects; do the real authorization inside the page or action, close to the data.
+
+## `template.tsx` vs `layout.tsx`
+
+Both wrap child routes, with one difference: a **`layout`** stays mounted across navigations (state and scroll persist), while a **`template`** creates a *fresh* instance on every navigation — it remounts, re-running effects and resetting state. Use `layout` by default; reach for `template` when you specifically want per-navigation behavior (an enter animation, resetting a form, re-firing an effect on every route change).
+
+## Metadata Files
+
+Some routing lives in special files that generate SEO and PWA assets from code. Drop these in `app/` and Next serves them at the right URL:
+
+```tsx
+// app/sitemap.ts  →  /sitemap.xml
+import type { MetadataRoute } from "next";
+export default function sitemap(): MetadataRoute.Sitemap {
+  return [{ url: "https://example.com", lastModified: new Date() }];
+}
+
+// app/robots.ts  →  /robots.txt   ·   app/opengraph-image.tsx → dynamic OG image
+```
+
+These file conventions (`sitemap`, `robots`, `manifest`, `opengraph-image`, `icon`) mean SEO/social assets are generated and typed alongside your routes instead of hand-maintained.
+
+## Common Mistakes
+
+- **Expecting `(group)` to appear in the URL** — route groups organize files and scope layouts; the parentheses are stripped from the path.
+- **Forgetting `default.tsx` for parallel slots** — without it, a slot that doesn't match the current URL can 404 the whole route on navigation/refresh.
+- **Confusing catch-all with optional catch-all** — `[...slug]` doesn't match the base path; `[[...slug]]` does. Pick based on whether the bare route should match.
+- **Doing heavy work in middleware** — it's on every matched request and runs on the Edge. Keep it to redirects/rewrites/headers; no DB calls or slow logic.
+- **Treating middleware auth as sufficient** — it's a coarse gate; still authorize inside the page/action where you touch data.
+- **Building a route handler for a form mutation** — a Server Action is usually less code and safer. Reserve route handlers for webhooks, public APIs, and non-form clients.
+- **Reaching for `template` by default** — it remounts on every navigation (losing state); use `layout` unless you specifically need the reset.
+
+## Exercises
+
+Try each before opening the solution.
+
+### Exercise 1 — Group without a URL segment
+
+You want `/login` and `/register` to share an "auth" layout, but the URLs must stay `/login` and `/register`. How?
+
+<details>
+
+<summary>Show solution</summary>
+
+Put them in a route group:
+
+```
+app/(auth)/layout.tsx
+app/(auth)/login/page.tsx     → /login
+app/(auth)/register/page.tsx  → /register
+```
+
+The `(auth)` folder shares a layout across both pages, and its parentheses keep it out of the URL.
+
+</details>
+
+### Exercise 2 — Static-generate a dynamic route
+
+Make `app/products/[id]/page.tsx` prerender a static page for every product at build time.
+
+<details>
+
+<summary>Show solution</summary>
+
+```tsx
+export async function generateStaticParams() {
+  const products = await getAllProducts();
+  return products.map((p) => ({ id: p.id }));
+}
+```
+
+Next prerenders one static page per returned `id`, so the dynamic route ships as many fast static files.
+
+</details>
+
+### Exercise 3 — Route handler vs Server Action
+
+A Stripe webhook needs to POST to your app. Route handler or Server Action, and why?
+
+<details>
+
+<summary>Show solution</summary>
+
+A **route handler** (`app/api/webhooks/stripe/route.ts` with an exported `POST`). Server Actions are for *your* forms/components; a webhook is an external service calling a standard HTTP endpoint, which is exactly what a route handler exposes (with access to raw `Request`, headers, and signature verification).
+
+</details>
+
+## The Mental Model to Keep
+
+In the App Router, **special names are the routing API**: `(group)` folders organize files and scope layouts without touching the URL (and enable multiple root layouts); `[id]`/`[...slug]`/`[[...slug]]` are dynamic, catch-all, and optional catch-all segments, made static with **`generateStaticParams`**; `@slot` folders are **parallel routes** that render independent trees in one layout; and `(.)`/`(..)`/`(...)` prefixes are **intercepting routes** for URL-driven modals. `route.ts` files are **route handlers** — HTTP endpoints for webhooks and public APIs (use Server Actions for your own form mutations), and a root **`middleware.ts`** runs before matched requests for coarse auth, redirects, and rewrites (keep it light; authorize for real near the data). Round it out with `template` vs `layout` (remount vs persist) and metadata files (`sitemap`, `robots`, `opengraph-image`) for SEO. Learn the folder vocabulary and the App Router's most powerful routing behaviors are just names you write.

@@ -1,0 +1,348 @@
+---
+title: "React Components & Props: Composition from Zero to Hero"
+description: "A deep, practical guide to designing React components and typing their props with TypeScript — props as a read-only contract, typing props with type vs interface, optional values and defaults, children and React.ReactNode, composition patterns (wrappers, slots, specialized components), forwarding props to the DOM with rest and React.ComponentProps, discriminated-union props for variants, prop drilling and why composition beats configuration, common mistakes, and hands-on exercises with solutions."
+publishedAt: "2026-07-18"
+translationKey: "components-props"
+tags: ["React", "TypeScript", "Components", "Frontend"]
+---
+
+Once you know that a [component is just a function that returns UI](/blog/react-fundamentals), the real skill is *designing* those components: what props they take, how they compose, and how to type them so misuse fails to compile instead of at runtime. This post is about that craft — the difference between a component library that's a joy to use and one that fights you. It builds directly on [React fundamentals](/blog/react-fundamentals) and the [TypeScript](/blog/typescript-intro) you already know; we write everything in `.tsx`.
+
+> The one principle that shapes every good component API: **a component's props are a contract.** They declare exactly what the component needs, they flow one way (down, read-only), and — with TypeScript — they let the *type checker* enforce correct usage. Design the contract well and the component becomes obvious to use; design it poorly and every call site becomes a guessing game.
+
+## Props Are a Read-Only Contract
+
+Props are the inputs to a component — the same idea as function parameters. The parent supplies them; the child reads them and must **never** mutate them. This one-way, read-only flow is what keeps a React app traceable: any value on screen came from a prop passed by some parent above.
+
+```tsx
+type PriceProps = { amount: number; currency: string };
+
+function Price({ amount, currency }: PriceProps) {
+  // amount = amount * 1.2;  // ❌ never mutate props — they belong to the parent
+  const withTax = amount * 1.2;   // ✅ derive a new local value instead
+  return <span>{withTax.toFixed(2)} {currency}</span>;
+}
+```
+
+If a child needs to *change* something, it doesn't touch the prop — the parent passes down a **callback** the child can call. Data flows down; events flow up. (That callback pattern is how you lift state, covered in the State & hooks post.)
+
+## Typing Props: `type` vs `interface`
+
+Describe a component's props with a `type` alias or an `interface`. For component props, a `type` is the common default — it handles unions and intersections that `interface` can't express as cleanly. Use `interface` when you want a public, extendable shape (e.g. a shared design-system prop that consumers augment).
+
+```tsx
+// type — the everyday choice
+type AvatarProps = {
+  src: string;
+  alt: string;
+  size?: number;        // optional — the ? means callers may omit it
+  rounded?: boolean;
+};
+
+function Avatar({ src, alt, size = 40, rounded = true }: AvatarProps) {
+  return (
+    <img
+      src={src}
+      alt={alt}
+      width={size}
+      height={size}
+      className={rounded ? "avatar avatar--round" : "avatar"}
+    />
+  );
+}
+```
+
+Two habits that make props robust:
+
+- **Mark truly optional props with `?`** and give them a **default value** in the destructuring (`size = 40`). The type says "you *may* omit this"; the default says "here's what happens if you do."
+- **Be specific with types.** Prefer a union of literals (`"sm" | "md" | "lg"`) over a bare `string`, and a specific shape over `object`. The narrower the type, the more mistakes the compiler catches.
+
+```tsx
+type ButtonProps = {
+  label: string;
+  size?: "sm" | "md" | "lg";   // ✅ only these three are allowed
+  onClick: () => void;
+};
+```
+
+## `children` and `React.ReactNode`
+
+Anything nested between a component's tags arrives as the `children` prop. Type it as `React.ReactNode` — the catch-all for everything renderable (elements, strings, numbers, arrays, `null`). This is the foundation of wrapper components:
+
+```tsx
+type CardProps = {
+  title: string;
+  children: React.ReactNode;   // whatever the caller nests inside
+};
+
+function Card({ title, children }: CardProps) {
+  return (
+    <article className="card">
+      <h3 className="card__title">{title}</h3>
+      <div className="card__body">{children}</div>
+    </article>
+  );
+}
+
+// The caller decides what goes inside — the Card doesn't care
+<Card title="Invoice">
+  <p>Amount due: $240</p>
+  <button>Pay now</button>
+</Card>
+```
+
+`children` is what makes a component a reusable *container* rather than a fixed template.
+
+## Composition Patterns
+
+Composition — assembling small components into bigger ones — is React's core reuse mechanism. Here are the patterns you'll reach for constantly, from simplest to most flexible.
+
+### 1. Wrapper components
+
+A component whose job is to wrap `children` in consistent structure or styling — `Card`, `Panel`, `Section`, `Modal`. The one above is the archetype. It knows *how* to present, not *what* to present.
+
+### 2. Slots: passing JSX as props
+
+`children` gives you one hole to fill. When a component has *several* distinct regions — a header, a sidebar, a footer — give each its own prop typed as `React.ReactNode`. These are often called **slots**:
+
+```tsx
+type LayoutProps = {
+  header: React.ReactNode;
+  sidebar: React.ReactNode;
+  children: React.ReactNode;   // the main content slot
+};
+
+function Layout({ header, sidebar, children }: LayoutProps) {
+  return (
+    <div className="layout">
+      <header className="layout__header">{header}</header>
+      <aside className="layout__sidebar">{sidebar}</aside>
+      <main className="layout__main">{children}</main>
+    </div>
+  );
+}
+
+<Layout header={<Logo />} sidebar={<Nav />}>
+  <Dashboard />
+</Layout>
+```
+
+Each slot is filled by the parent, so `Layout` stays a pure arrangement of regions with zero knowledge of what fills them.
+
+### 3. Specialized components
+
+Instead of one component with a dozen flags, build a general one and wrap it into named specializations. The specialization sets the shared defaults so call sites stay clean:
+
+```tsx
+function Button({ variant = "secondary", ...props }: ButtonProps) {
+  return <button className={`btn btn--${variant}`} {...props} />;
+}
+
+// Specialized wrappers — intent is obvious at the call site
+const PrimaryButton = (props: Omit<ButtonProps, "variant">) => (
+  <Button variant="primary" {...props} />
+);
+const DangerButton = (props: Omit<ButtonProps, "variant">) => (
+  <Button variant="danger" {...props} />
+);
+```
+
+`Omit<ButtonProps, "variant">` is a TypeScript utility that reuses `ButtonProps` but removes `variant` — the wrapper controls it, so callers can't (and needn't) pass it.
+
+## Forwarding Props to the DOM
+
+A reusable `Button` or `Input` should accept all the normal HTML attributes — `onClick`, `disabled`, `aria-label`, `type` — without you re-declaring each one. Two pieces make this clean: **`React.ComponentProps`** to inherit an element's prop types, and the **rest/spread** operator to forward them.
+
+```tsx
+// Inherit every native <button> prop, then add your own
+type ButtonProps = React.ComponentProps<"button"> & {
+  variant?: "primary" | "secondary" | "danger";
+};
+
+function Button({ variant = "secondary", className, ...rest }: ButtonProps) {
+  return (
+    <button
+      className={`btn btn--${variant} ${className ?? ""}`}
+      {...rest}   // forwards onClick, disabled, type, aria-*, everything else
+    />
+  );
+}
+
+// Callers get full type-checked access to native attributes
+<Button variant="primary" onClick={save} disabled={busy} type="submit">
+  Save
+</Button>
+```
+
+This is the professional pattern for design-system primitives: **pull out the props you handle specially (`variant`, `className`), spread the rest onto the underlying element.** Callers get a component that behaves exactly like the native element, plus your enhancements — fully typed.
+
+## Variant Props with Discriminated Unions
+
+Sometimes a component's *allowed* props depend on another prop. A classic case: a button that's either a real `<button>` (needs `onClick`) or a link (needs `href`). Modeling this with all-optional props lets callers pass nonsense (`href` *and* `onClick`, or neither). A **discriminated union** makes the invalid combinations impossible to write:
+
+```tsx
+type ActionProps =
+  | { as: "button"; onClick: () => void; href?: never }
+  | { as: "link"; href: string; onClick?: never };
+
+function Action(props: ActionProps) {
+  if (props.as === "link") {
+    return <a href={props.href}>{/* ... */}</a>;   // TS knows href exists here
+  }
+  return <button onClick={props.onClick}>{/* ... */}</button>;
+}
+
+<Action as="button" onClick={save} />   // ✅
+<Action as="link" href="/home" />        // ✅
+<Action as="link" onClick={save} />      // ❌ compile error: link has no onClick
+```
+
+The `as` field is the **discriminant** — checking it narrows the type so TypeScript knows exactly which props are available in each branch. This is how you encode "these props go together, those don't" into the type system instead of a runtime `if`.
+
+## Prop Drilling — and Why Composition Beats Configuration
+
+**Prop drilling** is passing a prop down through several layers of components that don't use it themselves, just to reach a deep child. A little is fine; a lot is a smell.
+
+```tsx
+// Prop drilling: `user` passes through Page and Header just to reach Avatar
+<Page user={user}>          // Page doesn't use user...
+  <Header user={user}>      // ...neither does Header...
+    <Avatar user={user} />  // ...only Avatar actually needs it
+  </Header>
+</Page>
+```
+
+Two ways out, in order of preference:
+
+1. **Composition** — pass the finished element as a prop or child instead of threading its data through. Let the top level build `Avatar` and hand it down as content:
+
+```tsx
+// The layer that has `user` builds the Avatar; middle layers just render children
+<Page>
+  <Header avatar={<Avatar user={user} />} />
+</Page>
+```
+
+Now `Page` and `Header` never mention `user` — they just place whatever they're given. This alone dissolves most drilling.
+
+2. **Context** — for genuinely global data (theme, current user, locale) needed by many scattered components, React's Context lets a provider broadcast a value that any descendant reads directly. (It's a hooks topic — covered in the State & hooks post.) Reach for it only when composition would be awkward, because context trades explicitness for convenience.
+
+The broader lesson: when a component grows a thicket of boolean flags (`isCompact`, `hasIcon`, `showFooter`, `variant`...), that's **configuration** straining under its own weight. **Composition** — smaller components combined via `children` and slots — usually expresses the same variety more clearly and stays open to combinations you didn't foresee.
+
+## Common Mistakes
+
+- **Mutating props** — `props.items.push(x)` or `props.user.name = ...`. Props belong to the parent; derive new local values or call a callback instead.
+- **Boolean-flag explosion** — a component with ten `is*`/`has*` props is usually several components in a trenchcoat. Split it and compose.
+- **Typing props as `any` or `object`** — you lose every guarantee. Describe the real shape; use literal unions for finite choices.
+- **Re-declaring native attributes by hand** — spelling out `onClick`, `disabled`, etc. Inherit them with `React.ComponentProps<"button">` and spread `...rest`.
+- **Forgetting to forward `className`/`...rest`** — a wrapper that swallows extra props can't be styled or extended by its callers. Merge `className` and spread the rest.
+- **All-optional props for mutually-exclusive states** — lets callers pass invalid combinations. Model them with a discriminated union.
+- **Deep prop drilling** — threading a value through many uninterested layers. Hand down the finished element (composition), or use context for truly global data.
+- **Defining components inside other components** — a nested `function Child()` declared in a parent's body is a *new* component on every render, remounting its subtree. Define components at module top level.
+
+## Exercises
+
+Try each before opening the solution.
+
+### Exercise 1 — Type a props contract
+
+Write the `type` for a `Toast` component that takes a required `message` string, an optional `tone` that can only be `"info"`, `"success"`, or `"error"`, and an optional `onDismiss` callback.
+
+<details>
+
+<summary>Show solution</summary>
+
+```tsx
+type ToastProps = {
+  message: string;
+  tone?: "info" | "success" | "error";
+  onDismiss?: () => void;
+};
+```
+
+The literal union restricts `tone` to exactly three values — anything else is a compile error. Both optional props use `?`, and the callback is typed as a function returning nothing.
+
+</details>
+
+### Exercise 2 — A wrapper with `children`
+
+Build a `Field` component that renders a `<label>` (from a `label` prop) above whatever input you nest inside it.
+
+<details>
+
+<summary>Show solution</summary>
+
+```tsx
+type FieldProps = { label: string; children: React.ReactNode };
+
+function Field({ label, children }: FieldProps) {
+  return (
+    <label className="field">
+      <span className="field__label">{label}</span>
+      {children}
+    </label>
+  );
+}
+
+<Field label="Email">
+  <input type="email" />
+</Field>
+```
+
+`children` lets `Field` wrap any control — input, select, textarea — without knowing which.
+
+</details>
+
+### Exercise 3 — Forward native props
+
+Make an `Input` that accepts all native `<input>` attributes plus an optional `invalid` boolean that adds an error class.
+
+<details>
+
+<summary>Show solution</summary>
+
+```tsx
+type InputProps = React.ComponentProps<"input"> & { invalid?: boolean };
+
+function Input({ invalid = false, className, ...rest }: InputProps) {
+  return (
+    <input
+      className={`input ${invalid ? "input--error" : ""} ${className ?? ""}`}
+      {...rest}
+    />
+  );
+}
+```
+
+`React.ComponentProps<"input">` inherits every native attribute; you pull out the ones you handle (`invalid`, `className`) and spread the rest onto the element.
+
+</details>
+
+### Exercise 4 — Kill the prop drilling
+
+`user` is drilled through `Page` → `Toolbar` → `UserMenu`, but only `UserMenu` uses it. Refactor with composition so the middle layers don't mention `user`.
+
+<details>
+
+<summary>Show solution</summary>
+
+```tsx
+// Toolbar takes a slot instead of the raw data
+type ToolbarProps = { menu: React.ReactNode };
+function Toolbar({ menu }: ToolbarProps) {
+  return <div className="toolbar">{menu}</div>;
+}
+
+// The level that has `user` builds UserMenu and passes it down as an element
+<Page>
+  <Toolbar menu={<UserMenu user={user} />} />
+</Page>
+```
+
+`Toolbar` now just places whatever element it's handed, so `user` never passes through a layer that doesn't need it.
+
+</details>
+
+## The Mental Model to Keep
+
+A component's **props are a read-only contract**: the parent supplies them, the child reads them and never mutates them, and data flows **down** while events flow **up** through callbacks. Type that contract precisely with TypeScript — `type` aliases, `?` for optional props paired with **default values**, and **literal unions** instead of bare strings — so wrong usage fails to compile. Fill components with content through **`children`** (typed `React.ReactNode`) and multiple **slots** for multi-region layouts, and reuse behavior by **composing** small pieces rather than piling flags onto one mega-component. For design-system primitives, inherit native attributes with **`React.ComponentProps`** and forward them with **`...rest`** so your `Button` behaves like a real button; encode "these props go together" with **discriminated unions**. When a value has to reach a deep child, prefer **composition** (hand down the finished element) over **prop drilling**, and save **context** for truly global data. Master the props contract and composition, and you can design component APIs that are obvious to use and impossible to misuse — the real mark of professional React.

@@ -1,0 +1,207 @@
+---
+title: "Next.js in Production: Auth, Performance & Deployment"
+description: "An expert guide to taking a Next.js App Router app to production with TypeScript — authentication done in layers (middleware, Data Access Layer, sessions with httpOnly cookies), environment variables and keeping secrets server-only, performance with next/image, next/font, dynamic imports and bundle analysis, error handling with error.tsx and not-found, and deployment on Vercel or self-hosted with standalone output — with common mistakes and exercises."
+publishedAt: "2026-09-12"
+translationKey: "nextjs-production"
+tags: ["Next.js", "TypeScript", "Production", "Advanced"]
+---
+
+Building features is one thing; shipping a Next.js app that's **secure, fast, and reliable in production** is another skill entirely. This final post of the advanced track covers the concerns that only matter once real users show up: authentication done safely, keeping secrets off the client, squeezing performance out of the framework's built-ins, handling errors gracefully, and deploying — whether on Vercel or your own server. It builds on [rendering & caching](/blog/nextjs-rendering-caching), [server actions](/blog/nextjs-server-actions), and [advanced routing](/blog/nextjs-advanced-routing). TypeScript throughout, Next.js 15+.
+
+> The production mindset: in the App Router, code runs in **two very different places** — the server (trusted, has secrets, close to data) and the client (public, adversarial, ships to every user). Every production concern — auth, secrets, performance, errors — comes down to putting the right work in the right place and never trusting the client. Get the server/client boundary right and production is mostly downhill.
+
+## Authentication in Layers
+
+The most important production topic, and the most commonly done wrong. Secure auth in the App Router is **layered**, not a single check:
+
+1. **Middleware** — a fast, *optimistic* gate. Read the session cookie and redirect obviously-unauthenticated users away from protected areas. It runs on every matched request, so keep it to a cheap cookie check — don't hit a database here.
+2. **The Data Access Layer (DAL)** — the *real* authorization, next to the data. A small module that every data read/write goes through, which verifies the session and checks permissions before returning anything. This is your source of truth.
+3. **Verify close to use** — in Server Components and Server Actions, call the DAL to confirm the user *right before* reading or mutating their data — never assume middleware already handled it.
+
+```tsx
+// lib/dal.ts — the real gate, called wherever data is accessed
+import "server-only";
+import { cookies } from "next/headers";
+import { cache } from "react";
+
+export const getCurrentUser = cache(async () => {
+  const token = (await cookies()).get("session")?.value;
+  if (!token) return null;
+  return verifySession(token); // validate signature/expiry, load the user
+});
+
+// In a Server Component or Server Action:
+const user = await getCurrentUser();
+if (!user) redirect("/login");
+```
+
+Why layered? Middleware alone is [a coarse gate that can be bypassed](/blog/nextjs-advanced-routing) — and a [Server Action is a public endpoint](/blog/nextjs-server-actions). Real authorization has to live where the data is touched. Wrapping the check in React's `cache` dedups it across a single request.
+
+### Sessions and cookies
+
+A session is proof the user logged in, stored in an **`httpOnly` cookie** so client JavaScript can't read it (blocking XSS token theft). Two models: a **stateless** session (a signed/encrypted JWT holding the user id) or a **database** session (an opaque id pointing to a server-side record you can revoke). Set the cookie from a Server Action with the right flags:
+
+```tsx
+(await cookies()).set("session", token, {
+  httpOnly: true,      // not readable by JS
+  secure: true,        // HTTPS only
+  sameSite: "lax",     // CSRF mitigation
+  maxAge: 60 * 60 * 24 * 7,
+  path: "/",
+});
+```
+
+For anything beyond a learning project, a maintained library like **Auth.js (NextAuth)** handles providers, CSRF, and session management correctly — auth is easy to get subtly wrong, so don't hand-roll the crypto.
+
+## Environment Variables and Secrets
+
+The cardinal rule: **secrets never reach the client.** In Next.js, an env var is server-only *unless* it's prefixed `NEXT_PUBLIC_`, which inlines it into the browser bundle:
+
+```bash
+DATABASE_URL="postgres://…"        # server-only — safe for secrets
+STRIPE_SECRET_KEY="sk_live_…"      # server-only
+NEXT_PUBLIC_ANALYTICS_ID="G-…"     # shipped to the browser — public values ONLY
+```
+
+Read server secrets only in Server Components, Server Actions, route handlers, or `lib` modules — never in a `"use client"` file, because everything a client file imports is bundled and shipped. To make that guarantee enforceable, import the **`server-only`** package at the top of modules that must never reach the client; it turns an accidental client import into a build error:
+
+```tsx
+import "server-only"; // build fails if a Client Component imports this file
+```
+
+## Performance: Use the Built-ins
+
+Next.js ships optimizations that beat almost anything hand-rolled — use them.
+
+**`next/image`** — automatic resizing, modern formats (AVIF/WebP), lazy-loading, and reserved space to prevent layout shift. Always give `width`/`height` (or `fill`), and mark above-the-fold images `priority`:
+
+```tsx
+import Image from "next/image";
+<Image src="/hero.jpg" alt="" width={1200} height={600} priority />;
+```
+
+**`next/font`** — self-hosts fonts at build time, eliminating a render-blocking request to Google and the layout shift fonts cause:
+
+```tsx
+import { Inter } from "next/font/google";
+const inter = Inter({ subsets: ["latin"] });
+// apply inter.className on <html> / <body>
+```
+
+**Dynamic imports** — split large or below-the-fold client components out of the initial bundle with `next/dynamic`, so they load only when needed:
+
+```tsx
+import dynamic from "next/dynamic";
+const Chart = dynamic(() => import("@/components/Chart")); // separate chunk
+```
+
+And the biggest lever is architectural: **keep components as Server Components** and minimize `"use client"` — every client component adds JavaScript the user downloads and executes. Measure with `@next/bundle-analyzer` and watch your **Core Web Vitals** (LCP, CLS, INP). The pattern: server-render everything you can, ship JS only for the interactive leaves.
+
+## Error Handling
+
+Production apps fail; the question is whether the user sees a blank screen or a graceful message. The App Router's [special files](/blog/nextjs-advanced-routing) cover this:
+
+```tsx
+// app/dashboard/error.tsx — catches render errors in this segment (Client Component)
+"use client";
+export default function Error({
+  error,
+  reset,
+}: {
+  error: Error;
+  reset: () => void;
+}) {
+  return (
+    <div role="alert">
+      <p>Something went wrong.</p>
+      <button onClick={reset}>Try again</button>
+    </div>
+  );
+}
+```
+
+- **`error.tsx`** is an error boundary for its route segment, with a `reset()` to retry. Nested segments can each have one, so a failure is contained rather than crashing the whole app.
+- **`global-error.tsx`** catches errors in the root layout itself (the last resort).
+- **`not-found.tsx`** renders for `notFound()` and unmatched routes.
+
+Pair these with a monitoring service (Sentry and similar) so you *learn* about production errors instead of hearing them from users. Log server errors with enough context to reproduce, and never leak stack traces or secrets in an error message shown to users.
+
+## Deployment
+
+Two paths, depending on control and cost.
+
+**Vercel** — the zero-config option from Next.js's makers. Push to Git and it builds, serves static assets from a CDN, runs Server Components and functions, and wires up the caching layers, ISR, and image optimization automatically. For most apps this is the fastest route to production.
+
+**Self-hosting** — full control (your own server, Docker, another cloud). Build with the **standalone output** so you ship a minimal Node server with only the dependencies you use:
+
+```ts
+// next.config.ts
+const nextConfig = { output: "standalone" };
+export default nextConfig;
+```
+
+```dockerfile
+# then run the produced server:  node .next/standalone/server.js
+```
+
+Self-hosting has one production subtlety worth flagging: the **Data Cache and ISR** are persisted to the filesystem by default, so across multiple instances you need shared cache storage (or a custom cache handler) for revalidation to be consistent — something Vercel manages for you. Whichever you choose, set your **production environment variables** in the host (not committed to Git), and run `next build` to catch type and lint errors before they reach users.
+
+## Common Mistakes
+
+- **Auth only in middleware** — it's an optimistic gate that can be bypassed; do the real authorization in a Data Access Layer next to the data, and verify in every Server Component/Action that touches user data.
+- **Reading secrets in a Client Component** — anything a `"use client"` file imports ships to the browser. Keep secrets in server code; guard with `server-only`.
+- **Prefixing a secret with `NEXT_PUBLIC_`** — that inlines it into the public bundle. Only truly public values get the prefix.
+- **Plain `<img>` and manual `<link>` fonts** — you lose optimization and invite layout shift. Use `next/image` and `next/font`.
+- **Marking whole pages `"use client"`** — ships needless JavaScript. Keep pages server-rendered; isolate interactivity to small leaves.
+- **No error boundaries** — an unhandled throw blanks the screen. Add `error.tsx` per segment and a `global-error.tsx`.
+- **Self-hosting without shared cache** — multiple instances with local Data Cache give inconsistent revalidation. Configure a shared cache handler.
+- **Skipping `next build` locally** — the production build surfaces type errors, invalid config, and Server/Client boundary violations the dev server tolerates.
+
+## Exercises
+
+Try each before opening the solution.
+
+### Exercise 1 — Place the secret
+
+You have `STRIPE_SECRET_KEY` and a public `NEXT_PUBLIC_MAPS_KEY`. Which can be read in a `"use client"` component, and why?
+
+<details>
+
+<summary>Show solution</summary>
+
+Only **`NEXT_PUBLIC_MAPS_KEY`**. The `NEXT_PUBLIC_` prefix inlines a variable into the browser bundle, so it's readable client-side (and therefore must be a non-secret). `STRIPE_SECRET_KEY` has no prefix, so it exists only on the server — reading it in a client component would be `undefined` at best and a leak at worst. Read it in a Server Action or route handler.
+
+</details>
+
+### Exercise 2 — Where does authorization belong?
+
+A dashboard is protected by middleware that redirects users without a session cookie. Is that enough to keep one user from reading another's data via a Server Action?
+
+<details>
+
+<summary>Show solution</summary>
+
+**No.** Middleware only checks that *a* session cookie exists on matched routes; it doesn't verify ownership, and a Server Action is a public endpoint reachable directly. The action must call the Data Access Layer to authenticate the user and confirm they're allowed to access *that specific* record — authorization lives next to the data, not only at the edge.
+
+</details>
+
+### Exercise 3 — Shrink the bundle
+
+A heavy charting component is only shown when a user clicks "Analytics." How do you keep it out of the initial bundle?
+
+<details>
+
+<summary>Show solution</summary>
+
+```tsx
+import dynamic from "next/dynamic";
+const Chart = dynamic(() => import("@/components/Chart"));
+```
+
+`next/dynamic` code-splits the component into its own chunk that loads only when `Chart` actually renders, so the initial page download stays small.
+
+</details>
+
+## The Mental Model to Keep
+
+Production Next.js is about **putting work on the right side of the server/client boundary and never trusting the client.** Do auth in **layers** — middleware for a cheap optimistic redirect, a **Data Access Layer** for real authorization next to the data, and a verify step in every Server Component/Action — with sessions in **`httpOnly` cookies** and a maintained library for the crypto. Keep **secrets server-only** (no `NEXT_PUBLIC_` prefix; guard with `server-only`), and lean on the built-in performance wins — **`next/image`**, **`next/font`**, **dynamic imports**, and above all **minimal `"use client"`** so you ship less JavaScript. Contain failures with **`error.tsx`**/`global-error`/`not-found` and a monitoring service, and **deploy** on Vercel for zero-config or self-host with **standalone output** (remembering shared cache storage across instances). Always run `next build` before shipping. Hold the "server is trusted, client is public" line through every one of these, and your app is production-ready — which is exactly the bar between a demo and something real users depend on.

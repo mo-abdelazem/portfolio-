@@ -1,0 +1,399 @@
+---
+title: "Frontend Interview Questions: React, Next.js & the Fundamentals"
+description: "A curated bank of frontend interview questions with strong, concise answers — JavaScript and the language, HTML/CSS and accessibility, the browser and the network, performance and Core Web Vitals, React (hooks, rendering, state), Next.js (Server Components, rendering, caching), and behavioral/design questions — each with a 'Show answer' you can self-test against, plus how to approach the interview itself."
+publishedAt: "2026-09-19"
+translationKey: "interview-questions"
+tags: ["Interview", "React", "Next.js", "Frontend"]
+---
+
+Interviews reward *understanding*, not memorized definitions. This is a bank of the questions that actually come up for frontend, React, and Next.js roles — each with a concise, strong answer you can self-test against (click **Show answer** only after you've tried). It pairs with the [JavaScript coding problems](/blog/javascript-fundamentals) drill for the hands-on rounds; this post is the *conceptual* rounds. Work through it out loud, the way you'd answer in the room.
+
+> How to answer any interview question: **lead with the one-sentence core, then explain why, then give a concrete example or trade-off.** Interviewers are grading whether you understand the *mechanism*, not whether you can recite a definition. "It depends" is a great start — as long as you then say what it depends on.
+
+## JavaScript & the Language
+
+**Q: What's the difference between `==` and `===`?**
+
+<details>
+
+<summary>Show answer</summary>
+
+`==` compares after **type coercion** (converting operands to a common type, with surprising rules like `0 == ""` being `true`); `===` compares **without coercion** — same type and same value. Always use `===` except for the deliberate `x == null` shorthand that catches both `null` and `undefined`. Interviewers want to hear that you avoid coercion's footguns.
+
+</details>
+
+**Q: Explain closures.**
+
+<details>
+
+<summary>Show answer</summary>
+
+A **closure** is a function bundled with references to the variables from where it was *defined* — it keeps them alive after the outer function returns. It's the mechanism behind private state, factory functions, and most React hooks. Example: a `makeCounter` that returns a function which increments a `count` only it can see. (More in [closures, scope & this](/blog/closures-scope-this).)
+
+</details>
+
+**Q: How is `this` determined?**
+
+<details>
+
+<summary>Show answer</summary>
+
+By **how a function is called**, not where it's defined: `obj.method()` → `this` is `obj`; a bare call → `undefined` (strict mode) or the global object; `call`/`apply`/`bind` set it explicitly. **Arrow functions** have no own `this` — they inherit it from the surrounding scope, which is why they're ideal for callbacks inside methods.
+
+</details>
+
+**Q: What is the event loop? Predict the output of `console.log`, `setTimeout(…,0)`, `Promise.then`.**
+
+<details>
+
+<summary>Show answer</summary>
+
+JavaScript is single-threaded with an **event loop**. Synchronous code runs first, then the **microtask** queue (promise callbacks) drains completely, then **macrotasks** (timers). So `console.log("A"); setTimeout(()=>log("B"),0); Promise.resolve().then(()=>log("C")); log("D")` prints **A, D, C, B** — the promise (microtask) beats the timer (macrotask) even at `0ms`. (See [async/await](/blog/async-await).)
+
+</details>
+
+**Q: `var` vs `let` vs `const`?**
+
+<details>
+
+<summary>Show answer</summary>
+
+`var` is function-scoped and hoisted (leaks out of blocks, causes classic loop bugs); `let` and `const` are **block-scoped**. `const` prevents *reassignment* of the binding but does **not** make objects immutable. Use `const` by default, `let` when you reassign, never `var` in new code.
+
+</details>
+
+**Q: What's the difference between `null` and `undefined`?**
+
+<details>
+
+<summary>Show answer</summary>
+
+`undefined` means "no value assigned yet" (the default for uninitialized variables and missing properties); `null` is an **intentional** "empty" you assign deliberately. `typeof undefined` is `"undefined"`; `typeof null` is `"object"` (a historic bug). `null == undefined` is `true`, but `null === undefined` is `false`.
+
+</details>
+
+**Q: Explain `map`, `filter`, and `reduce`.**
+
+<details>
+
+<summary>Show answer</summary>
+
+All return **new arrays/values** (no mutation). `map` transforms each element 1:1; `filter` keeps elements passing a predicate; `reduce` folds the array into a single accumulated value. They chain, replacing most manual loops with a declarative pipeline: `orders.filter(o => o.paid).map(o => o.amount).reduce((a,b)=>a+b, 0)`.
+
+</details>
+
+## HTML, CSS & Accessibility
+
+**Q: Why does semantic HTML matter?**
+
+<details>
+
+<summary>Show answer</summary>
+
+Semantic tags (`<nav>`, `<main>`, `<article>`, `<button>`) describe *meaning*, not just appearance. That gives you **accessibility** for free (screen readers announce roles, keyboard support on `<button>`), better **SEO**, and more maintainable markup. A `<div onClick>` is a classic anti-pattern — it's not focusable or keyboard-operable; a `<button>` is.
+
+</details>
+
+**Q: Explain the CSS box model.**
+
+<details>
+
+<summary>Show answer</summary>
+
+Every element is a box: **content** → **padding** → **border** → **margin**. `box-sizing: content-box` (default) makes `width` the content only, so padding/border add to the rendered size; `box-sizing: border-box` makes `width` include padding and border — far more predictable, which is why most resets set it globally.
+
+</details>
+
+**Q: Flexbox vs Grid — when do you use each?**
+
+<details>
+
+<summary>Show answer</summary>
+
+**Flexbox** is one-dimensional — lay out items in a row *or* a column (navbars, toolbars, centering). **Grid** is two-dimensional — rows *and* columns together (page layouts, card galleries, anything with alignment in both axes). They compose: a grid cell can contain a flex container. Reach for Grid when you're positioning in both directions.
+
+</details>
+
+**Q: How does CSS specificity work?**
+
+<details>
+
+<summary>Show answer</summary>
+
+Specificity ranks selectors: inline styles > IDs > classes/attributes/pseudo-classes > elements. The more specific selector wins regardless of source order; ties are broken by *later* rules. `!important` overrides all of it (avoid it — it's a maintenance smell). Keep specificity low and flat so styles stay predictable.
+
+</details>
+
+**Q: How do you make a component accessible?**
+
+<details>
+
+<summary>Show answer</summary>
+
+Use **semantic elements** first (native `<button>`, `<a>`, `<label>`+`<input>`); add **ARIA** only to fill gaps (`role`, `aria-label`, `aria-expanded`). Ensure **keyboard operability** (focusable, Enter/Space, visible focus ring), sufficient **color contrast**, and meaningful text alternatives (`alt`). Test by navigating with only the keyboard and a screen reader.
+
+</details>
+
+## The Browser & the Web
+
+**Q: What happens when you type a URL and hit enter?**
+
+<details>
+
+<summary>Show answer</summary>
+
+DNS resolves the domain to an IP → a TCP (and TLS) connection opens → an HTTP request is sent → the server responds with HTML → the browser parses it, builds the **DOM**, fetches CSS/JS/images, builds the **CSSOM**, combines them into the render tree, computes layout, and paints. JS can block parsing; CSS blocks rendering. Show you know the **critical rendering path**.
+
+</details>
+
+**Q: What is the difference between `localStorage`, `sessionStorage`, and cookies?**
+
+<details>
+
+<summary>Show answer</summary>
+
+`localStorage` persists until cleared (~5–10MB, not sent to the server); `sessionStorage` is the same but cleared when the tab closes; **cookies** are small (~4KB), sent with every request to their domain, and are the right place for a session token — with `httpOnly` (not readable by JS) and `secure` flags. Don't put auth tokens in `localStorage` (XSS-readable).
+
+</details>
+
+**Q: What is CORS?**
+
+<details>
+
+<summary>Show answer</summary>
+
+**Cross-Origin Resource Sharing** — a browser security mechanism. By default the browser blocks JS from reading responses from a *different origin* (scheme+host+port). The server opts in by sending `Access-Control-Allow-Origin` headers; for some requests the browser first sends a **preflight** `OPTIONS`. CORS is enforced by the browser, not the server — a common point of confusion.
+
+</details>
+
+**Q: Reflow vs repaint?**
+
+<details>
+
+<summary>Show answer</summary>
+
+A **reflow** (layout) recalculates element geometry — expensive, triggered by changing size/position or reading layout properties mid-write. A **repaint** redraws pixels without changing layout (e.g. color change) — cheaper. Animating `transform`/`opacity` avoids both (they're composited on the GPU), which is why they're the performant properties to animate.
+
+</details>
+
+## Performance
+
+**Q: What are the Core Web Vitals?**
+
+<details>
+
+<summary>Show answer</summary>
+
+Google's user-centric metrics: **LCP** (Largest Contentful Paint — loading, target `< 2.5s`), **CLS** (Cumulative Layout Shift — visual stability, `< 0.1`), and **INP** (Interaction to Next Paint — responsiveness, `< 200ms`). They map to "does it load fast, stay stable, and respond quickly?" — optimize images/fonts for LCP, reserve space for CLS, keep the main thread free for INP.
+
+</details>
+
+**Q: How do you reduce a web app's initial load time?**
+
+<details>
+
+<summary>Show answer</summary>
+
+**Code-split** so users download only what a route needs (dynamic imports); **lazy-load** below-the-fold images and components; optimize images (modern formats, correct sizes) and fonts (self-host, `font-display`); **minimize and compress** JS/CSS; cache aggressively; and render on the server (SSR/SSG) so the first paint isn't blocked on JS. Measure before and after.
+
+</details>
+
+**Q: What's the difference between debounce and throttle?**
+
+<details>
+
+<summary>Show answer</summary>
+
+Both limit how often a function runs. **Debounce** waits until activity *stops* for N ms then fires once — good for search-as-you-type. **Throttle** fires at most once per N ms during continuous activity — good for scroll/resize handlers. Debounce collapses a burst into one trailing call; throttle lets one through per interval.
+
+</details>
+
+## React
+
+**Q: What is the virtual DOM and reconciliation?**
+
+<details>
+
+<summary>Show answer</summary>
+
+React keeps a lightweight in-memory tree (the **virtual DOM**). On a state change it re-runs your components to produce a new tree, **diffs** it against the previous one (reconciliation), and applies only the minimal real-DOM changes. So "re-rendering" means re-running your *functions*, not rebuilding the page — which is why it's fast. (See [React fundamentals](/blog/react-fundamentals).)
+
+</details>
+
+**Q: Why do lists need a `key`, and why not the array index?**
+
+<details>
+
+<summary>Show answer</summary>
+
+Keys let React match elements between renders to know what was added/removed/reordered, updating only those. Use a **stable, unique id**. The **array index** breaks when the list reorders or has items inserted/removed — React then associates the wrong state with the wrong element (e.g. input text jumping rows). Index keys are only safe for a static, never-reordered list.
+
+</details>
+
+**Q: What are the Rules of Hooks and why do they exist?**
+
+<details>
+
+<summary>Show answer</summary>
+
+**Only call hooks at the top level** (never in conditions/loops) and **only from React functions**. React tracks hooks **by call order**, so the order must be identical every render to match each call to its stored state. Break the rule and state gets mismatched. (See [state & hooks](/blog/state-and-hooks).)
+
+</details>
+
+**Q: How does `useEffect`'s dependency array work?**
+
+<details>
+
+<summary>Show answer</summary>
+
+The effect re-runs when any listed dependency changes: no array → every render; `[]` → once on mount; `[a, b]` → when `a` or `b` change. You must list **every reactive value the effect reads**, or it works with stale values. Return a **cleanup** function to undo subscriptions/timers. Common bug: an object/array literal in the deps re-runs forever (new reference each render).
+
+</details>
+
+**Q: When do you actually need `useMemo`/`useCallback`?**
+
+<details>
+
+<summary>Show answer</summary>
+
+Not by default — they add cost. Use them for a **genuinely expensive computation**, or to keep a **stable reference** required by `React.memo` or another hook's dependency array. Reaching for them everywhere is premature optimization that makes code harder to read for no measurable gain.
+
+</details>
+
+**Q: Why must you not mutate state?**
+
+<details>
+
+<summary>Show answer</summary>
+
+React decides whether to re-render by **comparing references**. Mutating an object/array keeps the same reference, so React may skip the update and the UI won't reflect the change. Always create a *new* value (spread for objects/arrays, `map`/`filter` for arrays). Same reason you use a functional updater when the next state depends on the previous.
+
+</details>
+
+**Q: Controlled vs uncontrolled components?**
+
+<details>
+
+<summary>Show answer</summary>
+
+A **controlled** input's value is driven by React state (`value` + `onChange`) — React is the single source of truth, enabling validation and conditional logic. An **uncontrolled** input keeps its own DOM state, read via a `ref` when needed — simpler, less code, good for basic forms. Interviewers want the trade-off: control vs simplicity.
+
+</details>
+
+**Q: How do you share state between components?**
+
+<details>
+
+<summary>Show answer</summary>
+
+**Lift it** to the nearest common parent and pass it down (props down, callbacks up). For state needed by many scattered components, use **Context** (theme, current user, locale). For complex or server state, reach for a library — `useReducer`/Zustand for client state, TanStack Query for server state. Start local; escalate only when drilling gets painful.
+
+</details>
+
+**Q: What causes unnecessary re-renders and how do you fix them?**
+
+<details>
+
+<summary>Show answer</summary>
+
+A component re-renders when its state or props change, or its parent re-renders. Common causes: new object/function props each render, context value changing, state living too high. Fixes: **colocate state** lower, `React.memo` a pure child, stabilize props with `useMemo`/`useCallback`, and split contexts. But measure first — most re-renders are cheap.
+
+</details>
+
+## Next.js
+
+**Q: Server Components vs Client Components?**
+
+<details>
+
+<summary>Show answer</summary>
+
+In the App Router, components are **Server Components by default** — they run on the server, can fetch data and use secrets directly, ship **zero JS**, and send HTML. Add **`"use client"`** only for interactivity (state, effects, event handlers). Best practice: keep client components small, at the leaves; a server component fetches and passes data down to them. (See [Next.js basics](/blog/nextjs-basics).)
+
+</details>
+
+**Q: Explain SSG, SSR, and ISR.**
+
+<details>
+
+<summary>Show answer</summary>
+
+**SSG** renders to HTML at build time (fastest, for content that rarely changes). **SSR** renders on each request (for per-request/per-user data). **ISR** is static but re-generated in the background on an interval (`revalidate`) — static speed with periodic freshness. In the App Router you mostly don't set these directly; your data-fetching choices (cached vs dynamic APIs) determine the mode. (See [rendering & caching](/blog/nextjs-rendering-caching).)
+
+</details>
+
+**Q: How does data fetching differ in the App Router vs client-side React?**
+
+<details>
+
+<summary>Show answer</summary>
+
+In a Server Component you make the component `async` and `await fetch` directly — no `useEffect`, no loading state, no waterfall in the browser, and secrets stay server-side. The data is ready before the HTML is sent. Client-side fetching (`useEffect` + state) is for data that depends on user interaction after load. Prefer server fetching for initial data. (See [data fetching](/blog/data-fetching).)
+
+</details>
+
+**Q: What is a Server Action?**
+
+<details>
+
+<summary>Show answer</summary>
+
+An async function marked **`"use server"`** that runs on the server and is callable directly from your components (e.g. a `<form action={fn}>`), with no API route to build. It's really a **public endpoint**, so you must authenticate, authorize, and validate inside it. After mutating, call `revalidateTag`/`revalidatePath` to refresh caches. (See [server actions](/blog/nextjs-server-actions).)
+
+</details>
+
+**Q: A page shows stale data after an update. Why, and how do you fix it?**
+
+<details>
+
+<summary>Show answer</summary>
+
+The route's data is **cached** (static/Data Cache) and wasn't invalidated. Fix by revalidating: call `revalidateTag("…")` or `revalidatePath("/…")` in the Server Action that made the change (tag the relevant fetches), or use `router.refresh()` for the client Router Cache. Understanding the [four caches](/blog/nextjs-rendering-caching) is the senior-level answer here.
+
+</details>
+
+**Q: When would you use a Route Handler instead of a Server Action?**
+
+<details>
+
+<summary>Show answer</summary>
+
+Route handlers (`route.ts`) are for **webhooks, public JSON APIs consumed by non-React clients, OAuth callbacks, and streaming** — anything that needs a standard HTTP endpoint with raw `Request`/`Response`. For your own form mutations, prefer a Server Action (less code, typed, progressive enhancement). (See [advanced routing](/blog/nextjs-advanced-routing).)
+
+</details>
+
+## Behavioral & Design
+
+**Q: How do you decide when to break a component into smaller ones?**
+
+<details>
+
+<summary>Show answer</summary>
+
+Split when a component does more than one job, when part of it is reused, when it accumulates many boolean flags (a sign to compose instead), or when a piece needs its own state. Favor **composition** — small components combined via `children`/props — over one configurable mega-component. Keep components focused; name them by what they render.
+
+</details>
+
+**Q: Tell me about a performance problem you solved.**
+
+<details>
+
+<summary>Show answer</summary>
+
+Structure the answer as **problem → measurement → fix → result**: what was slow (e.g. a large list janking on scroll), how you *measured* it (DevTools Performance panel, a Web Vital regression), the fix (virtualization / memoization / code-splitting / moving fetch to the server), and the *quantified* outcome (LCP dropped from X to Y). Interviewers want evidence you measure, not guess.
+
+</details>
+
+**Q: How do you approach a coding task you're unsure how to solve?**
+
+<details>
+
+<summary>Show answer</summary>
+
+Restate the problem and confirm the requirements; ask about edge cases (empty, one item, huge input) out loud; state a brute-force approach first (working beats clever); then implement while narrating your thinking; then test with your example and one edge case. Communicating the process matters more than instantly knowing the answer.
+
+</details>
+
+## The Mental Model to Keep
+
+Interviews test whether you understand *mechanisms*: the **event loop** and closures behind JavaScript's behavior, **semantic HTML** and the box model behind the UI, the **critical rendering path** and Core Web Vitals behind performance, the **virtual DOM, hooks rules, and immutable state** behind React, and the **server/client boundary, rendering modes, and caching** behind Next.js. For any question, lead with the one-sentence core, explain the *why*, and reach for a concrete example or trade-off — "it depends, and here's on what." Pair this with the [coding-problem drills](/blog/javascript-fundamentals) for the hands-on rounds, practice saying the answers out loud, and you'll walk in able to reason from fundamentals instead of hoping the exact question comes up.
