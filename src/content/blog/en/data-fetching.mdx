@@ -1,0 +1,312 @@
+---
+title: "Data Fetching in React: From Zero to Hero"
+description: "A practical guide to fetching data in React with TypeScript — the loading/error/success states every request has, fetching in useEffect with cleanup and AbortController, avoiding race conditions, typing responses, handling HTTP errors properly, extracting a useFetch hook, mutations and refetching, and why a library like TanStack Query exists (caching, dedup, revalidation) — with common mistakes and hands-on exercises."
+publishedAt: "2026-08-08"
+translationKey: "data-fetching"
+tags: ["React", "TypeScript", "Data Fetching", "Frontend"]
+---
+
+Almost every real app talks to a server. Getting data *into* React is where a lot of subtle bugs live: stale responses overwriting fresh ones, missing error handling, requests that don't get cancelled, loading spinners that never stop. This post builds a solid model for fetching — the states a request moves through, how to do it correctly with hooks, and when to stop hand-rolling it and reach for a library. It builds on [state & hooks](/blog/state-and-hooks) (especially `useEffect` and cleanup) and the [promises](/blog/promises) and [async/await](/blog/async-await) fundamentals. TypeScript throughout.
+
+> The model to hold: **every request is a small state machine.** At any moment it's *idle*, *loading*, *success* (with data), or *error* (with a reason) — never more than one. Most fetching bugs come from tracking those states loosely (a lone `data` variable) and forgetting that responses can arrive **out of order** or after the component is gone. Model the states explicitly and cancel stale work, and fetching becomes predictable.
+
+## The Three (or Four) States of a Request
+
+A fetch isn't a value — it's a *process* with distinct phases. Model them as state, not as a single `data` variable that's `undefined` until it isn't:
+
+```tsx
+type User = { id: string; name: string };
+
+const [data, setData] = useState<User | null>(null);
+const [loading, setLoading] = useState(true);
+const [error, setError] = useState<string | null>(null);
+```
+
+Three pieces — `data`, `loading`, `error` — cover the lifecycle: loading is `true` until the request settles, then either `data` or `error` is set. Rendering becomes a direct read of that state:
+
+```tsx
+if (loading) return <Spinner />;
+if (error) return <p role="alert">{error}</p>;
+if (!data) return <p>No results.</p>;
+return <Profile user={data} />;
+```
+
+Always render all three branches. The most common data-fetching UX bug is only handling the happy path and leaving users staring at a blank screen when a request is slow or fails.
+
+## Fetching in `useEffect` — Correctly
+
+A network request is a side effect, so it belongs in a [`useEffect`](/blog/state-and-hooks). But a naïve version has two real bugs: it doesn't handle HTTP errors, and it can apply a **stale response**. Here's the correct version, built up:
+
+```tsx
+import { useEffect, useState } from "react";
+
+function UserProfile({ userId }: { userId: string }) {
+  const [data, setData] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setLoading(true);
+    setError(null);
+
+    fetch(`/api/users/${userId}`, { signal: controller.signal })
+      .then((res) => {
+        // fetch does NOT reject on 404/500 — you must check yourself
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json() as Promise<User>;
+      })
+      .then((user) => setData(user))
+      .catch((err) => {
+        if (err.name !== "AbortError") setError(err.message); // ignore cancels
+      })
+      .finally(() => setLoading(false));
+
+    return () => controller.abort(); // cancel if userId changes or we unmount
+  }, [userId]); // re-fetch whenever userId changes
+
+  if (loading) return <Spinner />;
+  if (error) return <p role="alert">{error}</p>;
+  return <Profile user={data!} />;
+}
+```
+
+Three things make this correct, and each fixes a real bug.
+
+### `fetch` doesn't throw on HTTP errors
+
+The single biggest `fetch` gotcha: a `404` or `500` **still resolves** the promise. `fetch` only rejects on a *network* failure. You must check `res.ok` and throw yourself, or your error branch never runs and you try to `.json()` an error page.
+
+### Cancel stale requests with `AbortController`
+
+If `userId` changes while a request is in flight, you now have two requests racing. Without cancellation, the slower (older) one can resolve *last* and overwrite the newer data — a classic **race condition**. Returning `controller.abort()` from the effect cancels the previous request before starting the next, so only the latest result wins. It also stops a "can't set state on an unmounted component" situation.
+
+### Guard the abort in `catch`
+
+Aborting rejects the promise with an `AbortError`. That's expected, not a real failure, so skip it in the `catch` — otherwise cancelling shows a spurious error.
+
+## Typing the Response
+
+`res.json()` returns `Promise<any>`, which quietly poisons your types. Give it a shape so everything downstream is checked:
+
+```tsx
+const res = await fetch("/api/users");
+const users = (await res.json()) as User[]; // assert the expected shape
+```
+
+A cast is the pragmatic minimum. For untrusted or critical data, **validate at the boundary** with a schema library (e.g. Zod) so a malformed response fails loudly at the fetch instead of crashing three components deep:
+
+```tsx
+const users = UserArraySchema.parse(await res.json()); // throws on bad data
+```
+
+The principle: types describe what you *expect*; validation confirms what you *got*. Assert for internal APIs you trust, validate for anything you don't.
+
+## Extracting a `useFetch` Hook
+
+The loading/error/data + effect boilerplate repeats on every screen — a perfect [custom hook](/blog/state-and-hooks). Extract it once, typed with a generic:
+
+```tsx
+type FetchState<T> = { data: T | null; loading: boolean; error: string | null };
+
+function useFetch<T>(url: string): FetchState<T> {
+  const [state, setState] = useState<FetchState<T>>({
+    data: null,
+    loading: true,
+    error: null,
+  });
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setState((s) => ({ ...s, loading: true, error: null }));
+
+    fetch(url, { signal: controller.signal })
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json() as Promise<T>;
+      })
+      .then((data) => setState({ data, loading: false, error: null }))
+      .catch((err) => {
+        if (err.name !== "AbortError")
+          setState({ data: null, loading: false, error: err.message });
+      });
+
+    return () => controller.abort();
+  }, [url]);
+
+  return state;
+}
+
+// Usage — fully typed by the generic
+const { data, loading, error } = useFetch<User[]>("/api/users");
+```
+
+Now every screen fetches in one line, with cancellation and error handling baked in. The generic `<T>` flows through, so `data` is typed as `User[] | null` at the call site.
+
+## Mutations and Refetching
+
+Fetching *reads* data; forms and buttons *change* it (POST/PUT/DELETE). A mutation needs its own loading/error state, and after it succeeds you usually **refetch** so the UI reflects the new server state:
+
+```tsx
+async function createTodo(text: string) {
+  const res = await fetch("/api/todos", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text }),
+  });
+  if (!res.ok) throw new Error("Failed to create todo");
+  return (await res.json()) as Todo;
+}
+
+// In a component: create, then refetch the list (or optimistically update)
+async function handleAdd(text: string) {
+  setSaving(true);
+  try {
+    await createTodo(text);
+    await refetchTodos();   // re-sync the list with the server
+  } catch (err) {
+    setSaveError((err as Error).message);
+  } finally {
+    setSaving(false);
+  }
+}
+```
+
+The advanced version is an **optimistic update** — update the UI immediately and roll back if the request fails — but "mutate, then refetch" is the correct, simplest baseline.
+
+## When to Reach for a Library
+
+The manual approach works, but a real app fetches the same data from many places, and you quickly want features that are tedious to build by hand:
+
+- **Caching** — don't re-fetch `/api/user` on every screen that needs it.
+- **Deduplication** — if three components request the same data at once, make one request.
+- **Background revalidation** — show cached data instantly, refresh it quietly.
+- **Refetch on focus/reconnect**, retries, pagination, and shared loading state.
+
+This is exactly what **TanStack Query** (and SWR) provide. The same fetch becomes:
+
+```tsx
+import { useQuery } from "@tanstack/react-query";
+
+function UserProfile({ userId }: { userId: string }) {
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["user", userId],       // cache key — dedups and caches by this
+    queryFn: () => fetchUser(userId), // your plain fetch function
+  });
+
+  if (isLoading) return <Spinner />;
+  if (error) return <p role="alert">{(error as Error).message}</p>;
+  return <Profile user={data!} />;
+}
+```
+
+You still write the fetch function; the library manages the *state machine, caching, and revalidation* around it. The rule of thumb: **hand-roll `useFetch` for a screen or two; adopt a query library once data is fetched in many places or you need caching.** Don't reach for it on day one, but don't rebuild it by hand on a large app either.
+
+## Common Mistakes
+
+- **Assuming `fetch` rejects on 404/500** — it doesn't; only network errors reject. Check `res.ok` and throw.
+- **No cleanup / cancellation** — an in-flight request can resolve after the component unmounts or after a newer request, causing a race. Use `AbortController` and abort in the effect cleanup.
+- **Only rendering the success state** — leaving loading and error unhandled gives blank screens and stuck spinners. Render all three branches.
+- **Treating `res.json()` as typed** — it's `any`. Cast to the expected type, or validate untrusted data with a schema.
+- **Refetch loop** — putting a fresh object/array in the effect's dependency array (or a function that changes every render) re-fetches forever. Depend on primitives; memoize functions.
+- **Fetching derived data** — if you can compute it from data you already have, don't make a request. Fetch is for the server, not for transforming local state.
+- **Rebuilding caching by hand everywhere** — once you're maintaining your own cache/dedup logic, that's the signal to adopt TanStack Query or SWR.
+
+## Exercises
+
+Try each before opening the solution.
+
+### Exercise 1 — Handle the HTTP error
+
+This fetch never shows an error on a 500. Fix it.
+
+```tsx
+fetch("/api/data")
+  .then((res) => res.json())
+  .then(setData)
+  .catch(() => setError("Failed"));
+```
+
+<details>
+
+<summary>Show solution</summary>
+
+```tsx
+fetch("/api/data")
+  .then((res) => {
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+  })
+  .then(setData)
+  .catch((err) => setError(err.message));
+```
+
+`fetch` resolves on a 500, so without the `res.ok` check the code happily tries to parse the error body and never hits `catch`.
+
+</details>
+
+### Exercise 2 — Cancel a stale request
+
+Add cancellation to this effect so a fast-changing `query` can't apply an out-of-order response.
+
+```tsx
+useEffect(() => {
+  fetch(`/api/search?q=${query}`).then((r) => r.json()).then(setResults);
+}, [query]);
+```
+
+<details>
+
+<summary>Show solution</summary>
+
+```tsx
+useEffect(() => {
+  const controller = new AbortController();
+  fetch(`/api/search?q=${query}`, { signal: controller.signal })
+    .then((r) => r.json())
+    .then(setResults)
+    .catch((err) => { if (err.name !== "AbortError") setError(err.message); });
+  return () => controller.abort();
+}, [query]);
+```
+
+Each keystroke aborts the previous request, so only the latest query's results are applied — no race.
+
+</details>
+
+### Exercise 3 — Type a fetch helper
+
+Write a generic `getJSON<T>(url)` that fetches, checks `res.ok`, and returns `Promise<T>`.
+
+<details>
+
+<summary>Show solution</summary>
+
+```tsx
+async function getJSON<T>(url: string): Promise<T> {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return (await res.json()) as T;
+}
+// const users = await getJSON<User[]>("/api/users");
+```
+
+The generic `<T>` lets the caller declare the expected shape, so the result is typed without casting at every call site.
+
+</details>
+
+### Exercise 4 — Pick the tool
+
+You're fetching the current user in the navbar, the profile page, and the settings page. Manual `useFetch` in each, or a query library — and why?
+
+<details>
+
+<summary>Show solution</summary>
+
+A **query library** (TanStack Query / SWR). The same `/api/user` is needed in three places; with a shared `queryKey` it's fetched once, cached, and deduplicated, and every consumer shares the loading/error state and stays in sync. Hand-rolling three `useFetch` calls would fire three requests and keep three copies of the state.
+
+</details>
+
+## The Mental Model to Keep
+
+Treat every request as a small **state machine** — *loading*, *success (data)*, or *error* — and render all three branches so users never hit a blank screen. Fetch inside **`useEffect`**, and get the three details that trip everyone up right: **check `res.ok`** because `fetch` doesn't reject on 4xx/5xx, **cancel with `AbortController`** in the cleanup so a stale response can't win a race or set state after unmount, and **ignore `AbortError`** in your catch. **Type the response** (assert for trusted APIs, validate untrusted ones), and extract the repeated boilerplate into a generic **`useFetch`** hook. For changes, **mutate then refetch** (optimistic updates are the upgrade). And know the ceiling of the manual approach: once the same data is fetched in many places or you need caching, dedup, and revalidation, adopt **TanStack Query** rather than rebuilding it. Fetching is just `useEffect` plus a state machine plus cancellation — keep those three straight and the subtle bugs disappear.

@@ -1,0 +1,323 @@
+---
+title: "React Routing with React Router: From Zero to Hero"
+description: "A practical guide to client-side routing in React with React Router and TypeScript — what a SPA router does, setting up routes, Link and NavLink navigation, nested routes and layouts with Outlet, dynamic URL params with useParams, reading and setting query strings with useSearchParams, programmatic navigation with useNavigate, redirects and protected routes, 404 handling, and lazy-loading routes — with common mistakes and hands-on exercises."
+publishedAt: "2026-08-01"
+translationKey: "routing"
+tags: ["React", "TypeScript", "React Router", "Frontend"]
+---
+
+A single-page app renders many "pages" without ever doing a full browser reload — the URL changes, the view swaps, and it feels instant. The tool that maps URLs to components and keeps the two in sync is a **router**. In React the de-facto choice is **React Router**, and this post is a practical tour of it: routes, links, nested layouts, URL params, query strings, and guarding pages. It builds on [components & props](/blog/components-props) and [state & hooks](/blog/state-and-hooks), and everything is TypeScript. (This is framework-agnostic React with Vite; the **Next.js basics** post covers routing the Next way separately.)
+
+> The mental model: a router is just **state derived from the URL**. The current path *is* a piece of state, and your route config is a function that maps that path to the component tree to render. Navigating doesn't reload the page — it updates the URL and lets React re-render the matching route. Everything else (params, query strings, redirects) is reading or writing that URL state.
+
+## What a Router Does
+
+Without a router, a React app is one page. A router lets you:
+
+- **Map URLs to components** — `/about` renders `<About/>`, `/users/42` renders `<UserProfile/>`.
+- **Navigate without a full reload** — clicking a link swaps the view and updates the address bar via the History API, preserving app state and avoiding a white flash.
+- **Keep the UI shareable and bookmarkable** — the URL fully describes what's on screen, so refresh and back/forward just work.
+
+Install it into a Vite React app:
+
+```bash
+npm install react-router-dom
+```
+
+## Setting Up Routes
+
+Wrap your app in a `BrowserRouter`, then declare a `<Routes>` block with one `<Route>` per URL. Each route maps a `path` to the `element` to render:
+
+```tsx
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+
+function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/about" element={<About />} />
+        <Route path="/users/:id" element={<UserProfile />} />
+        <Route path="*" element={<NotFound />} />   {/* catch-all 404 */}
+      </Routes>
+    </BrowserRouter>
+  );
+}
+```
+
+React Router matches the current URL against these paths and renders the first `element` that fits. The `:id` segment is a **dynamic parameter** (any value matches, and you can read it), and `path="*"` is the catch-all that handles anything unmatched — your 404 page.
+
+## Navigating with `Link` and `NavLink`
+
+Never use a plain `<a href>` for internal navigation — it triggers a full page reload and throws away your app state. Use **`Link`**, which navigates client-side:
+
+```tsx
+import { Link } from "react-router-dom";
+
+<Link to="/about">About</Link>
+<Link to={`/users/${user.id}`}>View profile</Link>
+```
+
+For navigation menus, **`NavLink`** is `Link` plus awareness of whether it's the *active* route — it gives you a callback to style the current link:
+
+```tsx
+import { NavLink } from "react-router-dom";
+
+<NavLink
+  to="/about"
+  className={({ isActive }) => (isActive ? "nav-link nav-link--active" : "nav-link")}
+>
+  About
+</NavLink>
+```
+
+`NavLink` passes `{ isActive }` so you can highlight the page the user is on — the standard pattern for a navbar.
+
+## Nested Routes and Layouts with `Outlet`
+
+Most apps share chrome — a header, sidebar, footer — across many pages. Instead of repeating it in every page component, you nest routes under a **layout route** and mark where the child should render with `<Outlet/>`:
+
+```tsx
+import { Outlet } from "react-router-dom";
+
+function DashboardLayout() {
+  return (
+    <div className="dashboard">
+      <Sidebar />
+      <main>
+        <Outlet />   {/* the matched child route renders here */}
+      </main>
+    </div>
+  );
+}
+
+// Nested route config: children render inside DashboardLayout's <Outlet/>
+<Routes>
+  <Route path="/dashboard" element={<DashboardLayout />}>
+    <Route index element={<Overview />} />          {/* /dashboard */}
+    <Route path="settings" element={<Settings />} />  {/* /dashboard/settings */}
+    <Route path="team" element={<Team />} />          {/* /dashboard/team */}
+  </Route>
+</Routes>
+```
+
+The layout renders once and stays mounted; only the `<Outlet/>` content changes as you move between `/dashboard/settings` and `/dashboard/team`. The **`index`** route is the default child shown at the parent's exact path. Child paths are *relative* — `settings`, not `/settings` — so they extend the parent.
+
+## Reading URL Parameters with `useParams`
+
+A dynamic segment like `:id` is read with the **`useParams`** hook. Type its shape so you're not working with `any`:
+
+```tsx
+import { useParams } from "react-router-dom";
+
+function UserProfile() {
+  const { id } = useParams<{ id: string }>();  // from /users/:id
+  // id is string | undefined — narrow before use
+  if (!id) return <p>No user selected.</p>;
+  return <h1>User {id}</h1>;
+}
+```
+
+URL params are always **strings** (or `undefined` if the segment is optional), so convert when you need a number (`Number(id)`) and handle the missing case. This is how a single `UserProfile` component serves every user: the URL supplies the id.
+
+## Query Strings with `useSearchParams`
+
+For optional, unordered data — filters, search terms, pagination, sort order — use the **query string** (`?q=react&page=2`), read and written with **`useSearchParams`**. It works like `useState`, but the state lives in the URL:
+
+```tsx
+import { useSearchParams } from "react-router-dom";
+
+function ProductList() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const query = searchParams.get("q") ?? "";
+  const page = Number(searchParams.get("page") ?? "1");
+
+  return (
+    <input
+      value={query}
+      onChange={(e) => setSearchParams({ q: e.target.value, page: "1" })}
+    />
+  );
+}
+```
+
+Because the state is in the URL, a filtered/paginated view is **shareable and survives refresh** — a huge UX win over holding those filters in component state. Reach for the query string whenever the answer to "should this be in the URL?" is yes.
+
+## Programmatic Navigation with `useNavigate`
+
+Sometimes you navigate in response to logic, not a click — after a form submits, once login succeeds, on a timeout. The **`useNavigate`** hook returns a function that changes the route imperatively:
+
+```tsx
+import { useNavigate } from "react-router-dom";
+
+function LoginForm() {
+  const navigate = useNavigate();
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    await logIn();
+    navigate("/dashboard");           // go to a route
+    // navigate(-1);                   // go back one entry (like the back button)
+    // navigate("/login", { replace: true }); // replace, don't add to history
+  }
+
+  return <form onSubmit={handleSubmit}>{/* ... */}</form>;
+}
+```
+
+Use `replace: true` when you don't want the current page in the history stack — e.g. after login you don't want "back" to return to the login form.
+
+## Redirects and Protected Routes
+
+To redirect declaratively during render, render a **`<Navigate>`** element. This is the building block of a **protected route** — a wrapper that renders its children only when the user is allowed, and redirects to login otherwise:
+
+```tsx
+import { Navigate, useLocation } from "react-router-dom";
+
+function RequireAuth({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
+  const location = useLocation();
+
+  if (!user) {
+    // Redirect to login, remembering where they were headed
+    return <Navigate to="/login" replace state={{ from: location }} />;
+  }
+  return <>{children}</>;
+}
+
+// Wrap the protected element
+<Route
+  path="/dashboard"
+  element={
+    <RequireAuth>
+      <Dashboard />
+    </RequireAuth>
+  }
+/>
+```
+
+Passing `state={{ from: location }}` lets the login page send the user back where they intended after authenticating (read it with `useLocation()`). `replace` keeps the login redirect out of the history so back doesn't bounce them.
+
+## Handling 404s
+
+The catch-all route `path="*"` matches any URL no other route claimed — put your not-found page there. It works at any level, including inside a nested layout, so unmatched child paths show a 404 within the layout chrome:
+
+```tsx
+<Route path="*" element={<NotFound />} />
+```
+
+## Lazy-Loading Routes for Performance
+
+You don't need every page's code in the initial bundle. Split routes with `React.lazy` and a `<Suspense>` fallback so each page's code loads only when first visited — smaller initial download, faster first paint:
+
+```tsx
+import { lazy, Suspense } from "react";
+
+const Settings = lazy(() => import("./pages/Settings"));
+
+<Route
+  path="settings"
+  element={
+    <Suspense fallback={<Spinner />}>
+      <Settings />
+    </Suspense>
+  }
+/>
+```
+
+This is one of the highest-impact performance wins in a large SPA: the user downloads the dashboard code only when they open the dashboard. (More in the performance topics of the curriculum.)
+
+## Common Mistakes
+
+- **Using `<a href>` for internal links** — causes a full reload and loses app state. Use `Link`/`NavLink`; reserve `<a>` for external URLs.
+- **Absolute child paths in nested routes** — writing `path="/settings"` under a parent breaks nesting. Child paths are relative: `path="settings"`.
+- **Assuming params are numbers** — `useParams` values are strings or `undefined`. Convert with `Number(...)` and handle the missing case.
+- **Putting shareable state in `useState`** — filters, tabs, and pagination that should survive refresh belong in the URL via `useSearchParams`.
+- **Forgetting `replace` on auth redirects** — without it, the back button returns to the login page or a page the user can't access.
+- **No catch-all route** — without `path="*"`, unmatched URLs render nothing. Always add a 404.
+- **Calling `useNavigate`/`useParams` outside a Router** — router hooks only work inside the `<BrowserRouter>` tree; rendering a component that uses them outside throws.
+
+## Exercises
+
+Try each before opening the solution.
+
+### Exercise 1 — A route with a param
+
+Add a route for `/posts/:slug` that renders a `Post` component, and read the `slug` inside it.
+
+<details>
+
+<summary>Show solution</summary>
+
+```tsx
+<Route path="/posts/:slug" element={<Post />} />;
+
+function Post() {
+  const { slug } = useParams<{ slug: string }>();
+  return <h1>{slug}</h1>;
+}
+```
+
+The `:slug` segment matches any value; `useParams` reads it as a string (narrow the `undefined` case before use).
+
+</details>
+
+### Exercise 2 — An active nav link
+
+Render a `NavLink` to `/about` that gets the class `active` only when it's the current route.
+
+<details>
+
+<summary>Show solution</summary>
+
+```tsx
+<NavLink to="/about" className={({ isActive }) => (isActive ? "active" : "")}>
+  About
+</NavLink>
+```
+
+`NavLink` passes `isActive`; return the class string based on it. (You can also pass `className` a plain string and use the `&.active` selector React Router adds by default.)
+
+</details>
+
+### Exercise 3 — Navigate after an action
+
+After a `saveItem()` call resolves, send the user to `/items`.
+
+<details>
+
+<summary>Show solution</summary>
+
+```tsx
+const navigate = useNavigate();
+
+async function onSave() {
+  await saveItem();
+  navigate("/items");
+}
+```
+
+`useNavigate` returns a function you call imperatively — here after the async save completes.
+
+</details>
+
+### Exercise 4 — Read a query param
+
+On a page, read `?tab=` from the URL, defaulting to `"overview"` when absent.
+
+<details>
+
+<summary>Show solution</summary>
+
+```tsx
+const [searchParams] = useSearchParams();
+const tab = searchParams.get("tab") ?? "overview";
+```
+
+`useSearchParams` returns a `URLSearchParams`; `.get()` returns the value or `null`, so `?? "overview"` supplies the default.
+
+</details>
+
+## The Mental Model to Keep
+
+A router turns the **URL into state**: your route config maps each path to a component tree, and navigating updates the URL (via the History API) so React re-renders the match — no full reload, so app state and scroll survive. Use **`Link`/`NavLink`** for navigation (never `<a>` for internal links), compose shared chrome with **nested routes and `<Outlet/>`**, and read the dynamic parts of the URL with **`useParams`** (always strings) and **`useSearchParams`** (for shareable filters and pagination that should survive refresh). Navigate imperatively with **`useNavigate`**, redirect and guard pages with **`<Navigate>`** and a `RequireAuth` wrapper (remember `replace`), always add a **`path="*"`** 404, and **lazy-load** routes to keep the initial bundle small. Once you see the URL as just another piece of state your UI is a function of, routing stops being a separate system and becomes the same `UI = f(state)` model applied to the address bar.

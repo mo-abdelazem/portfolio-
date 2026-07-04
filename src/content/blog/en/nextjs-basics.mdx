@@ -1,0 +1,331 @@
+---
+title: "Next.js Basics: From Zero to Hero"
+description: "A practical introduction to Next.js and the App Router with TypeScript — what a React framework adds on top of React, file-based routing with folders and page.tsx, layouts and nested routes, Server vs Client Components, fetching data on the server, rendering strategies (SSG/SSR/ISR), navigation with next/link and useRouter, special files (loading, error, not-found), the Metadata API for SEO, and a first look at Server Actions and next/image — with common mistakes and hands-on exercises."
+publishedAt: "2026-08-15"
+translationKey: "nextjs-basics"
+tags: ["React", "TypeScript", "Next.js", "Frontend"]
+---
+
+React gives you components; **Next.js** gives you the framework around them — routing, server rendering, data fetching, and a pile of performance optimizations — so you ship a real app instead of assembling the plumbing yourself. This post is a practical tour of Next.js and its **App Router**, the modern architecture built on React Server Components. It builds on everything in the series — [React fundamentals](/blog/react-fundamentals), [state & hooks](/blog/state-and-hooks), [routing](/blog/routing), and [data fetching](/blog/data-fetching) — and shows how Next.js reshapes each. Everything is TypeScript. (This site is built with the App Router, so you're reading output from exactly this stack.)
+
+> The mental shift that unlocks the App Router: **components render on the server by default, and only the interactive bits ship to the browser.** A Server Component runs on the server, can fetch data directly, and sends finished HTML — zero JavaScript. You opt *into* the client with `"use client"` only where you need interactivity (state, effects, events). Get that boundary right and Next.js stops feeling magical.
+
+## What Next.js Adds to React
+
+Plain React (with Vite) is a client-side library: the browser downloads your JS, then renders. Next.js is a **framework** that adds the things every production app needs:
+
+- **File-based routing** — folders become URLs, no router config.
+- **Server rendering** — pages render to HTML on the server (SSR/SSG) for speed and SEO.
+- **Server Components & data fetching** — fetch on the server, right inside a component.
+- **Built-in optimization** — image, font, and script optimization; automatic code-splitting.
+
+You get a Next.js app with:
+
+```bash
+npx create-next-app@latest my-app
+```
+
+Choose TypeScript and the App Router when prompted. The key folder is `app/`.
+
+## File-Based Routing: Folders Are Routes
+
+In the App Router, the URL structure *is* your folder structure inside `app/`. A folder is a route segment; a `page.tsx` file in it makes that segment a page:
+
+```
+app/
+  page.tsx            →  /
+  about/page.tsx      →  /about
+  blog/page.tsx       →  /blog
+  blog/[slug]/page.tsx →  /blog/:slug   (dynamic segment)
+```
+
+A page is just a default-exported component:
+
+```tsx
+// app/about/page.tsx  →  renders at /about
+export default function AboutPage() {
+  return <h1>About us</h1>;
+}
+```
+
+**Dynamic segments** use square brackets, and the value arrives as a prop. In the App Router, `params` is a promise you await:
+
+```tsx
+// app/blog/[slug]/page.tsx  →  /blog/anything
+export default async function PostPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
+  return <h1>Post: {slug}</h1>;
+}
+```
+
+No `<Routes>`, no `<Route>` — the filesystem is the router. This is the biggest day-one difference from [React Router](/blog/routing).
+
+## Layouts and Nested Routes
+
+A `layout.tsx` wraps every page in its folder (and all nested folders), rendering shared chrome around a `children` slot — the App Router equivalent of React Router's `<Outlet/>`. The root layout is required and wraps the whole app:
+
+```tsx
+// app/layout.tsx — wraps every page
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html lang="en">
+      <body>
+        <Nav />
+        {children}
+        <Footer />
+      </body>
+    </html>
+  );
+}
+```
+
+Nest a `layout.tsx` deeper (say `app/dashboard/layout.tsx`) and it wraps only that section, *inside* the root layout. Layouts stay mounted as you navigate between their child pages, so their state and the scroll position persist.
+
+## Server Components vs Client Components
+
+This is the defining concept of the App Router. **Every component is a Server Component by default.** It runs on the server, never ships its code to the browser, and can do server-only things — read a database, use secrets, fetch data directly. The result is sent as HTML.
+
+But server components **can't** use state, effects, or browser events, because those need the client. When you need interactivity, add the **`"use client"`** directive at the top of the file:
+
+```tsx
+"use client"; // this component (and its imports) run in the browser
+
+import { useState } from "react";
+
+export default function Counter() {
+  const [count, setCount] = useState(0); // hooks require a Client Component
+  return <button onClick={() => setCount(count + 1)}>{count}</button>;
+}
+```
+
+The rule of thumb:
+
+- **Server Component (default)** — fetching data, reading from a backend, rendering static content, keeping secrets and large dependencies off the client.
+- **Client Component (`"use client"`)** — anything with `useState`/`useEffect`, event handlers, or browser APIs.
+
+Keep client components small and push them to the leaves of the tree. A common pattern: a Server Component fetches data and passes it as props to a small interactive Client Component. You don't mark the whole page `"use client"` — just the button that needs it.
+
+## Fetching Data on the Server
+
+Because a Server Component runs on the server, you fetch data by making the component `async` and `await`-ing directly — no `useEffect`, no loading state, no `useFetch`. The data is ready before the HTML is sent:
+
+```tsx
+// A Server Component — fetch runs on the server, at render time
+export default async function ProductsPage() {
+  const res = await fetch("https://api.example.com/products");
+  const products = (await res.json()) as Product[];
+
+  return (
+    <ul>
+      {products.map((p) => (
+        <li key={p.id}>{p.name}</li>
+      ))}
+    </ul>
+  );
+}
+```
+
+Compare this to the [client-side data fetching](/blog/data-fetching) post: on the server there's no request waterfall in the browser, no loading spinner for the initial data, and no secrets leaking — the fetch happens before the page reaches the user. Next.js also **caches and dedupes** these `fetch` calls automatically, and you control freshness with options like `{ cache: "no-store" }` (always fresh) or `{ next: { revalidate: 60 } }` (re-fetch at most every 60s).
+
+## Rendering Strategies: SSG, SSR, ISR
+
+Next.js decides *when* a page is rendered, which controls its speed and freshness:
+
+- **Static (SSG)** — rendered once at build time into HTML. Fastest possible; ideal for content that rarely changes (marketing pages, blog posts). The default when a page has no dynamic data.
+- **Server-rendered (SSR)** — rendered on each request. Use for per-request or per-user data (`cache: "no-store"` or dynamic APIs opt a route into this).
+- **Incremental (ISR)** — static, but re-generated in the background on an interval (`revalidate`). You get static speed with periodic freshness.
+
+You mostly don't choose these with a config flag — your data-fetching choices (whether a fetch is cached, whether you read request-specific data) determine the strategy. The mental model: **static by default, dynamic when you ask for fresh or request-specific data.**
+
+## Navigation: `next/link` and `useRouter`
+
+Navigate with `next/link` — like React Router's `Link`, it does client-side navigation and prefetches the target for instant transitions:
+
+```tsx
+import Link from "next/link";
+
+<Link href="/about">About</Link>
+<Link href={`/blog/${post.slug}`}>{post.title}</Link>
+```
+
+For programmatic navigation (after a form submit, say), use `useRouter` — but note it comes from `next/navigation` and only works in a **Client Component**:
+
+```tsx
+"use client";
+import { useRouter } from "next/navigation";
+
+export default function BackButton() {
+  const router = useRouter();
+  return <button onClick={() => router.back()}>Go back</button>;
+}
+```
+
+## Special Files: `loading`, `error`, `not-found`
+
+The App Router gives you file conventions for common UI states — drop them in a route folder and Next.js wires them up:
+
+```
+app/blog/
+  page.tsx        → the page
+  loading.tsx     → shown instantly while the page's data loads (Suspense)
+  error.tsx       → shown if the page throws (must be a Client Component)
+  not-found.tsx   → shown for notFound() or unmatched dynamic routes
+```
+
+```tsx
+// app/blog/loading.tsx — an instant loading state, no state management needed
+export default function Loading() {
+  return <Spinner />;
+}
+```
+
+`loading.tsx` uses React Suspense under the hood: the layout renders immediately and the page streams in when its data is ready — no manual loading flag. `error.tsx` is a boundary that catches render errors in that segment.
+
+## SEO with the Metadata API
+
+Next.js handles `<head>` for you through a **Metadata API** — export a `metadata` object (or a `generateMetadata` function for dynamic pages) and Next renders the tags, no `react-helmet` needed:
+
+```tsx
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "About — My Site",
+  description: "Who we are and what we build.",
+};
+
+// Dynamic pages compute it from params:
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const post = await getPost(slug);
+  return { title: post.title, description: post.excerpt };
+}
+```
+
+Server rendering plus real metadata is why Next.js pages are SEO-friendly out of the box — crawlers get finished HTML with correct titles and descriptions.
+
+## A First Look: Server Actions and `next/image`
+
+Two more things you'll meet early:
+
+- **Server Actions** let a form call server code directly, without building an API route. A function marked `"use server"` runs on the server when the form submits — the modern way to handle mutations.
+- **`next/image`** replaces `<img>` with automatic resizing, lazy-loading, and modern formats, for a big performance and Core Web Vitals win.
+
+```tsx
+import Image from "next/image";
+
+<Image src="/hero.jpg" alt="" width={1200} height={600} priority />;
+```
+
+These are worth knowing exist now and learning deeply as you build.
+
+## Common Mistakes
+
+- **Putting `"use client"` at the top of the whole page** — you ship everything to the browser and lose server rendering. Mark only the small interactive components; keep pages as Server Components.
+- **Using hooks in a Server Component** — `useState`/`useEffect` throw without `"use client"`. Interactivity needs a Client Component.
+- **Using `<a href>` for internal links** — full reload, no prefetch. Use `next/link`.
+- **Importing `useRouter` from `next/router`** — that's the old Pages Router. In the App Router it's `next/navigation`.
+- **Forgetting `params`/`searchParams` are promises** — in the App Router you must `await` them.
+- **Fetching on the client when the server would do** — moving initial data fetching into a `useEffect` reintroduces spinners and waterfalls Next.js avoids. Fetch in the Server Component when you can.
+- **Leaking secrets into Client Components** — anything in a `"use client"` file (and its imports) reaches the browser. Keep API keys in Server Components / server-only code.
+
+## Exercises
+
+Try each before opening the solution.
+
+### Exercise 1 — Make a route
+
+What file do you create so the URL `/pricing` renders a `PricingPage`?
+
+<details>
+
+<summary>Show solution</summary>
+
+`app/pricing/page.tsx`, default-exporting the component:
+
+```tsx
+export default function PricingPage() {
+  return <h1>Pricing</h1>;
+}
+```
+
+A folder under `app/` is the route segment; `page.tsx` makes it a navigable page.
+
+</details>
+
+### Exercise 2 — Server or Client?
+
+A component shows a live-updating counter with a button. Server or Client Component, and what makes it so?
+
+<details>
+
+<summary>Show solution</summary>
+
+A **Client Component** — it needs `useState` and an `onClick` handler, both of which require the browser. Add `"use client"` at the top of the file. (Keep it small; a parent Server Component can still render around it.)
+
+</details>
+
+### Exercise 3 — Fetch in a Server Component
+
+Write a Server Component page that fetches `/api/posts` and lists the titles — no `useEffect`.
+
+<details>
+
+<summary>Show solution</summary>
+
+```tsx
+export default async function PostsPage() {
+  const res = await fetch("https://example.com/api/posts");
+  const posts = (await res.json()) as Post[];
+  return (
+    <ul>
+      {posts.map((p) => (
+        <li key={p.id}>{p.title}</li>
+      ))}
+    </ul>
+  );
+}
+```
+
+The component is `async` and awaits the fetch directly; the data is ready before the HTML is sent, so there's no loading state to manage.
+
+</details>
+
+### Exercise 4 — Dynamic metadata
+
+For `app/blog/[slug]/page.tsx`, how do you set the page `<title>` from the post's title?
+
+<details>
+
+<summary>Show solution</summary>
+
+```tsx
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const post = await getPost(slug);
+  return { title: post.title };
+}
+```
+
+Export `generateMetadata` (not the static `metadata` object) when the tags depend on the route's params, and Next renders the `<head>` for you.
+
+</details>
+
+## The Mental Model to Keep
+
+Next.js is React plus the framework around it: the **filesystem is the router** (`app/…/page.tsx` folders become URLs, `layout.tsx` wraps them like an `<Outlet/>`), and components are **Server Components by default** — they run on the server, fetch data directly with `async`/`await`, keep secrets and heavy code off the client, and send finished HTML. You opt into the browser with **`"use client"`** only for the interactive leaves that need state, effects, or events — keep that boundary small. Data fetching moves to the **server** (no spinners or waterfalls for initial data; Next caches and revalidates it), which also decides your **rendering strategy** — static by default, dynamic when you ask for fresh or per-request data. Navigate with **`next/link`**, reach for the **special files** (`loading`, `error`, `not-found`) instead of hand-rolling those states, and get SEO for free through the **Metadata API**. Hold the "server by default, client on purpose" boundary in mind, and the App Router — and the whole `UI = f(state)` model extended across the server/client divide — clicks into place.

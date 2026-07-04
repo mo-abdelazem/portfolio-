@@ -1,0 +1,510 @@
+---
+title: "React Fundamentals: From Zero to Hero"
+description: "A complete, practical guide to the React mental model every frontend developer needs — why React exists, thinking declaratively (UI = f(state)), components and JSX, typed props with TypeScript and one-way data flow, rendering lists and keys, conditional rendering, handling events, state with useState, immutable updates, the re-render model, purity and composition, common mistakes, and hands-on exercises with solutions."
+publishedAt: "2026-07-11"
+translationKey: "react-fundamentals"
+tags: ["React", "TypeScript", "Frontend", "Fundamentals"]
+---
+
+Most people learn React as a pile of syntax — `useState` here, a `.map()` with a `key` there — and never grasp the one idea that makes all of it obvious: **your UI is a function of your state**. Get that, and JSX, re-rendering, keys, immutability, and the rules of hooks stop being rules to memorize and become things you can derive. This is that mental model, built from the ground up. It assumes you're comfortable with [JavaScript fundamentals](/blog/javascript-fundamentals) — functions as values, destructuring, spread, and array methods like `map` — because React is *just JavaScript*, not a new language.
+
+We'll write **TypeScript** throughout, because that's how professional React is written and you've already covered [TypeScript intro](/blog/typescript-intro): typed props make components self-documenting and catch a whole class of bugs before they run. Don't let the annotations distract you — every example is the same React with the types removed, so if you're on plain `.jsx`, just ignore the `: type` parts.
+
+> The single idea to internalize: in React you never touch the DOM directly. You **describe** what the screen should look like for the current state, and React figures out the minimal DOM changes to get there. Write `UI = f(state)`, change the state, and the UI follows. Almost every React concept falls out of that one equation.
+
+## Why React Exists
+
+Before React, building an interactive UI meant [manually manipulating the DOM](/blog/dom-manipulation): find an element, change its text, add a class, remove a node, keep it all in sync with your data by hand. This works until it doesn't — as an app grows, the number of "when X changes, remember to update Y and Z" rules explodes, and the bugs are always some corner you forgot to update.
+
+React flips the model. Instead of writing *steps to change the page* (imperative), you write *what the page should be* for any given data (declarative):
+
+```tsx
+// Imperative (vanilla DOM): you manage every transition by hand
+if (count > 0) {
+  badge.textContent = String(count);
+  badge.classList.remove("hidden");
+} else {
+  badge.classList.add("hidden");
+}
+
+// Declarative (React): you describe the result, React syncs the DOM
+return count > 0 ? <span className="badge">{count}</span> : null;
+```
+
+You stop thinking about *how* to update the DOM and start thinking about *what* it should show. React does the diffing and patching for you. That's the entire value proposition.
+
+## Setting Up (30 Seconds)
+
+You don't need a complex toolchain to start. **Vite** scaffolds a modern React + TypeScript project instantly:
+
+```bash
+npm create vite@latest my-app -- --template react-ts
+cd my-app && npm install && npm run dev
+```
+
+That gives you a dev server with instant hot-reloading and TypeScript already wired up (`.tsx` files). Everything in this post runs in that setup — no framework required. (Meta-frameworks like Next.js add routing and server rendering on top, but the fundamentals are identical.)
+
+## Thinking Declaratively: UI = f(state)
+
+This is the whole paradigm shift, so it's worth stating plainly. A React app is a function that takes **state** (your data) and returns a **description of the UI**. When the state changes, React calls your function again and updates the screen to match.
+
+```
+        state ──▶  your components  ──▶  UI description  ──▶  React updates the DOM
+          ▲                                                          │
+          └──────────────  events change the state  ◀───────────────┘
+```
+
+You never write "change this text" or "hide that div." You write "for *this* state, the UI looks like *this*," and you change the state. React handles the rest. Hold onto this loop — every section below is a piece of it.
+
+## Components: Functions That Return UI
+
+A **component** is a JavaScript function that returns a piece of UI. That's it. By convention its name is **capitalized** (so React can tell your components apart from HTML tags).
+
+```tsx
+function Welcome() {
+  return <h1>Hello, world</h1>;
+}
+
+// Components compose — you use them like custom HTML tags
+function App() {
+  return (
+    <main>
+      <Welcome />
+      <Welcome />
+    </main>
+  );
+}
+```
+
+Components are the unit of reuse and composition in React. A real app is a tree of them: an `App` renders a `Header`, `Sidebar`, and `Feed`; the `Feed` renders many `Post` components; and so on. You build big UIs by nesting small, focused functions.
+
+> Note: you'll also see **class components** in older code (`class Welcome extends React.Component`). They still work, but function components with hooks are the modern standard for everything — this post uses functions exclusively.
+
+## JSX: HTML-in-JavaScript
+
+That `<h1>Hello</h1>` inside a function isn't a string and isn't HTML — it's **JSX**, a syntax extension that lets you write markup in JavaScript. A build tool compiles it into plain function calls before it runs. You mostly write it like HTML, with a few important differences:
+
+```tsx
+function Card({ title, done }: { title: string; done: boolean }) {
+  return (
+    <div className="card">           {/* class -> className (class is reserved in JS) */}
+      <label htmlFor="agree">Title</label> {/* for -> htmlFor */}
+      <h2>{title}</h2>               {/* {} drops into JavaScript */}
+      <p>{done ? "✅ Done" : "⏳ Pending"}</p>  {/* any JS expression works */}
+      <img src="/logo.png" alt="" /> {/* tags must self-close */}
+    </div>
+  );
+}
+```
+
+The rules that trip up beginners:
+
+- **`{ }` is an escape hatch into JavaScript.** Anything between braces is a JS *expression* — a variable, a function call, a ternary, a `.map()`. Statements like `if` and `for` don't go here.
+- **`className` not `class`**, **`htmlFor` not `for`** — because `class` and `for` are reserved words in JavaScript. Most other attributes are camelCased (`onClick`, `tabIndex`).
+- **Every tag must close** — `<img />`, `<br />`, `<input />`.
+- **A component returns one root element.** To return siblings without a wrapper `<div>`, use a **Fragment**: `<>...</>`.
+
+```tsx
+return (
+  <>
+    <Header />
+    <Main />
+  </>  // Fragment: groups children with no extra DOM node
+);
+```
+
+## Props: Passing Data Down
+
+Components become useful when they're configurable. **Props** are the arguments you pass to a component — exactly like function parameters. You pass them as attributes; the component receives them as a single object, which you almost always destructure:
+
+```tsx
+// Parent passes props (like HTML attributes)
+<Greeting name="Ada" excited={true} />
+<Avatar user={currentUser} size={48} />
+
+// Child receives them — destructure for clean access
+function Greeting({ name, excited = false }: { name: string; excited?: boolean }) {
+  return <p>Hello, {name}{excited ? "!" : "."}</p>;
+}
+```
+
+### Typing props
+
+In TypeScript you describe a component's props with a `type` (or `interface`) — this is the single most valuable place types earn their keep, because they document exactly what a component needs and error the moment a caller passes the wrong thing:
+
+```tsx
+type GreetingProps = {
+  name: string;
+  excited?: boolean;   // the ? makes it optional
+};
+
+function Greeting({ name, excited = false }: GreetingProps) {
+  return <p>Hello, {name}{excited ? "!" : "."}</p>;
+}
+
+<Greeting name="Ada" />               // ✅
+<Greeting excited={true} />           // ❌ compile error: `name` is required
+<Greeting name={42} />                // ❌ compile error: name must be a string
+```
+
+Two rules define how props work, and they matter enormously:
+
+1. **Data flows one way: down.** A parent passes props to a child; the child can't change them. This "one-way data flow" is what makes React apps predictable — you always know where a value came from (the parent above it).
+2. **Props are read-only.** A component must never modify its own props. Treat them as a read-only snapshot for this render. If a child needs to change something, the parent passes down a *function* the child can call (more on that under events).
+
+### `children`: components as containers
+
+Whatever you nest *between* a component's tags arrives as a special prop called `children`, typed as `React.ReactNode` (anything renderable). This is how you build reusable wrappers:
+
+```tsx
+type PanelProps = {
+  title: string;
+  children: React.ReactNode;
+};
+
+function Panel({ title, children }: PanelProps) {
+  return (
+    <section className="panel">
+      <h2>{title}</h2>
+      <div className="panel__body">{children}</div>
+    </section>
+  );
+}
+
+// Usage — anything inside becomes `children`
+<Panel title="Settings">
+  <p>Put whatever you want here.</p>
+  <button>Save</button>
+</Panel>
+```
+
+`children` is the key to composition — a `Panel`, `Card`, or `Modal` doesn't need to know what it wraps.
+
+## Rendering Lists with `.map()` and Keys
+
+There's no special loop syntax in JSX — you render a list by mapping an array of data to an array of elements, using the same [`map`](/blog/functional-javascript) you already know:
+
+```tsx
+type Todo = { id: number; text: string };
+
+function TodoList({ todos }: { todos: Todo[] }) {
+  return (
+    <ul>
+      {todos.map((todo) => (
+        <li key={todo.id}>{todo.text}</li>  // each item needs a stable key
+      ))}
+    </ul>
+  );
+}
+```
+
+The `key` is required, and it matters more than it looks. React uses keys to match elements between renders so it can tell what was **added, removed, or reordered** — and update only those, instead of rebuilding the whole list.
+
+- **Use a stable, unique ID** from your data (`todo.id`, `user.email`).
+- **Don't use the array index as a key** when the list can reorder, filter, or have items inserted/removed. If items shift position, index keys make React associate the wrong data with the wrong element — causing subtle bugs like an input's text jumping to the wrong row. Index keys are only safe for a static list that never changes order.
+
+## Conditional Rendering
+
+Because JSX values are just expressions, you show or hide UI with ordinary JavaScript:
+
+```tsx
+type StatusProps = { user: { name: string } | null; unread: number };
+
+function Status({ user, unread }: StatusProps) {
+  return (
+    <div>
+      {/* ternary: one of two branches */}
+      {user ? <p>Welcome, {user.name}</p> : <a href="/login">Sign in</a>}
+
+      {/* && : render the right side only if the left is truthy */}
+      {unread > 0 && <span className="badge">{unread}</span>}
+
+      {/* return null to render nothing */}
+      {!user && null}
+    </div>
+  );
+}
+```
+
+One classic trap with `&&`: if the left side is the number `0`, React renders `0` on the screen instead of nothing, because `0` is falsy but still a renderable value. Guard with a real boolean:
+
+```tsx
+{items.length > 0 && <List items={items} />}   // ✅ boolean on the left
+{items.length && <List items={items} />}        // ❌ renders "0" when empty
+```
+
+## Handling Events
+
+You respond to user interaction with event handlers passed as props like `onClick`, `onChange`, `onSubmit`. You pass a **function** — you don't call it. TypeScript types the event object for you (`React.FormEvent`, `React.ChangeEvent`, `React.MouseEvent`):
+
+```tsx
+function SearchBar() {
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();        // stop the browser's default form submit
+    console.log("searching…");
+  }
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <input onChange={(e: React.ChangeEvent<HTMLInputElement>) => console.log(e.target.value)} />
+      <button onClick={() => console.log("clicked")}>Go</button>
+    </form>
+  );
+}
+```
+
+The distinction that bites beginners:
+
+```tsx
+<button onClick={handleClick}>   {/* ✅ pass the function; React calls it on click */}
+<button onClick={handleClick()}> {/* ❌ calls it NOW, during render, every render */}
+<button onClick={() => handleClick(id)}> {/* ✅ wrap in an arrow to pass arguments */}
+```
+
+If you need to pass an argument, wrap the call in an inline arrow function so React gets a function to call *later*, not the result *now*.
+
+## State: Making Components Remember
+
+Props come from the parent and are read-only. But a component often needs its own memory that changes over time — the text in an input, whether a menu is open, a counter. That's **state**, and you create it with the `useState` **hook**:
+
+```tsx
+import { useState } from "react";
+
+function Counter() {
+  const [count, setCount] = useState(0);   // TS infers `count: number` from the initial value
+
+  return (
+    <button onClick={() => setCount(count + 1)}>
+      Clicked {count} times
+    </button>
+  );
+}
+```
+
+`useState(0)` returns a pair: the current value and a **setter** function. TypeScript infers the type from the initial value, so `useState(0)` is a `number` and `useState("")` is a `string` — no annotation needed. When the initial value can't express the full type (e.g. it starts `null` but will hold a user), pass the type explicitly with a generic:
+
+```tsx
+type User = { name: string };
+const [user, setUser] = useState<User | null>(null);  // now it can be a User or null
+const [tags, setTags] = useState<string[]>([]);        // empty array needs a type hint
+```
+
+Here's the crucial part that connects back to `UI = f(state)`:
+
+**Calling the setter doesn't just change a variable — it tells React to re-run this component with the new value and update the screen.** You never write `count++` or touch the DOM. You call `setCount`, React re-renders `Counter`, and the new JSX reflects the new count. State is the *input* to your UI function; changing it re-runs the function.
+
+*(This is a first taste — hooks like `useState`, `useEffect`, `useRef`, and the rules that govern them get a full treatment in the dedicated **State & hooks** post. Here we only need enough state to make components come alive.)*
+
+## State Is a Snapshot — Update It Immutably
+
+A subtle but essential rule: **never mutate state directly.** React decides whether to re-render by comparing references, so you must create a *new* object or array rather than changing the existing one — the same [immutability habit from functional JavaScript](/blog/functional-javascript).
+
+```tsx
+const [user, setUser] = useState({ name: "Ada", age: 36 });
+const [items, setItems] = useState([1, 2, 3]);
+
+// ❌ Mutation — React may not notice; the UI won't update
+user.age = 37;
+items.push(4);
+
+// ✅ Create new values with spread
+setUser({ ...user, age: 37 });        // new object, one field changed
+setItems([...items, 4]);              // new array with the addition
+setItems(items.filter((n) => n !== 2)); // new array without an item
+```
+
+When the next state depends on the previous one, pass a **function to the setter** instead of a value. React gives you the latest state, which avoids bugs when updates are batched:
+
+```tsx
+setCount((c) => c + 1);   // ✅ safe even if called multiple times in a row
+// setCount(count + 1) can go stale if `count` was captured from an old render
+```
+
+## The Re-render Model: What Actually Triggers an Update
+
+Tie it all together with the model of *when* React re-runs your component. A component re-renders when:
+
+1. **Its state changes** (a setter was called), or
+2. **Its props change** because its parent re-rendered.
+
+When a component re-renders, React re-runs its function, produces a new JSX description, **diffs** it against the previous one (the "virtual DOM"), and applies only the differences to the real DOM. This is why React feels fast despite "re-rendering" — it's re-running your *functions*, not rebuilding the *page*.
+
+```tsx
+function Parent() {
+  const [n, setN] = useState(0);
+  return (
+    <div>
+      <button onClick={() => setN(n + 1)}>+</button>
+      <Child value={n} />   {/* re-renders whenever n changes, because its prop changed */}
+    </div>
+  );
+}
+
+function Child({ value }: { value: number }) {
+  return <p>{value}</p>;
+}
+```
+
+The practical takeaway: **a render is cheap and happens often.** Don't fear it — but do keep your components fast and pure (next), because they run on every update.
+
+## Purity: Components Must Be Predictable
+
+React assumes your components are **pure** during rendering: given the same props and state, a component must return the same JSX and must **not** cause side effects while rendering — no fetching data, no writing to variables outside itself, no manually changing the DOM, no `setState` during render.
+
+```tsx
+// ❌ Impure — mutates external state during render
+let total = 0;
+function Item({ price }: { price: number }) {
+  total += price;               // side effect during render — unpredictable
+  return <li>{price}</li>;
+}
+
+// ✅ Pure — derives everything from its inputs, no outside changes
+function Item({ price }: { price: number }) {
+  return <li>${price.toFixed(2)}</li>;
+}
+```
+
+Side effects that *must* happen — fetching data, subscriptions, timers, manually focusing an input — belong in an **effect** (`useEffect`), which runs *after* render, not during it. (That's a core topic of the State & hooks post.) The rule to hold now: **rendering computes UI; it never changes the world.** Purity is what lets React safely re-run, reorder, and skip your components.
+
+## Composition Over Configuration
+
+React's answer to "how do I share and reuse UI" is **composition** — combining small components — not inheritance or giant configurable mega-components. You pass components to each other via `children` and props:
+
+```tsx
+type LayoutProps = {
+  sidebar: React.ReactNode;
+  children: React.ReactNode;
+};
+
+function Layout({ sidebar, children }: LayoutProps) {
+  return (
+    <div className="layout">
+      <aside>{sidebar}</aside>       {/* a component passed as a prop */}
+      <main>{children}</main>         {/* nested content */}
+    </div>
+  );
+}
+
+<Layout sidebar={<Nav />}>
+  <Article />
+</Layout>
+```
+
+If you find yourself adding endless boolean props (`isModal`, `hasHeader`, `variant`...) to one component, that's usually a sign to split it into smaller composable pieces instead. (The **Components & props** post goes deep on these patterns.)
+
+## Common Mistakes
+
+- **Mutating state instead of replacing it** — `arr.push(x)` or `obj.key = v` then `setState`. React compares by reference and won't re-render. Spread into a new value.
+- **Using the array index as a `key`** in a list that can reorder or change — leads to wrong-item bugs. Use a stable ID.
+- **Calling a handler instead of passing it** — `onClick={handleClick()}` runs during render. Pass `onClick={handleClick}` or wrap: `onClick={() => handleClick(id)}`.
+- **The `count && <X/>` zero trap** — a `0` on the left of `&&` renders `0`. Use an explicit boolean: `count > 0 && ...`.
+- **Trying to modify props** — props are read-only. To change data, lift it into the parent's state and pass down a setter.
+- **Doing side effects during render** — fetching or subscribing in the component body. Put them in `useEffect`.
+- **Forgetting state updates are asynchronous** — reading `count` right after `setCount` gives the old value; the new value appears on the next render. Use the functional updater when the next value depends on the previous.
+- **Lowercase component names** — `<welcome />` is treated as an HTML tag. Components must be `Capitalized`.
+
+## Exercises
+
+Try each before opening the solution.
+
+### Exercise 1 — Typed props with a default
+
+Write a `Badge` component that shows its `label` prop, defaulting to `"New"` when none is passed. Type the props so `label` is an optional string. `<Badge />` should render "New"; `<Badge label="Sale" />` should render "Sale".
+
+<details>
+
+<summary>Show solution</summary>
+
+```tsx
+function Badge({ label = "New" }: { label?: string }) {
+  return <span className="badge">{label}</span>;
+}
+```
+
+Destructure the prop with a default value directly in the parameter list, and mark it optional with `?` in the type — the same default-parameter syntax as plain JavaScript, now type-checked.
+
+</details>
+
+### Exercise 2 — Render a list
+
+Given `const users = [{ id: 1, name: "Ada" }, { id: 2, name: "Grace" }]`, render an `<li>` for each name.
+
+<details>
+
+<summary>Show solution</summary>
+
+```tsx
+<ul>
+  {users.map((user) => (
+    <li key={user.id}>{user.name}</li>
+  ))}
+</ul>
+```
+
+`map` turns the data array into an array of elements. The `key={user.id}` is a stable unique identifier — never the index for data that could change order.
+
+</details>
+
+### Exercise 3 — A toggle with state
+
+Build a button that toggles between "ON" and "OFF" each time it's clicked.
+
+<details>
+
+<summary>Show solution</summary>
+
+```tsx
+function Toggle() {
+  const [on, setOn] = useState(false);   // inferred as boolean
+  return (
+    <button onClick={() => setOn((prev) => !prev)}>
+      {on ? "ON" : "OFF"}
+    </button>
+  );
+}
+```
+
+The functional updater `(prev) => !prev` flips the boolean based on the latest value. Clicking calls the setter, which re-renders the component with the new state.
+
+</details>
+
+### Exercise 4 — Add an item immutably
+
+Given `const [tags, setTags] = useState<string[]>(["react"])`, write the click handler that appends `"js"` without mutating the array.
+
+<details>
+
+<summary>Show solution</summary>
+
+```tsx
+const addTag = () => setTags((prev) => [...prev, "js"]);
+```
+
+Spread the previous array into a new one with the extra item. Mutating with `tags.push("js")` would change the array in place and React wouldn't reliably re-render.
+
+</details>
+
+### Exercise 5 — Predict the render
+
+```tsx
+function App() {
+  const [count, setCount] = useState(0);
+  console.log("render", count);
+  return <button onClick={() => setCount(count + 1)}>{count}</button>;
+}
+```
+
+How many times does `"render"` log after two clicks, and what values?
+
+<details>
+
+<summary>Show solution</summary>
+
+Three logs: `render 0` (initial), then `render 1` (first click), then `render 2` (second click). Each `setCount` schedules a re-render, React re-runs the component function, and the `console.log` runs again with the new state. This is `UI = f(state)` in action — new state, function runs again.
+
+</details>
+
+## The Mental Model to Keep
+
+React is built on one equation: **`UI = f(state)`**. You write **components** — plain functions that return a **JSX** description of the UI — and you never touch the DOM yourself; you change **state** and let React sync the screen. Data flows **one way, down**, through read-only **props** (which TypeScript lets you describe exactly, so wrong usage fails to compile instead of at runtime); when a child needs to change something, the parent hands down a function. A component re-renders when its **state** or **props** change, at which point React re-runs the function, diffs the result, and patches only what differs — so keep components **pure** (no side effects during render; those go in effects) and update state **immutably** (spread into new objects and arrays, never mutate). Render lists with `map` and stable **keys**, show and hide with ordinary expressions, and build big UIs by **composing** small components through `children` and props. Internalize the `UI = f(state)` loop and everything else in React — hooks, context, data fetching, even the meta-frameworks built on top — becomes a variation you can reason about rather than a trick you have to memorize.

@@ -1,0 +1,312 @@
+---
+title: "جلب البيانات في React: من الصفر إلى الاحتراف"
+description: "دليل عملي لجلب البيانات في React مع TypeScript — حالات التحميل/الخطأ/النجاح التي يمرّ بها كل طلب، والجلب في useEffect مع التنظيف وAbortController، وتجنّب تسابق الطلبات، وتنميط الاستجابات، ومعالجة أخطاء HTTP كما يجب، واستخلاص خطّاف useFetch، والتعديلات وإعادة الجلب، ولماذا وُجدت مكتبة مثل TanStack Query (تخزين، إزالة تكرار، إعادة تحقّق) — مع أخطاء شائعة وتمارين عملية."
+publishedAt: "2026-08-08"
+translationKey: "data-fetching"
+tags: ["React", "TypeScript", "Data Fetching", "Frontend"]
+---
+
+تقريبًا كل تطبيقٍ حقيقيّ يتحدّث إلى خادم. وإدخال البيانات *إلى* React هو حيث تعيش عللٌ خفيّة كثيرة: استجاباتٌ قديمة تطمس الطازجة، ومعالجة خطأٍ غائبة، وطلباتٌ لا تُلغى، ومؤشّرات تحميلٍ لا تتوقّف أبدًا. تبني هذه التدوينة نموذجًا متينًا للجلب — الحالات التي يمرّ بها الطلب، وكيف تفعله بصحّةٍ بالخطّافات، ومتى تكفّ عن كتابته يدويًّا وتلجأ لمكتبة. تبني على [الحالة والخطّافات](/blog/state-and-hooks) (خاصّةً `useEffect` والتنظيف) وأساسيّات [الوعود](/blog/promises) و[async/await](/blog/async-await). كل شيءٍ بـ TypeScript.
+
+> النموذج الذي تمسكه: **كل طلبٍ آلةُ حالاتٍ صغيرة.** في أيّ لحظةٍ هو *خامل*، أو *يُحمَّل*، أو *ناجح* (ببيانات)، أو *خطأ* (بسبب) — لا أكثر من واحدةٍ أبدًا. معظم علل الجلب تنبع من تعقّب تلك الحالات بتراخٍ (متغيّر `data` وحيد) ونسيان أن الاستجابات قد تصل **خارج الترتيب** أو بعد زوال المكوّن. نمذج الحالات صراحةً وألغِ العمل القديم، فيصير الجلب متوقّعًا.
+
+## الحالات الثلاث (أو الأربع) لأيّ طلب
+
+الجلب ليس قيمةً — بل *عمليّة* بمراحل متمايزة. نمذجها كحالة، لا كمتغيّر `data` وحيدٍ يظلّ `undefined` حتى لا يظلّ:
+
+```tsx
+type User = { id: string; name: string };
+
+const [data, setData] = useState<User | null>(null);
+const [loading, setLoading] = useState(true);
+const [error, setError] = useState<string | null>(null);
+```
+
+ثلاث قطع — `data` و`loading` و`error` — تغطّي دورة الحياة: التحميل `true` حتى يستقرّ الطلب، ثم يُضبَط إمّا `data` أو `error`. ويصير العرض قراءةً مباشرة لتلك الحالة:
+
+```tsx
+if (loading) return <Spinner />;
+if (error) return <p role="alert">{error}</p>;
+if (!data) return <p>No results.</p>;
+return <Profile user={data} />;
+```
+
+اعرض دائمًا الفروع الثلاثة كلها. أشيع علّةِ تجربةِ مستخدمٍ في جلب البيانات هي معالجة المسار السعيد فقط وترك المستخدمين يحدّقون في شاشةٍ فارغة حين يبطئ طلبٌ أو يفشل.
+
+## الجلب في `useEffect` — بصحّة
+
+الطلب الشبكيّ أثرٌ جانبيّ، فينتمي إلى [`useEffect`](/blog/state-and-hooks). لكن النسخة الساذجة فيها علّتان حقيقيّتان: لا تعالج أخطاء HTTP، وقد تطبّق **استجابةً قديمة**. وإليك النسخة الصحيحة، مبنيّةً تدريجيًّا:
+
+```tsx
+import { useEffect, useState } from "react";
+
+function UserProfile({ userId }: { userId: string }) {
+  const [data, setData] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setLoading(true);
+    setError(null);
+
+    fetch(`/api/users/${userId}`, { signal: controller.signal })
+      .then((res) => {
+        // fetch لا يرفض عند 404/500 — عليك الفحص بنفسك
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json() as Promise<User>;
+      })
+      .then((user) => setData(user))
+      .catch((err) => {
+        if (err.name !== "AbortError") setError(err.message); // تجاهل الإلغاءات
+      })
+      .finally(() => setLoading(false));
+
+    return () => controller.abort(); // ألغِ إن تغيّر userId أو تفكّكنا
+  }, [userId]); // أعِد الجلب كلما تغيّر userId
+
+  if (loading) return <Spinner />;
+  if (error) return <p role="alert">{error}</p>;
+  return <Profile user={data!} />;
+}
+```
+
+ثلاثة أشياء تجعل هذا صحيحًا، وكلٌّ يصلح علّةً حقيقية.
+
+### `fetch` لا يرمي عند أخطاء HTTP
+
+أكبر فخّ في `fetch`: `404` أو `500` **تظلّ تُحلّ** الوعد. لا يرفض `fetch` إلا عند فشلٍ *شبكيّ*. عليك فحص `res.ok` والرمي بنفسك، وإلا لن يعمل فرع الخطأ وستحاول `.json()` على صفحة خطأ.
+
+### ألغِ الطلبات القديمة بـ `AbortController`
+
+إن تغيّر `userId` بينما طلبٌ قيد التنفيذ، فلديك الآن طلبان يتسابقان. بلا إلغاء، قد يُحلّ الأبطأ (الأقدم) *أخيرًا* فيطمس البيانات الأحدث — **تسابق** كلاسيكيّ. إرجاع `controller.abort()` من الأثر يلغي الطلب السابق قبل بدء التالي، فيفوز أحدث نتيجةٍ فقط. كما يوقف موقف "لا يمكن ضبط الحالة على مكوّنٍ مفكَّك".
+
+### احرُس الإلغاء في `catch`
+
+الإلغاء يرفض الوعد بـ `AbortError`. وهذا متوقّع لا فشلٌ حقيقيّ، فتخطَّه في `catch` — وإلا يُظهِر الإلغاء خطأً زائفًا.
+
+## تنميط الاستجابة
+
+يُرجِع `res.json()` النوع `Promise<any>`، الذي يسمّم أنواعك بهدوء. أعطه شكلًا كي يُفحَص كل ما بعده:
+
+```tsx
+const res = await fetch("/api/users");
+const users = (await res.json()) as User[]; // أكّد الشكل المتوقّع
+```
+
+التأكيد (cast) هو الحدّ الأدنى العمليّ. أما للبيانات غير الموثوقة أو الحرجة، فـ**تحقّق عند الحدّ** بمكتبة مخطّطات (مثل Zod) كي تفشل الاستجابة المشوّهة بصوتٍ عالٍ عند الجلب بدل أن تنهار ثلاثة مكوّناتٍ في العمق:
+
+```tsx
+const users = UserArraySchema.parse(await res.json()); // يرمي عند بياناتٍ سيّئة
+```
+
+المبدأ: الأنواع تصف ما *تتوقّعه*؛ والتحقّق يؤكّد ما *حصلت عليه*. أكّد للـ APIs الداخلية التي تثق بها، وتحقّق لأيّ شيءٍ لا تثق به.
+
+## استخلاص خطّاف `useFetch`
+
+يتكرّر نمط التحميل/الخطأ/البيانات + الأثر في كل شاشة — [خطّاف مخصّص](/blog/state-and-hooks) مثاليّ. استخلصه مرّةً، مُنمَّطًا بمعامل نوعيّ:
+
+```tsx
+type FetchState<T> = { data: T | null; loading: boolean; error: string | null };
+
+function useFetch<T>(url: string): FetchState<T> {
+  const [state, setState] = useState<FetchState<T>>({
+    data: null,
+    loading: true,
+    error: null,
+  });
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setState((s) => ({ ...s, loading: true, error: null }));
+
+    fetch(url, { signal: controller.signal })
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json() as Promise<T>;
+      })
+      .then((data) => setState({ data, loading: false, error: null }))
+      .catch((err) => {
+        if (err.name !== "AbortError")
+          setState({ data: null, loading: false, error: err.message });
+      });
+
+    return () => controller.abort();
+  }, [url]);
+
+  return state;
+}
+
+// الاستخدام — مُنمَّط بالكامل بالمعامل النوعيّ
+const { data, loading, error } = useFetch<User[]>("/api/users");
+```
+
+الآن تجلب كل شاشةٍ في سطرٍ واحد، مع الإلغاء ومعالجة الخطأ مدمجَين. المعامل `<T>` يتدفّق، فيُنمَّط `data` كـ `User[] | null` عند موضع الاستدعاء.
+
+## التعديلات وإعادة الجلب
+
+الجلب *يقرأ* البيانات؛ والنماذج والأزرار *تغيّرها* (POST/PUT/DELETE). يحتاج التعديل حالة تحميل/خطأٍ خاصّة به، وبعد نجاحه تُعيد الجلب عادةً كي تعكس الواجهة حالة الخادم الجديدة:
+
+```tsx
+async function createTodo(text: string) {
+  const res = await fetch("/api/todos", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text }),
+  });
+  if (!res.ok) throw new Error("Failed to create todo");
+  return (await res.json()) as Todo;
+}
+
+// في مكوّن: أنشئ، ثم أعِد جلب القائمة (أو حدّث تفاؤليًّا)
+async function handleAdd(text: string) {
+  setSaving(true);
+  try {
+    await createTodo(text);
+    await refetchTodos();   // أعِد مزامنة القائمة مع الخادم
+  } catch (err) {
+    setSaveError((err as Error).message);
+  } finally {
+    setSaving(false);
+  }
+}
+```
+
+النسخة المتقدّمة **تحديثٌ تفاؤليّ** — حدّث الواجهة فورًا وتراجَع إن فشل الطلب — لكن "عدّل ثم أعِد الجلب" هو الأساس الصحيح الأبسط.
+
+## متى تلجأ لمكتبة
+
+النهج اليدويّ يعمل، لكن التطبيق الحقيقيّ يجلب البيانات نفسها من مواضع كثيرة، وسرعان ما تريد ميزاتٍ متعبة البناء يدويًّا:
+
+- **التخزين المؤقّت** — لا تعيد جلب `/api/user` في كل شاشةٍ تحتاجه.
+- **إزالة التكرار** — إن طلبت ثلاثة مكوّناتٍ البيانات نفسها معًا، فاجعله طلبًا واحدًا.
+- **إعادة التحقّق في الخلفية** — أظهِر البيانات المخزّنة فورًا، وحدّثها بهدوء.
+- **إعادة الجلب عند التركيز/إعادة الاتصال**، والمحاولات، والترقيم، وحالة تحميلٍ مشتركة.
+
+هذا بالضبط ما توفّره **TanStack Query** (وSWR). يصير الجلب نفسه:
+
+```tsx
+import { useQuery } from "@tanstack/react-query";
+
+function UserProfile({ userId }: { userId: string }) {
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["user", userId],       // مفتاح التخزين — يزيل التكرار ويخزّن به
+    queryFn: () => fetchUser(userId), // دالّة الجلب العادية لديك
+  });
+
+  if (isLoading) return <Spinner />;
+  if (error) return <p role="alert">{(error as Error).message}</p>;
+  return <Profile user={data!} />;
+}
+```
+
+تظلّ تكتب دالّة الجلب؛ وتدير المكتبة *آلة الحالات والتخزين وإعادة التحقّق* حولها. القاعدة العملية: **اكتب `useFetch` يدويًّا لشاشةٍ أو اثنتين؛ وتبنَّ مكتبة استعلامٍ حين تُجلَب البيانات من مواضع كثيرة أو تحتاج تخزينًا.** لا تلجأ إليها في اليوم الأول، لكن لا تعِد بناءها يدويًّا في تطبيقٍ كبير أيضًا.
+
+## الأخطاء الشائعة
+
+- **افتراض أن `fetch` يرفض عند 404/500** — لا يفعل؛ الأخطاء الشبكية فقط ترفض. افحص `res.ok` وارمِ.
+- **بلا تنظيف/إلغاء** — طلبٌ قيد التنفيذ قد يُحلّ بعد تفكيك المكوّن أو بعد طلبٍ أحدث، مسبّبًا تسابقًا. استخدم `AbortController` وألغِ في تنظيف الأثر.
+- **عرض حالة النجاح فقط** — ترك التحميل والخطأ بلا معالجةٍ يعطي شاشاتٍ فارغة ومؤشّراتٍ عالقة. اعرض الفروع الثلاثة.
+- **معاملة `res.json()` كمُنمَّط** — إنه `any`. أكّده إلى النوع المتوقّع، أو تحقّق من البيانات غير الموثوقة بمخطّط.
+- **حلقة إعادة جلب** — وضع كائن/مصفوفةٍ جديدة في مصفوفة اعتماديات الأثر (أو دالّةٍ تتغيّر كل عرض) يعيد الجلب إلى الأبد. اعتمِد على القيم الأوّليّة؛ وحفّظ الدوال.
+- **جلب بياناتٍ مشتقّة** — إن أمكن حسابها من بياناتٍ لديك سلفًا، فلا تطلب. الجلب للخادم، لا لتحويل حالةٍ محلّية.
+- **إعادة بناء التخزين يدويًّا في كل مكان** — حين تصير تصون منطق تخزين/إزالة تكرارٍ خاصًّا بك، فتلك إشارةٌ لتبنّي TanStack Query أو SWR.
+
+## تمارين
+
+جرّب كلًّا قبل فتح الحلّ.
+
+### تمرين 1 — عالِج خطأ HTTP
+
+هذا الجلب لا يُظهِر خطأً أبدًا عند 500. أصلِحه.
+
+```tsx
+fetch("/api/data")
+  .then((res) => res.json())
+  .then(setData)
+  .catch(() => setError("Failed"));
+```
+
+<details>
+
+<summary>اعرض الحل</summary>
+
+```tsx
+fetch("/api/data")
+  .then((res) => {
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+  })
+  .then(setData)
+  .catch((err) => setError(err.message));
+```
+
+يُحلّ `fetch` عند 500، فبلا فحص `res.ok` يحاول الكود بسعادةٍ تحليل جسم الخطأ ولا يصل إلى `catch` أبدًا.
+
+</details>
+
+### تمرين 2 — ألغِ طلبًا قديمًا
+
+أضِف إلغاءً لهذا الأثر كي لا يستطيع `query` سريع التغيّر تطبيق استجابةٍ خارج الترتيب.
+
+```tsx
+useEffect(() => {
+  fetch(`/api/search?q=${query}`).then((r) => r.json()).then(setResults);
+}, [query]);
+```
+
+<details>
+
+<summary>اعرض الحل</summary>
+
+```tsx
+useEffect(() => {
+  const controller = new AbortController();
+  fetch(`/api/search?q=${query}`, { signal: controller.signal })
+    .then((r) => r.json())
+    .then(setResults)
+    .catch((err) => { if (err.name !== "AbortError") setError(err.message); });
+  return () => controller.abort();
+}, [query]);
+```
+
+كل ضغطة مفتاحٍ تلغي الطلب السابق، فتُطبَّق نتائج أحدث استعلامٍ فقط — بلا تسابق.
+
+</details>
+
+### تمرين 3 — نمِّط مساعِد جلب
+
+اكتب `getJSON<T>(url)` عامًّا يجلب، ويفحص `res.ok`، ويُرجِع `Promise<T>`.
+
+<details>
+
+<summary>اعرض الحل</summary>
+
+```tsx
+async function getJSON<T>(url: string): Promise<T> {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return (await res.json()) as T;
+}
+// const users = await getJSON<User[]>("/api/users");
+```
+
+يتيح المعامل `<T>` للمستدعي التصريح بالشكل المتوقّع، فتُنمَّط النتيجة بلا تأكيدٍ عند كل موضع استدعاء.
+
+</details>
+
+### تمرين 4 — اختر الأداة
+
+تجلب المستخدم الحاليّ في شريط التنقّل، وصفحة الملف، وصفحة الإعدادات. `useFetch` يدويّ في كلٍّ، أم مكتبة استعلام — ولماذا؟
+
+<details>
+
+<summary>اعرض الحل</summary>
+
+**مكتبة استعلام** (TanStack Query / SWR). يُحتاج `/api/user` نفسه في ثلاثة مواضع؛ وبمفتاح `queryKey` مشترك يُجلَب مرّةً، ويُخزَّن، ويُزال تكراره، ويتشارك كل مستهلكٍ حالة التحميل/الخطأ ويبقى متزامنًا. أما كتابة ثلاثة استدعاءات `useFetch` يدويًّا فتُطلِق ثلاثة طلباتٍ وتحفظ ثلاث نسخٍ من الحالة.
+
+</details>
+
+## النموذج الذهني الذي تحتفظ به
+
+عامِل كل طلبٍ كـ**آلة حالاتٍ** صغيرة — *يُحمَّل*، أو *ناجح (بيانات)*، أو *خطأ* — واعرض الفروع الثلاثة كلها كي لا يصطدم المستخدمون بشاشةٍ فارغة. اجلب داخل **`useEffect`**، وأصِب التفاصيل الثلاثة التي تُعثِر الجميع: **افحص `res.ok`** لأن `fetch` لا يرفض عند 4xx/5xx، و**ألغِ بـ `AbortController`** في التنظيف كي لا تفوز استجابةٌ قديمة بتسابقٍ أو تضبط الحالة بعد التفكيك، و**تجاهل `AbortError`** في catch. **نمِّط الاستجابة** (أكّد للـ APIs الموثوقة، وتحقّق من غير الموثوقة)، واستخلص التكرار في خطّاف **`useFetch`** عامّ. وللتغييرات، **عدّل ثم أعِد الجلب** (والتحديث التفاؤليّ هو الترقية). واعرف سقف النهج اليدويّ: حين تُجلَب البيانات نفسها من مواضع كثيرة أو تحتاج تخزينًا وإزالة تكرارٍ وإعادة تحقّق، تبنَّ **TanStack Query** بدل إعادة بنائها. الجلب مجرّد `useEffect` زائد آلة حالاتٍ زائد إلغاء — أبقِ هذه الثلاثة مستقيمة فتختفي العلل الخفيّة.
