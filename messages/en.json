@@ -413,6 +413,14 @@
                 "title": "TypeScript intro"
               },
               {
+                "key": "typescript-intermediate",
+                "title": "TypeScript: intermediate"
+              },
+              {
+                "key": "typescript-advanced",
+                "title": "TypeScript: advanced"
+              },
+              {
                 "key": "testing-javascript",
                 "title": "Testing JavaScript"
               }

@@ -413,6 +413,14 @@
                 "title": "مقدّمة TypeScript"
               },
               {
+                "key": "typescript-intermediate",
+                "title": "TypeScript: المتوسّط"
+              },
+              {
+                "key": "typescript-advanced",
+                "title": "TypeScript: المتقدّم"
+              },
+              {
                 "key": "testing-javascript",
                 "title": "اختبار JavaScript"
               }

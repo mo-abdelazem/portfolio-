@@ -1,0 +1,313 @@
+---
+title: "TypeScript، المستوى المتوسّط: الاتحادات والحُرّاس والأنواع العامة والأنواع المساعِدة"
+description: "الطبقة التالية من TypeScript — الاتحادات المُميَّزة، وحُرّاس الأنواع المخصّصون والشمول بـ never، وقيود الأنواع العامة وقيمها الافتراضية، وkeyof والوصول بالفهرس، وtypeof وas const، والأنواع المساعِدة المدمجة، وsatisfies، والتعدادات مقابل الاتحادات الحرفية، والأصناف — مع تمارين عملية وحلولها."
+publishedAt: "2026-05-19"
+translationKey: "typescript-intermediate"
+tags: ["TypeScript", "Types", "Generics", "Intermediate"]
+---
+
+[المقدّمة](/blog/typescript-intro) جعلتك منتِجًا: علّق التوقيعات، ونمذج المجالات بالاتحادات الحرفية، ودع التضييق يجعل `null` آمنًا. هذه هي الطبقة التي تفصل "أستخدم TypeScript" عن "أنمذج مجالي داخل نظام الأنواع". ستتعلّم جعل الحالات غير الصالحة غير قابلة للتمثيل عبر الاتحادات المُميَّزة، وكتابة حُرّاس أنواعك، وتقييد الأنواع العامة لتبقى دقيقة، واللجوء إلى الأنواع المساعِدة المدمجة بدل كتابة صيغ من الشكل نفسه يدويًّا.
+
+> تحوُّل العقلية هنا: توقّف عن وصف الأنواع *بعد وقوع الأمر* وابدأ باستخدام نظام الأنواع لـ*فرض* كيفية السماح باستخدام شيفرتك. النوع الجيّد يجعل الاستدعاء الخاطئ خطأ ترجمة.
+
+## الاتحادات المُميَّزة
+
+أنفع نمط في TypeScript الواقعية. امنح كل عضو في الاتحاد حقلًا **حرفيًّا** مشتركًا (*المُمَيِّز*)، فيفتح التضييق على ذلك الحقل بقيّة الشكل:
+
+```ts
+type Result =
+  | { status: "loading" }
+  | { status: "success"; data: string }
+  | { status: "error"; message: string };
+
+function render(r: Result): string {
+  switch (r.status) {
+    case "loading": return "…";
+    case "success": return r.data;      // TS تعرف أن `data` موجود هنا
+    case "error":   return r.message;   // و`message` هنا
+  }
+}
+```
+
+خارج فرعه، `data` غير موجود — فلا يمكنك قراءة `r.data` أثناء التحميل. النوع يجعل "قيد التحميل ولديه بيانات" غير قابل للتمثيل. هذا ينمذج حالة API وحالة النماذج والأحداث وبروتوكولات الرسائل أفضل بكثير من واجهة واحدة كل شيء فيها اختياري.
+
+## حُرّاس الأنواع
+
+يعمل التضييق على `typeof` و`in` و`instanceof` جاهزًا:
+
+```ts
+function area(s: { kind: "circle"; r: number } | { kind: "rect"; w: number; h: number }) {
+  if ("r" in s) return Math.PI * s.r ** 2;  // `in` يضيّق إلى الدائرة
+  return s.w * s.h;
+}
+```
+
+حين يكون الفحص أعقد من ذلك، اكتب **مُسنِد نوع (type predicate)** — دالّة نوع إرجاعها `x is T`. يُعلّم المترجمَ معنى النتيجة `true`:
+
+```ts
+type User = { name: string };
+
+function isUser(value: unknown): value is User {
+  return typeof value === "object" && value !== null && "name" in value;
+}
+
+const data: unknown = JSON.parse(input);
+if (isUser(data)) {
+  data.name;   // مُضيَّق إلى User داخل الكتلة
+}
+```
+
+هذا هو الجسر الآمن من `unknown` (البيانات الخارجية غير الموثوقة) إلى نوع حقيقيّ — الفحص يقع وقت التشغيل، والنوع يتبعه.
+
+## الشمول بـ `never`
+
+`never` هو النوع الذي لا قيم له. إسناد اتحاد إليه يُترجَم فقط حين يكون الاتحاد *فارغًا* — ما يتيح فرض "عالِج كل حالة". أضف `default` يُسنِد القيمة إلى `never`، فيوم يضيف أحدهم عضوًا جديدًا للاتحاد تصير الحالة غير المعالَجة خطأ ترجمة:
+
+```ts
+function render(r: Result): string {
+  switch (r.status) {
+    case "loading": return "…";
+    case "success": return r.data;
+    case "error":   return r.message;
+    default:
+      const _exhaustive: never = r;   // ❌ يخطئ إذا أُضيفت حالة جديدة
+      return _exhaustive;
+  }
+}
+```
+
+هذا يحوّل "نسيت معالجة الحالة الجديدة" من مفاجأة وقت تشغيل إلى خطّ أحمر لحظةَ توسيعك للاتحاد.
+
+## قيود الأنواع العامة وقيمها الافتراضية
+
+`<T>` المجرّد يقبل أي شيء. **قيّده** بـ `extends` لتعتمد الدالّة على بنية ما مع بقائها عامة:
+
+```ts
+function longest<T extends { length: number }>(a: T, b: T): T {
+  return a.length >= b.length ? a : b;
+}
+
+longest("hello", "hi");        // ✅ السلاسل لها length
+longest([1, 2], [3]);          // ✅ والمصفوفات كذلك
+longest(1, 2);                 // ❌ الأرقام لا length لها
+```
+
+يمكنك إعطاء معامل **قيمة افتراضية**، واستخدام معامل نوع لتقييد آخر بـ `keyof`:
+
+```ts
+// K يجب أن يكون مفتاحًا في T — فلا يُستدعى `prop` بمفتاح خاطئ
+function prop<T, K extends keyof T>(obj: T, key: K): T[K] {
+  return obj[key];
+}
+
+const user = { name: "Ada", age: 36 };
+prop(user, "name");   // string
+prop(user, "email");  // ❌ "email" ليس مفتاحًا في user
+```
+
+## `keyof` والوصول بالفهرس
+
+`keyof T` هو اتحاد مفاتيح النوع؛ و`T[K]` هو النوع *عند* مفتاح. معًا يتيحان للأنواع أن يشير بعضها إلى بعض بدل تكرار الحرفيات:
+
+```ts
+type User = { id: number; name: string; active: boolean };
+
+type UserKey = keyof User;       // "id" | "name" | "active"
+type Name = User["name"];        // string
+type Values = User[keyof User];  // number | string | boolean
+```
+
+حين تجد نفسك تكتب اتحاد سلاسل يكرّر مفاتيح كائن، يُبقي `keyof` الاثنين متزامنَين تلقائيًّا.
+
+## `typeof` وَ`as const`
+
+**مُعامِل النوع `typeof`** يرفع *قيمة* إلى عالم الأنواع — مفيد حين تكون القيمة مصدر الحقيقة:
+
+```ts
+const config = { retries: 3, baseUrl: "/api" };
+type Config = typeof config;   // { retries: number; baseUrl: string }
+```
+
+افتراضيًّا توسّع الكائنات الحرفية (`retries` يصير `number`). و**`as const`** يجمّد قيمة إلى أضيق أنواعها الحرفية ويجعلها `readonly` بعمق — مثاليّ لاشتقاق اتحاد حرفيّ من مصفوفة:
+
+```ts
+const ROLES = ["admin", "editor", "viewer"] as const;
+type Role = (typeof ROLES)[number];   // "admin" | "editor" | "viewer"
+```
+
+مصفوفة واحدة تقود القائمة وقت التشغيل *والنوع* معًا — تغيّرها في مكان واحد.
+
+## الأنواع المساعِدة
+
+تشحن TypeScript تحويلات لإعادة التشكيل الشائعة، فنادرًا ما تكتب صيغًا من نوع يدويًّا:
+
+```ts
+interface User { id: number; name: string; email: string }
+
+type Draft = Partial<User>;            // كل الخصائص اختيارية
+type Strict = Required<Draft>;         // كلها إلزامية مجدّدًا
+type Public = Omit<User, "email">;     // كل مفتاح عدا "email"
+type Creds = Pick<User, "email">;      // "email" فقط
+type ReadonlyUser = Readonly<User>;    // بلا إعادة إسناد
+type ById = Record<number, User>;      // { [id: number]: User }
+
+type Names = NonNullable<string | null>;      // string
+type Ret = ReturnType<() => User>;            // User
+type Args = Parameters<(a: number) => void>;  // [number]
+type Resolved = Awaited<Promise<User>>;       // User
+```
+
+`Partial<User>` لمسوّدة نموذج، و`Omit<User, "id">` لحمولة إنشاء، و`ReturnType` لتفادي إعادة ذكر نتيجة دالّة — تتركّب هذه، وتتحدّث تلقائيًّا حين يتغيّر النوع الأساس.
+
+## `satisfies`
+
+`as` *يوكّد* نوعًا (وقد يكذب). أما `satisfies` فـ*يفحص* قيمة مقابل نوع **دون توسيعها** — تحصل على التحقّق وتُبقي النوع المُستنتَج الدقيق:
+
+```ts
+type Theme = Record<string, `#${string}`>;
+
+const palette = {
+  bg: "#ffffff",
+  text: "#000000",
+} satisfies Theme;
+
+palette.bg.toUpperCase();   // ✅ لا يزال معلومًا أنه سلسلة حرفية، لا مجرّد قيمة ما
+// خطأ مطبعي مثل bg: "fff" سيخطئ هنا، عند التعريف
+```
+
+بـ `: Theme` ستفقد المفاتيح المحدّدة؛ وبـ `as Theme` ستتخطّى الفحص. `satisfies` يمنحك الاثنين: يطابق العقد، ويُبقي الشكل الدقيق.
+
+## التعدادات مقابل الاتحادات الحرفية
+
+`enum` موجود، لكن **الاتحاد الحرفيّ** أفضل عادةً: بلا شيفرة وقت تشغيل (التعدادات تُصدِر كائنًا)، ومجرّد سلاسل تقارنها وتُسلسِلها، وكائنات `as const` تغطّي حالة "أحتاج بحثًا وقت التشغيل" النادرة:
+
+```ts
+// فضّل هذا:
+type Direction = "up" | "down";
+
+// على `enum Direction { Up, Down }` لمعظم شيفرة التطبيق.
+```
+
+الجأ إلى `enum` فقط حين تريد تحديدًا كائنه وقت التشغيل وتعيناته العكسية.
+
+## الأصناف، منمَّطة
+
+تحصل الأصناف على مُعدِّلات الوصول، و`implements`، و`abstract`، و**خصائص المعامل** (إعلان وإسناد في توقيع الباني):
+
+```ts
+interface Animal { name: string; speak(): string }
+
+abstract class Base implements Animal {
+  // حقل `private` مُعلَن ومُسنَد في سطر واحد
+  constructor(public name: string, private legs: number) {}
+  abstract speak(): string;
+  describe() { return `${this.name} has ${this.legs} legs`; }
+}
+
+class Dog extends Base {
+  constructor(name: string) { super(name, 4); }
+  speak() { return "woof"; }
+}
+```
+
+`public name` يُعلِن الحقل ويُسنِده معًا — بلا `this.name = name` منفصل. استخدم `private`/`protected`/`readonly` لترميز قواعد الوصول في النوع.
+
+## الأخطاء الشائعة
+
+- نمذجة الحالة بواجهة واحدة مليئة بالاختياريات بدل **اتحاد مُميَّز** — فتحتاج `!` في كل مكان لأن المترجم لا يعرف أي الحقول موجودة.
+- نسيان فحص **الشمول بـ `never`**، فيتخطّى إضافةُ عضوٍ للاتحاد فرعًا بصمت.
+- أنواع عامة بلا قيود (`<T>`) حيث تصل فورًا إلى `.length` أو مفتاح — قيّد بـ `extends`.
+- استخدام `as` لفرض شكل حيث **حارس نوع** يتحقّق منه فعلًا.
+- اللجوء إلى `enum` بالعادة حيث الاتحاد الحرفيّ أبسط وأخفّ.
+- تعليق كائن إعداد بـ `: Type` (الذي يوسّع) بينما أردت `satisfies Type` لإبقاء الحرفيات.
+- تكرار مفاتيح كائن كاتحاد سلاسل بدل اشتقاقها بـ `keyof`.
+
+## تمارين
+
+جرّب كلًّا منها قبل فتح الحل.
+
+### تمرين 1 — اتحاد مُميَّز
+
+نمذج `Shape` يكون إمّا دائرة (بـ `radius`) أو مربّعًا (بـ `side`)، واكتب `area` يعالج الاثنين.
+
+<details>
+
+<summary>إظهار الحل</summary>
+
+```ts
+type Shape =
+  | { kind: "circle"; radius: number }
+  | { kind: "square"; side: number };
+
+function area(s: Shape): number {
+  switch (s.kind) {
+    case "circle": return Math.PI * s.radius ** 2;
+    case "square": return s.side ** 2;
+  }
+}
+```
+
+المُمَيِّز `kind` يدع كل فرع يرى حقوله فقط — لا يمكنك قراءة `radius` على مربّع.
+
+</details>
+
+### تمرين 2 — حارس نوع
+
+اكتب `isStringArray(x: unknown): x is string[]`.
+
+<details>
+
+<summary>إظهار الحل</summary>
+
+```ts
+function isStringArray(x: unknown): x is string[] {
+  return Array.isArray(x) && x.every((item) => typeof item === "string");
+}
+```
+
+المُسنِد `x is string[]` يعني أن نتيجة `true` تضيّق `x` إلى `string[]` عند موضع الاستدعاء.
+
+</details>
+
+### تمرين 3 — نوع عام مقيَّد
+
+نمِّط `pluck<T, K extends keyof T>(items: T[], key: K)` الذي يُرجِع مصفوفة القيم عند `key`.
+
+<details>
+
+<summary>إظهار الحل</summary>
+
+```ts
+function pluck<T, K extends keyof T>(items: T[], key: K): T[K][] {
+  return items.map((item) => item[key]);
+}
+
+const users = [{ id: 1, name: "Ada" }];
+pluck(users, "name");   // string[]
+pluck(users, "email");  // ❌ ليس مفتاحًا
+```
+
+`K extends keyof T` يُبقي المفتاح صالحًا و`T[K][]` يُبقي نوع النتيجة دقيقًا.
+
+</details>
+
+### تمرين 4 — اشتقاق اتحاد من قائمة
+
+بمعلوميّة `const SIZES = ["sm", "md", "lg"] as const`، أنتج نوع `Size` من تلك السلاسل الثلاث فقط.
+
+<details>
+
+<summary>إظهار الحل</summary>
+
+```ts
+const SIZES = ["sm", "md", "lg"] as const;
+type Size = (typeof SIZES)[number];   // "sm" | "md" | "lg"
+```
+
+`as const` يضيّق المصفوفة إلى حرفياتها؛ و`[number]` يفهرس فيها لاتحاد أنواع العناصر.
+
+</details>
+
+## النموذج الذهني الذي تحتفظ به
+
+TypeScript المتوسّطة تدور حول **جعل نظام الأنواع يفرض قواعدك**. نمذج المتغايرات كـ**اتحادات مُميَّزة** فلا يمكن إنشاء حالات غير صالحة؛ وتحقّق من البيانات غير الموثوقة بـ**حُرّاس الأنواع** (`x is T`) وأحكِم كل حالة بفحص **`never`**. أبقِ الأنواع العامة دقيقة بـ**تقييدها** (`<T extends …>`، `<K extends keyof T>`)، ودع الأنواع يشير بعضها إلى بعض بـ**`keyof`** و**الوصول بالفهرس** بدل تكرار الحرفيات. اشتقّ الأنواع من القيم بـ**`typeof`** و**`as const`**، وأعد التشكيل بـ**الأنواع المساعِدة** بدل إعادة الإعلان، واستخدم **`satisfies`** للتحقّق دون توسيع. المكسب: يكفّ المترجم عن كونه مدقّقًا إملائيًّا ويصير أداة تصميم — حين تتلاءم الأنواع، تصبح فئة كبيرة من الأخطاء غير قابلة للكتابة أصلًا. التالي: عُدّة الأنواع [المتقدّمة](/blog/typescript-advanced) — الأنواع الشرطية والمُسقَطة، و`infer`، وبناء أدواتك الخاصّة.

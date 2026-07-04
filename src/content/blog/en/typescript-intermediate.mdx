@@ -1,0 +1,313 @@
+---
+title: "TypeScript, Intermediate: Unions, Guards, Generics & Utility Types"
+description: "The next layer of TypeScript — discriminated unions, custom type guards and exhaustiveness with never, generic constraints and defaults, keyof and indexed-access types, typeof and as const, the built-in utility types, satisfies, enums vs literal unions, and classes — with hands-on exercises and solutions."
+publishedAt: "2026-05-19"
+translationKey: "typescript-intermediate"
+tags: ["TypeScript", "Types", "Generics", "Intermediate"]
+---
+
+The [intro](/blog/typescript-intro) got you productive: annotate signatures, model domains with literal unions, let narrowing make `null` safe. This is the layer that separates "I use TypeScript" from "I model my domain in the type system." You'll learn to make illegal states unrepresentable with discriminated unions, write your own type guards, constrain generics so they stay precise, and reach for the built-in utility types instead of hand-writing variations of the same shape.
+
+> The mindset shift here: stop describing types *after the fact* and start using the type system to *enforce* how your code is allowed to be used. A good type makes the wrong call a compile error.
+
+## Discriminated Unions
+
+The single most useful pattern in real TypeScript. Give each member of a union a shared **literal** field (the *discriminant*), and narrowing on that field unlocks the rest of the shape:
+
+```ts
+type Result =
+  | { status: "loading" }
+  | { status: "success"; data: string }
+  | { status: "error"; message: string };
+
+function render(r: Result): string {
+  switch (r.status) {
+    case "loading": return "…";
+    case "success": return r.data;      // TS knows `data` exists here
+    case "error":   return r.message;   // and `message` here
+  }
+}
+```
+
+Outside its branch, `data` doesn't exist — so you can't read `r.data` while loading. The type makes "loading but also has data" unrepresentable. This models API state, form state, events, and message protocols far better than one big optional-everything interface.
+
+## Type Guards
+
+Narrowing runs on `typeof`, `in`, and `instanceof` out of the box:
+
+```ts
+function area(s: { kind: "circle"; r: number } | { kind: "rect"; w: number; h: number }) {
+  if ("r" in s) return Math.PI * s.r ** 2;  // `in` narrows to the circle
+  return s.w * s.h;
+}
+```
+
+When a check is too complex for those, write a **type predicate** — a function whose return type is `x is T`. It teaches the compiler what a `true` result means:
+
+```ts
+type User = { name: string };
+
+function isUser(value: unknown): value is User {
+  return typeof value === "object" && value !== null && "name" in value;
+}
+
+const data: unknown = JSON.parse(input);
+if (isUser(data)) {
+  data.name;   // narrowed to User inside the block
+}
+```
+
+This is the safe bridge from `unknown` (untrusted external data) to a real type — the check happens at runtime, and the type follows.
+
+## Exhaustiveness with `never`
+
+`never` is the type with no values. Assigning a union to it only compiles when the union is *empty* — which lets you force "handle every case." Add a `default` that assigns the value to `never`, and the day someone adds a new union member, the unhandled case becomes a compile error:
+
+```ts
+function render(r: Result): string {
+  switch (r.status) {
+    case "loading": return "…";
+    case "success": return r.data;
+    case "error":   return r.message;
+    default:
+      const _exhaustive: never = r;   // ❌ errors if a new status is added
+      return _exhaustive;
+  }
+}
+```
+
+This turns "I forgot to handle the new case" from a runtime surprise into a red squiggle the moment you extend the union.
+
+## Generic Constraints and Defaults
+
+Bare `<T>` accepts anything. **Constrain** it with `extends` so the function can rely on some structure while staying generic:
+
+```ts
+function longest<T extends { length: number }>(a: T, b: T): T {
+  return a.length >= b.length ? a : b;
+}
+
+longest("hello", "hi");        // ✅ strings have length
+longest([1, 2], [3]);          // ✅ arrays too
+longest(1, 2);                 // ❌ numbers have no length
+```
+
+You can give a parameter a **default**, and use one type parameter to constrain another with `keyof`:
+
+```ts
+// K must be a key of T — so `prop` can't be called with a wrong key
+function prop<T, K extends keyof T>(obj: T, key: K): T[K] {
+  return obj[key];
+}
+
+const user = { name: "Ada", age: 36 };
+prop(user, "name");   // string
+prop(user, "email");  // ❌ "email" is not a key of user
+```
+
+## `keyof` and Indexed Access
+
+`keyof T` is the union of a type's keys; `T[K]` is the type *at* a key. Together they let types reference each other instead of repeating literals:
+
+```ts
+type User = { id: number; name: string; active: boolean };
+
+type UserKey = keyof User;       // "id" | "name" | "active"
+type Name = User["name"];        // string
+type Values = User[keyof User];  // number | string | boolean
+```
+
+When you find yourself writing a union of strings that duplicates an object's keys, `keyof` keeps them in sync automatically.
+
+## `typeof` and `as const`
+
+The **`typeof` type operator** lifts a *value* into the type world — handy when the value is the source of truth:
+
+```ts
+const config = { retries: 3, baseUrl: "/api" };
+type Config = typeof config;   // { retries: number; baseUrl: string }
+```
+
+By default object literals widen (`retries` becomes `number`). **`as const`** freezes a value to its narrowest literal types and makes it deeply `readonly` — perfect for deriving a literal union from an array:
+
+```ts
+const ROLES = ["admin", "editor", "viewer"] as const;
+type Role = (typeof ROLES)[number];   // "admin" | "editor" | "viewer"
+```
+
+One array drives both the runtime list *and* the type — change it in one place.
+
+## Utility Types
+
+TypeScript ships transformations for common reshaping, so you rarely hand-write variants of a type:
+
+```ts
+interface User { id: number; name: string; email: string }
+
+type Draft = Partial<User>;            // all properties optional
+type Strict = Required<Draft>;         // all required again
+type Public = Omit<User, "email">;     // every key except "email"
+type Creds = Pick<User, "email">;      // only "email"
+type ReadonlyUser = Readonly<User>;    // no reassignment
+type ById = Record<number, User>;      // { [id: number]: User }
+
+type Names = NonNullable<string | null>;      // string
+type Ret = ReturnType<() => User>;            // User
+type Args = Parameters<(a: number) => void>;  // [number]
+type Resolved = Awaited<Promise<User>>;       // User
+```
+
+`Partial<User>` for a form draft, `Omit<User, "id">` for a create payload, `ReturnType` to avoid restating a function's result — these compose, and they update automatically when the base type changes.
+
+## `satisfies`
+
+`as` *asserts* a type (and can lie). `satisfies` *checks* a value against a type **without widening it** — you get validation and keep the precise inferred type:
+
+```ts
+type Theme = Record<string, `#${string}`>;
+
+const palette = {
+  bg: "#ffffff",
+  text: "#000000",
+} satisfies Theme;
+
+palette.bg.toUpperCase();   // ✅ still known to be a string literal, not just any value
+// a typo like bg: "fff" would error here, at the definition
+```
+
+With `: Theme` you'd lose the specific keys; with `as Theme` you'd skip checking. `satisfies` gives you both: conform to the contract, keep the exact shape.
+
+## Enums vs Literal Unions
+
+`enum` exists, but a **literal union** is usually better: it's zero runtime code (enums emit an object), it's just strings you can compare and serialize, and `as const` objects cover the rare "I need a runtime lookup" case:
+
+```ts
+// Prefer this:
+type Direction = "up" | "down";
+
+// over `enum Direction { Up, Down }` for most app code.
+```
+
+Reach for `enum` only when you specifically want its runtime object and reverse mappings.
+
+## Classes, Typed
+
+Classes get access modifiers, `implements`, `abstract`, and **parameter properties** (declare-and-assign in the constructor signature):
+
+```ts
+interface Animal { name: string; speak(): string }
+
+abstract class Base implements Animal {
+  // `private` field declared and assigned in one line
+  constructor(public name: string, private legs: number) {}
+  abstract speak(): string;
+  describe() { return `${this.name} has ${this.legs} legs`; }
+}
+
+class Dog extends Base {
+  constructor(name: string) { super(name, 4); }
+  speak() { return "woof"; }
+}
+```
+
+`public name` both declares the field and assigns it — no separate `this.name = name`. Use `private`/`protected`/`readonly` to encode access rules in the type.
+
+## Common Mistakes
+
+- Modeling state with one interface full of optionals instead of a **discriminated union** — then needing `!` everywhere because the compiler can't know which fields are present.
+- Forgetting the **`never` exhaustiveness** check, so adding a union member silently skips a branch.
+- Unconstrained generics (`<T>`) where you immediately access `.length` or a key — constrain with `extends`.
+- Using `as` to force a shape when a **type guard** would actually verify it.
+- Reaching for `enum` by habit where a literal union is simpler and lighter.
+- Annotating a config object with `: Type` (which widens) when you wanted `satisfies Type` to keep the literals.
+- Duplicating an object's keys as a string union instead of deriving them with `keyof`.
+
+## Exercises
+
+Try each before opening the solution.
+
+### Exercise 1 — Discriminated union
+
+Model a `Shape` that's either a circle (with `radius`) or a square (with `side`), and write `area` that handles both.
+
+<details>
+
+<summary>Show solution</summary>
+
+```ts
+type Shape =
+  | { kind: "circle"; radius: number }
+  | { kind: "square"; side: number };
+
+function area(s: Shape): number {
+  switch (s.kind) {
+    case "circle": return Math.PI * s.radius ** 2;
+    case "square": return s.side ** 2;
+  }
+}
+```
+
+The `kind` discriminant lets each branch see only its own fields — you can't read `radius` on a square.
+
+</details>
+
+### Exercise 2 — Type guard
+
+Write `isStringArray(x: unknown): x is string[]`.
+
+<details>
+
+<summary>Show solution</summary>
+
+```ts
+function isStringArray(x: unknown): x is string[] {
+  return Array.isArray(x) && x.every((item) => typeof item === "string");
+}
+```
+
+The `x is string[]` predicate means a `true` result narrows `x` to `string[]` at the call site.
+
+</details>
+
+### Exercise 3 — Constrained generic
+
+Type `pluck<T, K extends keyof T>(items: T[], key: K)` that returns an array of the values at `key`.
+
+<details>
+
+<summary>Show solution</summary>
+
+```ts
+function pluck<T, K extends keyof T>(items: T[], key: K): T[K][] {
+  return items.map((item) => item[key]);
+}
+
+const users = [{ id: 1, name: "Ada" }];
+pluck(users, "name");   // string[]
+pluck(users, "email");  // ❌ not a key
+```
+
+`K extends keyof T` keeps the key valid and `T[K][]` keeps the result type precise.
+
+</details>
+
+### Exercise 4 — Derive a union from a list
+
+Given `const SIZES = ["sm", "md", "lg"] as const`, produce a `Size` type of just those three strings.
+
+<details>
+
+<summary>Show solution</summary>
+
+```ts
+const SIZES = ["sm", "md", "lg"] as const;
+type Size = (typeof SIZES)[number];   // "sm" | "md" | "lg"
+```
+
+`as const` narrows the array to its literals; `[number]` indexes into it to union the element types.
+
+</details>
+
+## The Mental Model to Keep
+
+Intermediate TypeScript is about **making the type system enforce your rules**. Model variants as **discriminated unions** so illegal states can't be constructed; verify untrusted data with **type guards** (`x is T`) and lock down every case with a **`never`** check. Keep generics precise by **constraining** them (`<T extends …>`, `<K extends keyof T>`), and let types reference each other with **`keyof`** and **indexed access** instead of duplicating literals. Derive types from values with **`typeof`** and **`as const`**, reshape with the **utility types** rather than re-declaring, and use **`satisfies`** to validate without widening. The payoff: the compiler stops being a spell-checker and starts being a design tool — when the types fit, a large class of bugs simply can't be written. Next: the [advanced](/blog/typescript-advanced) type-level toolkit — conditional and mapped types, `infer`, and building your own utilities.

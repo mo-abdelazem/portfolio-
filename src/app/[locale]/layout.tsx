@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Script from "next/script";
 import { Inter, Noto_Sans_Arabic } from "next/font/google";
 import { hasLocale, NextIntlClientProvider } from "next-intl";
 import { getMessages, getTranslations, setRequestLocale } from "next-intl/server";
@@ -129,13 +128,16 @@ export default async function LocaleLayout({ children, params }: Props) {
       suppressHydrationWarning
     >
       <body>
-        {/* Set the theme before paint to avoid a flash of the wrong theme.
-            color-scheme keeps the native canvas/scrollbars in sync from the
-            first frame; theme-ready is flipped on after paint so the body's
-            color transition never animates the initial dark→light→dark fade. */}
-        <Script
-          id="theme-init"
-          strategy="beforeInteractive"
+        {/* Runs synchronously during HTML parse — BEFORE the browser paints any
+            body content — so the theme, color-scheme and the `js` flag (which
+            gates the scroll-reveal hidden state) are all set on the first frame.
+            Must be a plain inline <script>, not next/script beforeInteractive:
+            in the App Router the latter isn't guaranteed to run pre-paint, which
+            is what caused the first-load flash (content flashing visible, then
+            blanking as `html.js` applied, then the wrong-theme flash).
+            theme-ready is flipped on after paint so the body's colour transition
+            never animates the initial load. */}
+        <script
           dangerouslySetInnerHTML={{
             __html: `(function(){try{var d=document.documentElement;d.classList.add('js');var t=localStorage.getItem('theme');if(t!=='light'&&t!=='dark'){t=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}d.setAttribute('data-theme',t);d.style.colorScheme=t;requestAnimationFrame(function(){requestAnimationFrame(function(){d.classList.add('theme-ready');});});}catch(e){}})();`,
           }}
@@ -152,10 +154,8 @@ export default async function LocaleLayout({ children, params }: Props) {
           {children}
           <Footer content={content} />
         </NextIntlClientProvider>
-        <Script
-          id="ld-json"
+        <script
           type="application/ld+json"
-          strategy="beforeInteractive"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
       </body>
