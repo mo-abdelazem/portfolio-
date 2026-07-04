@@ -1,0 +1,125 @@
+---
+title: "Frontend System Design Basics"
+description: "A practical introduction to frontend system design for interviews and real work — a repeatable framework (requirements, high-level architecture, data model, API and data flow, deep dives, trade-offs), the core areas you're expected to reason about (rendering strategy, component and state architecture, data fetching and caching, performance, accessibility, real-time), and a worked example designing an autocomplete search — with common mistakes and exercises."
+publishedAt: "2026-09-26"
+translationKey: "system-design-basics"
+tags: ["System Design", "Frontend", "Interview", "Architecture"]
+---
+
+Frontend system design is where you show you can architect a *feature or app*, not just write a component — the round that separates mid from senior. It's open-ended by design: "design a news feed," "design an autocomplete," "design a photo gallery." The trap is diving into code; the skill is driving a structured conversation about requirements, architecture, and trade-offs. This post gives you a repeatable framework and the areas you're expected to reason about. It draws on the whole series — [performance](/blog/javascript-performance), [React](/blog/react-fundamentals), [data fetching](/blog/data-fetching), and [Next.js rendering](/blog/nextjs-rendering-caching).
+
+> The mental model: a frontend system design answer is a **structured conversation, not a diagram**. Drive it: clarify requirements → sketch the high-level architecture → define the data and API contract → go deep on 2–3 areas the interviewer cares about → name the trade-offs. There's rarely one right answer; you're graded on how you *reason*, scope, and justify decisions.
+
+## A Framework You Can Always Follow
+
+Whatever the prompt, walk these steps out loud. Structure is half the score.
+
+1. **Clarify requirements.** Never start designing until you know what you're building. Ask about **functional** needs (what can users do?) and **non-functional** ones (scale, performance targets, devices, offline, accessibility, i18n). Restate them back.
+2. **Scope it.** The problem is always bigger than the time. Agree on what's in and out — "I'll focus on the feed rendering and data fetching, and mention auth briefly." Explicit scoping is a senior signal.
+3. **High-level architecture.** Sketch the major pieces: the component tree, the client/server split, where data comes from, and how it flows. Keep it a box-and-arrows overview before any detail.
+4. **Data model & API contract.** What shape is the data? What endpoints (or GraphQL queries) does the UI need, with what parameters (pagination, filters)? Designing the contract forces the important decisions.
+5. **Deep dives.** Pick the 2–3 areas that matter most for *this* problem and go deep — the interviewer will steer you. This is where the real signal is (below).
+6. **Trade-offs & follow-ups.** Close by naming what you'd optimize next, what you traded away, and how you'd handle scale, errors, and edge cases.
+
+## The Core Areas to Reason About
+
+These are the dimensions a frontend design touches. You won't cover all of them every time — pick what the prompt demands.
+
+### Rendering strategy
+
+Where and when does HTML get produced? **CSR** (client-side) for highly interactive app-like UIs behind a login; **SSR** for per-request/personalized pages that need SEO; **SSG** for content that rarely changes (marketing, docs); **ISR** for static-with-periodic-freshness. Justify by the content's freshness and SEO needs — this is exactly the [Next.js rendering model](/blog/nextjs-rendering-caching).
+
+### Component & state architecture
+
+Break the UI into a component tree, and decide **where state lives**. Local state for a single component; lifted state for siblings; **context** for app-wide concerns (theme, user); a **store** (Zustand/Redux) for complex shared client state; and a **server-state library** (TanStack Query) for server data. The key distinction: **server state vs client state** — conflating them is the most common architecture mistake.
+
+### Data fetching & caching
+
+How does data get to the screen? Decide **client vs server fetching**, **pagination vs infinite scroll** (and cursor vs offset), **caching and revalidation**, and **optimistic updates** for mutations. Reason about the request lifecycle: loading/error/empty states, race conditions, and cancellation — the [data-fetching model](/blog/data-fetching).
+
+### Performance
+
+Almost always in scope. Talk about **bundle size** (code-splitting, lazy-loading routes/components), **rendering cost** (virtualization for long lists, memoization for expensive subtrees), **asset optimization** (responsive images, modern formats, font loading), **network** (caching, prefetching, debouncing requests), and the **Core Web Vitals** (LCP, CLS, INP) as the measurable targets. Say *how you'd measure*, not just what you'd do.
+
+### Accessibility & internationalization
+
+A senior answer treats these as first-class: **semantic HTML** and keyboard operability, ARIA where needed, focus management for dynamic UI (modals, menus), color contrast — and, if relevant, **RTL/LTR** and translated content. Mentioning them unprompted is a strong signal.
+
+### Real-time & offline (when relevant)
+
+For live data, weigh **polling** (simple, higher latency) vs **WebSockets/SSE** (real-time, more infra). For resilience, consider **caching strategies**, a service worker / **PWA** for offline, and how you reconcile local and server state on reconnect.
+
+## Worked Example: Design an Autocomplete Search
+
+A favorite prompt, because it touches many areas concisely.
+
+**Clarify:** As you type, show suggestions from a large dataset. Non-functional: fast (`< 100ms` perceived), handles rapid typing, accessible, works on mobile. Scope: I'll focus on the input→suggestions data flow, performance, and accessibility.
+
+**Architecture:** A controlled `<input>`, a suggestions dropdown, and a data layer that queries a search API. State: the query string, the results, loading, and the highlighted index for keyboard nav.
+
+**Data flow & the key decisions:**
+
+- **Debounce** the input (~200ms) so you query when the user pauses, not on every keystroke — fewer requests, less jank.
+- **Cancel stale requests** (`AbortController`) so an earlier, slower response can't overwrite a newer one — the classic race condition.
+- **Cache** results by query so re-typing a previous term is instant (a simple `Map`, or a query library).
+- **Debounce vs throttle**: debounce here (act when typing *stops*); throttle would be wrong (it fires mid-typing).
+
+**Performance:** limit results (top ~10), virtualize if the list can be long, and avoid re-rendering the whole list on each keystroke.
+
+**Accessibility:** implement the ARIA **combobox** pattern — `role="combobox"`, `aria-expanded`, `aria-activedescendant` for the highlighted option, full **keyboard support** (Up/Down to move, Enter to select, Escape to close), and announce result counts to screen readers.
+
+**Trade-offs:** client-side filtering (instant, but the dataset must fit in memory) vs server-side search (scales, but adds latency and needs the debounce/cancel machinery). State which and why. That structured walk — clarify → architect → data flow → deep dives → trade-offs — *is* the answer.
+
+## Common Mistakes
+
+- **Coding immediately** — jumping to a component before clarifying requirements and scope. Drive the conversation first.
+- **No requirements gathering** — designing for assumptions the interviewer didn't state. Ask about scale, devices, SEO, offline, a11y.
+- **Conflating server state and client state** — trying to hold server data in `useState`/Redux with manual sync. Use a server-state library for server data; keep client state separate.
+- **Ignoring loading/error/empty states** — a design that only handles the happy path. Real systems spend most of their code on the unhappy paths.
+- **Hand-waving performance** — saying "I'd optimize it" without specifics. Name the technique (virtualization, code-splitting, debounce) *and* how you'd measure the result.
+- **Skipping accessibility** — treating it as optional. For interactive widgets, the ARIA pattern and keyboard support are part of "does it work."
+- **Not stating trade-offs** — presenting one option as obviously correct. Every real decision has a cost; naming it shows seniority.
+
+## Exercises
+
+Try each before opening the solution — say your approach out loud.
+
+### Exercise 1 — Infinite scroll vs pagination
+
+For a social feed, would you choose infinite scroll or paginated pages, and what's the trade-off?
+
+<details>
+
+<summary>Show answer</summary>
+
+**Infinite scroll** suits a feed (continuous, engagement-driven browsing) using **cursor-based** pagination (stable as new items arrive, unlike offset). Trade-offs: harder to reach the footer, no deep-linking to "page 5," and you must virtualize to keep the DOM bounded. **Pagination** is better when users need to find and return to a specific position (search results, tables). State the choice *and* its cost.
+
+</details>
+
+### Exercise 2 — Where does the cart state live?
+
+In an e-commerce app, where would you keep the shopping cart state, and why?
+
+<details>
+
+<summary>Show answer</summary>
+
+It's **client state shared across the app** (navbar badge, cart page, checkout), so a lightweight **store** (Zustand/Context) — *persisted* to `localStorage` so it survives refresh, and synced to the server on login/checkout. It's not pure server state (it changes offline, per session) nor purely local (many components read it), which is exactly why a store fits.
+
+</details>
+
+### Exercise 3 — Make a slow dashboard feel fast
+
+A dashboard has one fast header and three slow data widgets. How do you make it feel fast?
+
+<details>
+
+<summary>Show answer</summary>
+
+**Stream** it: render the header and layout instantly, and load each widget independently with its own loading skeleton (`<Suspense>` boundaries / `loading.tsx` on the server, or per-widget fetch states on the client). The user sees structure immediately and each widget fills in as its data resolves — far better perceived performance than blocking on the slowest query.
+
+</details>
+
+## The Mental Model to Keep
+
+Frontend system design is a **structured conversation**: **clarify requirements** (functional and non-functional) and **scope** before designing, sketch a **high-level architecture**, define the **data model and API contract**, then **deep-dive** the 2–3 areas that matter for this problem and **name the trade-offs**. Across those dives, reason about **rendering strategy** (CSR/SSR/SSG/ISR by freshness and SEO), **component and state architecture** (and crucially, **server state vs client state**), **data fetching and caching** (pagination, race conditions, optimistic updates), **performance** (bundle, virtualization, Core Web Vitals — and how you'd *measure*), and **accessibility** as first-class. There's rarely one right answer — you're graded on how you scope, justify, and trade off. Lead the conversation with this framework and you turn an open-ended prompt into a demonstration that you can think like an architect, not just a coder.
