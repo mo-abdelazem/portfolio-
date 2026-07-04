@@ -1,0 +1,307 @@
+---
+title: "Next.js Mutations & Server Actions, In Depth"
+description: "An expert guide to changing data in the Next.js App Router with Server Actions and TypeScript — what a Server Action is and how 'use server' works, form actions and progressive enhancement, useActionState for form state and validation errors, useFormStatus for pending UI, useOptimistic for optimistic updates, revalidating and redirecting after a mutation, binding extra arguments, calling actions outside forms, and the security rules that matter because actions are public endpoints — with common mistakes and exercises."
+publishedAt: "2026-08-29"
+translationKey: "nextjs-server-actions"
+tags: ["Next.js", "TypeScript", "Server Actions", "Advanced"]
+---
+
+Reading data on the server is the easy half; *changing* it — creating, updating, deleting — is where architecture usually gets messy: an API route here, a fetch there, loading flags everywhere. The App Router's answer is **Server Actions**: functions that run on the server but you call directly from your components, with no API layer to build. This post is the expert tour — forms, validation, optimistic UI, revalidation, and the security rules you cannot skip. It builds on [Next.js rendering & caching](/blog/nextjs-rendering-caching) (you'll revalidate caches here) and [state & hooks](/blog/state-and-hooks). TypeScript throughout, Next.js 15+ / React 19.
+
+> The mental model: a Server Action is a **public server endpoint disguised as a function**. Marking a function `"use server"` tells Next.js to run it on the server and generate the RPC plumbing so a form or a click can invoke it. That "function" is really an HTTP endpoint anyone can call — so everything you'd do in an API route (authenticate, authorize, validate) still applies *inside* the action.
+
+## What a Server Action Is
+
+A **Server Action** is an async function marked with the **`"use server"`** directive. It always runs on the server — it can touch your database, read secrets, and set cookies — and Next.js wires up the network call for you. Define one inline in a Server Component, or (better for reuse) in its own file:
+
+```tsx
+// app/actions.ts — every export in this file is a Server Action
+"use server";
+
+import { db } from "@/lib/db";
+
+export async function createTodo(formData: FormData) {
+  const text = formData.get("text") as string;
+  await db.todo.create({ data: { text } });
+}
+```
+
+The `"use server"` directive is not the same as `"use client"`. `"use client"` marks a boundary where code ships to the **browser**; `"use server"` marks functions that only ever run on the **server** and are callable from the client. They're opposites, and a file is one or the other.
+
+## Form Actions and Progressive Enhancement
+
+Pass a Server Action straight to a form's `action` prop. Next.js submits the form to the action — and because it's a real form submission, **it works even before JavaScript loads** (progressive enhancement), then upgrades to a client-side call once hydrated:
+
+```tsx
+import { createTodo } from "@/app/actions";
+
+export default function AddTodo() {
+  return (
+    <form action={createTodo}>
+      <input name="text" required />
+      <button type="submit">Add</button>
+    </form>
+  );
+}
+```
+
+The action receives the `FormData`. No `onSubmit`, no `fetch`, no loading state to wire manually — the form *is* the mutation. This is the baseline; the next hooks layer richer UX on top.
+
+## Form State and Validation with `useActionState`
+
+Real forms need to show validation errors and results. React 19's **`useActionState`** hook manages the action's return value as state — perfect for errors. The action gains a `prevState` first argument and *returns* the next state:
+
+```tsx
+"use server";
+import { z } from "zod";
+
+const Schema = z.object({ text: z.string().min(1, "Text is required") });
+type FormState = { error?: string; success?: boolean };
+
+export async function createTodo(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const parsed = Schema.safeParse({ text: formData.get("text") });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0].message }; // validation error → UI
+  }
+  await db.todo.create({ data: parsed.data });
+  return { success: true };
+}
+```
+
+```tsx
+"use client";
+import { useActionState } from "react";
+import { createTodo } from "@/app/actions";
+
+export default function AddTodo() {
+  const [state, formAction, isPending] = useActionState(createTodo, {});
+
+  return (
+    <form action={formAction}>
+      <input name="text" />
+      {state.error && <p role="alert">{state.error}</p>}
+      <button disabled={isPending}>{isPending ? "Adding…" : "Add"}</button>
+    </form>
+  );
+}
+```
+
+`useActionState(action, initialState)` returns `[state, wrappedAction, isPending]`. You render errors from `state`, disable the button with `isPending`, and still get progressive enhancement. Validate on the server with a schema (Zod) and return typed errors — never trust the client to have validated.
+
+## Pending UI with `useFormStatus`
+
+For a reusable submit button that knows when *its* form is submitting — without threading `isPending` down — use **`useFormStatus`** (from `react-dom`). It reads the pending state of the nearest parent form:
+
+```tsx
+"use client";
+import { useFormStatus } from "react-dom";
+
+export function SubmitButton() {
+  const { pending } = useFormStatus();
+  return (
+    <button disabled={pending}>{pending ? "Saving…" : "Save"}</button>
+  );
+}
+```
+
+Drop `<SubmitButton />` inside any `<form action={...}>` and it disables and relabels itself while that form runs. It must be a Client Component rendered *inside* the form (it reads form context).
+
+## Optimistic Updates with `useOptimistic`
+
+A mutation has a round-trip; making the UI wait for it feels slow. **`useOptimistic`** shows the expected result *immediately* and reconciles when the server responds (rolling back automatically if the action fails):
+
+```tsx
+"use client";
+import { useOptimistic } from "react";
+
+function TodoList({ todos, addTodo }: { todos: Todo[]; addTodo: (t: string) => Promise<void> }) {
+  const [optimisticTodos, addOptimistic] = useOptimistic(
+    todos,
+    (current, newText: string) => [...current, { id: "temp", text: newText }],
+  );
+
+  async function action(formData: FormData) {
+    const text = formData.get("text") as string;
+    addOptimistic(text);        // show it instantly
+    await addTodo(text);        // then persist; revalidation replaces the temp item
+  }
+
+  return (
+    <>
+      <ul>{optimisticTodos.map((t) => <li key={t.id}>{t.text}</li>)}</ul>
+      <form action={action}><input name="text" /><button>Add</button></form>
+    </>
+  );
+}
+```
+
+The new todo appears the instant you submit; when the server confirms and the data revalidates, the optimistic entry is replaced by the real one. If the action throws, React discards the optimistic state.
+
+## Revalidating and Redirecting After a Mutation
+
+After changing data, the cached views showing that data are stale. Revalidate them from inside the action so the UI reflects the new state — this is where the [caching model](/blog/nextjs-rendering-caching) pays off:
+
+```tsx
+"use server";
+import { revalidatePath, revalidateTag } from "next/cache";
+import { redirect } from "next/navigation";
+
+export async function publishPost(formData: FormData) {
+  const post = await db.post.create({ data: /* ... */ });
+
+  revalidateTag("posts");        // refresh any fetch tagged "posts"
+  revalidatePath("/blog");       // or a specific route
+
+  redirect(`/blog/${post.slug}`); // navigate to the new post
+}
+```
+
+`revalidateTag`/`revalidatePath` clear the server caches so the next render is fresh; `redirect()` sends the user somewhere new (it throws internally, so put it last). Together they make "mutate → UI updates everywhere" automatic.
+
+## Passing Extra Arguments
+
+A form action receives `FormData`, but you often need extra context — a record id, say. **Bind** it to the action; the bound value is passed server-side and can't be tampered with via the form:
+
+```tsx
+"use server";
+export async function deleteTodo(id: string) {
+  await db.todo.delete({ where: { id } });
+  revalidateTag("todos");
+}
+```
+
+```tsx
+// Bind the id; the form still submits normally
+const deleteWithId = deleteTodo.bind(null, todo.id);
+<form action={deleteWithId}>
+  <button>Delete</button>
+</form>
+```
+
+`bind` is safer than a hidden `<input>` because the argument is encoded in the server reference, not sent as user-editable form data.
+
+## Calling Actions Outside Forms
+
+Actions aren't limited to forms. Call one from an event handler — wrap it in `startTransition` so React tracks it as a non-blocking update:
+
+```tsx
+"use client";
+import { useTransition } from "react";
+
+function LikeButton({ postId }: { postId: string }) {
+  const [isPending, startTransition] = useTransition();
+  return (
+    <button
+      disabled={isPending}
+      onClick={() => startTransition(() => likePost(postId))}
+    >
+      Like
+    </button>
+  );
+}
+```
+
+## Security: Actions Are Public Endpoints
+
+This is the rule you must not forget. A Server Action compiles to a **callable HTTP endpoint**. An attacker can invoke it directly with any arguments, bypassing your UI entirely. So every action must protect itself:
+
+- **Authenticate** — check the session inside the action, don't assume the caller is logged in because the button was hidden.
+- **Authorize** — verify *this* user may perform *this* action on *this* record (e.g. they own the todo they're deleting).
+- **Validate** — parse and validate every input (`FormData`, bound args) with a schema; never trust shapes or types from the client.
+
+```tsx
+"use server";
+export async function deleteTodo(id: string) {
+  const user = await getCurrentUser();
+  if (!user) throw new Error("Unauthorized");            // authenticate
+  const todo = await db.todo.findUnique({ where: { id } });
+  if (todo?.userId !== user.id) throw new Error("Forbidden"); // authorize
+  await db.todo.delete({ where: { id } });
+}
+```
+
+Treat every action exactly as you'd treat a public API route, because that's what it is.
+
+## Common Mistakes
+
+- **Skipping auth/validation inside the action** — the "hidden" button doesn't protect it; actions are public endpoints. Authenticate, authorize, and validate every time.
+- **Trusting client input** — validate `FormData` and bound arguments on the server with a schema; the client can send anything.
+- **Forgetting to revalidate** — after a mutation, cached pages stay stale. Call `revalidateTag`/`revalidatePath` (or `redirect`) so the UI updates.
+- **`redirect()` in a `try/catch`** — `redirect` works by throwing; a surrounding `catch` swallows it. Call it outside the try, or after the work succeeds.
+- **Using `useFormStatus` in the wrong place** — it only reads the *parent* form's status, so the component must render inside that `<form>`.
+- **Mixing `"use server"` and `"use client"` in one file** — they're opposite boundaries. Keep actions in server files, interactive UI in client files.
+- **Reaching for a manual `fetch` + API route** — for most mutations a Server Action is less code and safer. Use route handlers for third-party webhooks or non-form clients, not routine form mutations.
+
+## Exercises
+
+Try each before opening the solution.
+
+### Exercise 1 — A minimal form action
+
+Write a Server Action `subscribe` that reads an `email` from `FormData` and saves it, and the form that calls it.
+
+<details>
+
+<summary>Show solution</summary>
+
+```tsx
+// actions.ts
+"use server";
+export async function subscribe(formData: FormData) {
+  const email = formData.get("email") as string;
+  await db.subscriber.create({ data: { email } });
+}
+
+// component
+<form action={subscribe}>
+  <input name="email" type="email" required />
+  <button>Subscribe</button>
+</form>
+```
+
+The action runs on the server and receives the form's `FormData`; no API route or client fetch needed.
+
+</details>
+
+### Exercise 2 — Return a validation error
+
+Adapt `subscribe` to work with `useActionState` and return `{ error }` when the email is empty.
+
+<details>
+
+<summary>Show solution</summary>
+
+```tsx
+"use server";
+type State = { error?: string };
+export async function subscribe(_prev: State, formData: FormData): Promise<State> {
+  const email = formData.get("email") as string;
+  if (!email) return { error: "Email is required" };
+  await db.subscriber.create({ data: { email } });
+  return {};
+}
+// const [state, action] = useActionState(subscribe, {});
+```
+
+`useActionState` requires the `(prevState, formData)` signature and turns the returned object into state you render.
+
+</details>
+
+### Exercise 3 — Secure a delete
+
+What three checks must a `deleteComment(id)` action perform before deleting?
+
+<details>
+
+<summary>Show solution</summary>
+
+**Authenticate** (there is a logged-in user), **authorize** (that user owns the comment, or is an admin), and **validate** (the `id` is a well-formed value). Because the action is a public endpoint, none of these can be assumed from the UI — they must be checked inside the action.
+
+</details>
+
+## The Mental Model to Keep
+
+A **Server Action** is a function marked `"use server"` that runs on the server and is callable from your components — really a **public endpoint disguised as a function**, so authenticate, authorize, and validate *inside every one*. Pass an action to a `<form action={...}>` for a mutation that works even before JS loads; layer on **`useActionState`** for validation errors and return values, **`useFormStatus`** for a reusable pending button, and **`useOptimistic`** to show the result instantly and reconcile on response. After changing data, **revalidate** the affected caches (`revalidateTag`/`revalidatePath`) and optionally **`redirect`** so the UI everywhere reflects the new state. **Bind** extra arguments rather than trusting hidden inputs, and call actions outside forms via `startTransition`. Once you see actions as typed, server-side mutation endpoints your components call directly, the whole read-and-write story of the App Router — Server Components fetch, Server Actions mutate, revalidation syncs — becomes one coherent loop.
