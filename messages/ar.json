@@ -522,6 +522,22 @@
               {
                 "key": "system-design-basics",
                 "title": "أساسيات تصميم الأنظمة"
+              },
+              {
+                "key": "airbnb-frontend-interview",
+                "title": "مقابلة الواجهة الأمامية في Airbnb"
+              },
+              {
+                "key": "dsa-interview-patterns",
+                "title": "أنماط مقابلات الخوارزميات"
+              },
+              {
+                "key": "ui-coding-round-builds",
+                "title": "بناءات جولة برمجة الواجهة"
+              },
+              {
+                "key": "star-behavioral-interview",
+                "title": "المقابلة السلوكية (STAR)"
               }
             ]
           }

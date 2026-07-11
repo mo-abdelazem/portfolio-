@@ -1,0 +1,276 @@
+---
+title: "جولة برمجة الواجهة: ثلاثة بناءاتٍ على وجهها الصحيح"
+description: "فكّ شيفرة جولة برمجة الواجهة الأمامية — تشريح إجابة بناءٍ قوية (وضّح، وابنِ السلوك، وعالِج التحميل/الفراغ/الخطأ، وأضِف سهولة الوصول، واسرد طوال الوقت)، ثم ثلاثة بناءات React مُنفّذة يعشقها المُقابِلون: إكمالٌ تلقائيّ قابل للوصول بـ debounce وإلغاء طلبات، ومكوّن تبويباتٍ قابل للتنقّل بلوحة المفاتيح وفق نمط ARIA، وجدول بياناتٍ بالفرز والترشيح والترقيم. مع الحالات الحدّيّة وسهولة الوصول التي تفصل النجاح عن النجاح القويّ."
+publishedAt: "2026-10-24"
+translationKey: "ui-coding-round-builds"
+tags: ["Interview", "Frontend", "JavaScript", "React"]
+---
+
+جولة برمجة الواجهة هي الأقلّ شبهًا بـ LeetCode والأكثر شبهًا بالوظيفة: ابنِ مكوّنًا حقيقيًّا يعمل في نحو أربعين دقيقة وأنت تتحدّث عن قراراتك. الميزة العاملة حدٌّ أدنى — الذي يكسب درجةً *قويّة* هو معالجة الحالات التي لا يعرضها أحد (التحميل، والفراغ، والخطأ)، وجعله قابلًا للوصول بلوحة المفاتيح، وسرد *لماذا* طوال الوقت. هذه التدوينة تعطيك تشريح الإجابة الجيّدة وثلاثة بناءاتٍ مُنفّذة بالكامل يقصدها المُقابِلون. إنها الجولة 3 من [خريطة مقابلة Airbnb](/blog/airbnb-frontend-interview)، وتبني على [أساسيات React](/blog/react-fundamentals)، و[الحالة والخطّافات](/blog/state-and-hooks)، و[النماذج](/blog/forms)، و[async/await](/blog/async-await).
+
+> النموذج الذهني: الإجابة الناجحة تُشغِّل المسار السعيد؛ والقويّة تعالج **المسارات غير السعيدة وسهولة الوصول**، و*تسرد الاستدلال*. الميزة ذاتها، ودرجةٌ مختلفة جدًّا. قبل كتابة سطر، وضّح المتطلّبات؛ وأثناء البناء، قُل ما تفعله ولماذا؛ وقبل إعلان الانتهاء، امشِ حالات التحميل/الفراغ/الخطأ ولوحة المفاتيح.
+
+## تشريح بناء واجهةٍ قويّ
+
+أيًّا كان السؤال، أدِر هذا التسلسل بصوتٍ مسموع — إنه نظير المكوّن لـ[إطار تصميم الأنظمة](/blog/system-design-basics):
+
+1. **وضّح.** ماذا ينبغي أن يفعل بالضبط؟ ما المدخلات والقيود؟ «هل يملأ اختيار الاقتراح المدخل أم ينتقل؟» دقيقتان من الأسئلة تمنعان بناء الشيء الخطأ.
+2. **اسكتش الواجهة والحالة.** سَمِّ الخصائص/واجهة المكوّن والحالة الدنيا. أشيع خطأٍ حالةٌ زائدة — اشتقّ ما تستطيع بدل تخزينه.
+3. **ابنِ السلوك أولًا.** أشغِّل التفاعل الجوهريّ قبل التنسيق. هيكِله إلى قطعٍ صغيرة قابلة لإعادة الاستخدام وأنت تمضي.
+4. **عالِج الحالات الثلاث غير السعيدة.** *التحميل*، و*الفراغ*، و*الخطأ* — الواجهة الحقيقيّة تنفق معظم كودها هنا، وذكرها دون طلبٍ إشارة أقدمية.
+5. **أضِف سهولة الوصول.** عناصر دلاليّة، وتشغيلٌ بلوحة المفاتيح، ونمط ARIA الصحيح. لعناصر التفاعل هذا جزءٌ من «هل يعمل»، لا مكافأة.
+6. **اسرد طوال الوقت.** المُقابِل يُقيّم استدلالك؛ والبرمجة الصامتة لا تعطيه ما يُقيّمه.
+
+## البناء 1 — إكمالٌ تلقائيّ قابل للوصول بـ debounce
+
+أكثر البناءات طلبًا، لأنه يمسّ async والأداء وسهولة الوصول دفعةً واحدة.
+
+```jsx
+import { useState, useEffect, useRef } from "react";
+
+function Autocomplete({ fetchSuggestions }) {
+  const [query, setQuery] = useState("");
+  const [items, setItems] = useState([]);
+  const [status, setStatus] = useState("idle"); // idle|loading|error|done
+  const [active, setActive] = useState(-1);      // الفهرس المميَّز
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (!query.trim()) { setItems([]); setStatus("idle"); return; }
+    const controller = new AbortController();
+    const id = setTimeout(async () => {          // debounce ~250 مللي
+      setStatus("loading");
+      try {
+        const results = await fetchSuggestions(query, controller.signal);
+        setItems(results);
+        setStatus("done");
+        setActive(-1);
+      } catch (e) {
+        if (e.name !== "AbortError") setStatus("error");
+      }
+    }, 250);
+    return () => { clearTimeout(id); controller.abort(); }; // ألغِ القديم
+  }, [query, fetchSuggestions]);
+
+  function onKeyDown(e) {
+    if (!open) return;
+    if (e.key === "ArrowDown") setActive(i => Math.min(i + 1, items.length - 1));
+    else if (e.key === "ArrowUp") setActive(i => Math.max(i - 1, 0));
+    else if (e.key === "Enter" && active >= 0) choose(items[active]);
+    else if (e.key === "Escape") setOpen(false);
+  }
+  function choose(item) { setQuery(item.label); setOpen(false); }
+
+  return (
+    <div className="ac">
+      <input
+        role="combobox" aria-expanded={open} aria-controls="ac-list"
+        aria-activedescendant={active >= 0 ? `ac-opt-${active}` : undefined}
+        value={query} onChange={e => { setQuery(e.target.value); setOpen(true); }}
+        onKeyDown={onKeyDown} aria-autocomplete="list"
+      />
+      {open && (
+        <ul id="ac-list" role="listbox">
+          {status === "loading" && <li aria-disabled>جارٍ التحميل…</li>}
+          {status === "error" && <li aria-disabled>حدث خطأٌ ما.</li>}
+          {status === "done" && items.length === 0 && <li aria-disabled>لا نتائج</li>}
+          {items.map((item, i) => (
+            <li key={item.id} id={`ac-opt-${i}`} role="option"
+                aria-selected={i === active}
+                onMouseDown={() => choose(item)}>
+              {item.label}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+```
+
+**ما يكسب الدرجة القويّة هنا:** الـ `setTimeout` بوصفه **debounce** كي تستعلم عند التوقّف لا مع كل ضغطة؛ وتنظيف `AbortController` الذي **يلغي الطلبات القديمة** (التسابق الكلاسيكيّ حيث يكتب ردٌّ بطيءٌ أقدم فوق أحدث)؛ وعرض **التحميل/الفراغ/الخطأ** صراحةً؛ ونمط ARIA **combobox** كامل بـ `ArrowUp`/`ArrowDown`/`Enter`/`Escape`. اذكر كلًّا منها وأنت تضيفه. (`onMouseDown` لا `onClick`، كي يقع الاختيار قبل أن يفقد المدخل التركيز.)
+
+## البناء 2 — تبويباتٌ قابلة للوصول
+
+بسيطٌ خادع — الإشارة هي هل تنفّذ نمط لوحة مفاتيح **ARIA tabs** الحقيقيّ، لا مجرّد معالِجات نقر.
+
+```jsx
+import { useState, useRef } from "react";
+
+function Tabs({ tabs }) {          // tabs: [{ id, label, content }]
+  const [selected, setSelected] = useState(0);
+  const refs = useRef([]);
+
+  function onKeyDown(e) {
+    let next = null;
+    if (e.key === "ArrowRight") next = (selected + 1) % tabs.length;
+    else if (e.key === "ArrowLeft") next = (selected - 1 + tabs.length) % tabs.length;
+    else if (e.key === "Home") next = 0;
+    else if (e.key === "End") next = tabs.length - 1;
+    if (next !== null) {
+      e.preventDefault();
+      setSelected(next);
+      refs.current[next]?.focus();   // tabindex متنقّل: حرّك التركيز مع الاختيار
+    }
+  }
+
+  return (
+    <div className="tabs">
+      <div role="tablist" aria-label="أقسام" onKeyDown={onKeyDown}>
+        {tabs.map((t, i) => (
+          <button
+            key={t.id} role="tab" id={`tab-${t.id}`}
+            aria-selected={i === selected} aria-controls={`panel-${t.id}`}
+            tabIndex={i === selected ? 0 : -1}   // التبويب النشط فقط قابل للتركيز بـ Tab
+            ref={el => (refs.current[i] = el)}
+            onClick={() => setSelected(i)}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+      {tabs.map((t, i) => (
+        <div
+          key={t.id} role="tabpanel" id={`panel-${t.id}`}
+          aria-labelledby={`tab-${t.id}`} hidden={i !== selected}
+        >
+          {t.content}
+        </div>
+      ))}
+    </div>
+  );
+}
+```
+
+**ما يكسب الدرجة القويّة:** الـ **tabindex المتنقّل** (التبويب المختار وحده بـ `tabIndex={0}`؛ والبقيّة `-1`)، والتنقّل **بمفاتيح الأسهم** مع `Home`/`End`، وتوصيل `role`/`aria-selected`/`aria-controls`/`aria-labelledby`، و`hidden` على الألواح غير النشطة. اذكر أن هذا يتّبع نمط WAI-ARIA tabs — تسمية المعيار إشارةٌ بحدّ ذاتها.
+
+## البناء 3 — جدولٌ بالفرز والترشيح والترقيم
+
+الاختبار هنا **انضباط الحالة**: أبقِ مصدرًا واحدًا للحقيقة و*اشتقّ* العرض، بدل تخزين نسخةٍ منفصلة عليك مزامنتها.
+
+```jsx
+import { useState, useMemo } from "react";
+
+function DataTable({ rows, columns, pageSize = 10 }) {
+  const [sort, setSort] = useState({ key: null, dir: "asc" });
+  const [filter, setFilter] = useState("");
+  const [page, setPage] = useState(0);
+
+  // اشتقّ الصفوف المرئيّة من حالة المصدر — لا تخزّن نسخةً ثانية أبدًا.
+  const view = useMemo(() => {
+    let out = rows;
+    if (filter) {
+      const q = filter.toLowerCase();
+      out = out.filter(r =>
+        columns.some(c => String(r[c.key]).toLowerCase().includes(q)));
+    }
+    if (sort.key) {
+      out = [...out].sort((a, b) => {
+        const [x, y] = [a[sort.key], b[sort.key]];
+        const cmp = x < y ? -1 : x > y ? 1 : 0;
+        return sort.dir === "asc" ? cmp : -cmp;
+      });
+    }
+    return out;
+  }, [rows, columns, filter, sort]);
+
+  const pageCount = Math.max(1, Math.ceil(view.length / pageSize));
+  const clamped = Math.min(page, pageCount - 1);
+  const pageRows = view.slice(clamped * pageSize, clamped * pageSize + pageSize);
+
+  function toggleSort(key) {
+    setSort(s => s.key === key
+      ? { key, dir: s.dir === "asc" ? "desc" : "asc" }
+      : { key, dir: "asc" });
+    setPage(0);
+  }
+
+  return (
+    <div>
+      <input placeholder="ترشيح…" value={filter}
+             onChange={e => { setFilter(e.target.value); setPage(0); }} />
+      <table>
+        <thead>
+          <tr>{columns.map(c => (
+            <th key={c.key} aria-sort={sort.key === c.key
+                  ? (sort.dir === "asc" ? "ascending" : "descending") : "none"}>
+              <button onClick={() => toggleSort(c.key)}>{c.label}</button>
+            </th>
+          ))}</tr>
+        </thead>
+        <tbody>
+          {pageRows.length === 0
+            ? <tr><td colSpan={columns.length}>لا صفوف مطابِقة</td></tr>
+            : pageRows.map(r => (
+                <tr key={r.id}>{columns.map(c => <td key={c.key}>{r[c.key]}</td>)}</tr>
+              ))}
+        </tbody>
+      </table>
+      <nav aria-label="ترقيم الصفحات">
+        <button disabled={clamped === 0} onClick={() => setPage(clamped - 1)}>السابق</button>
+        <span>صفحة {clamped + 1} من {pageCount}</span>
+        <button disabled={clamped >= pageCount - 1} onClick={() => setPage(clamped + 1)}>التالي</button>
+      </nav>
+    </div>
+  );
+}
+```
+
+**ما يكسب الدرجة القويّة:** اشتقاق `view` بـ `useMemo` من `rows` المصدر بدل تكرار الحالة؛ وإعادة التعيين إلى الصفحة 0 حين يتغيّر الترشيح أو الفرز؛ وصفّ **حالة الفراغ**؛ و`aria-sort` على الرؤوس و`<button>`ات حقيقيّة للأعمدة القابلة للفرز؛ وتقييد الصفحة كي لا تتركك تغيّرات البيانات على صفحةٍ غير موجودة. قُل لماذا *تشتقّ* بدل أن تخزّن — خلط حالة المصدر والعرض هو خطأ الجداول الكلاسيكيّ.
+
+## إحماءات الأدوات المساعدة
+
+قبل البناء الرئيس، يرمي بعض المُقابِلين دالّة JS خالصة صغيرة — `debounce`، أو `throttle`، أو `Promise.all`، أو استنساخٌ عميق، أو `curry`، أو `memoize`، أو باعث أحداث. سريعةٌ إن تمرّنت عليها ومُحرِجةٌ إن لم تفعل؛ وكلٌّ منها معالَج في [مسائل البرمجة بـ JavaScript](/blog/javascript-coding-problems). أحمِ اثنتين ليلة المقابلة.
+
+## الأخطاء الشائعة
+
+- **تخطّي التوضيح** — البناء على افتراضاتٍ بدل السؤال. دقيقتان مقدَّمًا تنقذان الجولة كلها.
+- **المسار السعيد فقط** — بلا معالجة تحميلٍ أو فراغٍ أو خطأ. المكوّنات الحقيقيّة تنفق معظم كودها هناك.
+- **بلا سهولة وصول** — عناصر بالفأرة فقط دون دعم لوحة مفاتيح أو ARIA. لواجهةٍ تفاعلية، ذلك ناقص، لا «مصقول لاحقًا».
+- **تكرار الحالة** — تخزين نسخةٍ مُرشَّحة/مُرتَّبة بجانب المصدر والصراع لمزامنتها. اشتقّ بدلًا من ذلك.
+- **التجريد المبكّر** — بناء إطارٍ عامّ بينما طُلِب مكوّنٌ مركّز. سلّم الشيء، ثم ناقِش كيف تعمّمه.
+- **البرمجة الصامتة** — المُقابِل لا يُقيّم استدلالًا لا يسمعه. اسرد.
+
+## تمارين
+
+اسكتش كلًّا قبل فتح الجواب — قُل خطّتك بصوتٍ مسموع.
+
+### تمرين 1 — debounce مقابل throttle
+
+للإكمال التلقائيّ، لماذا debounce للمدخل بدل throttle؟
+
+<details>
+
+<summary>اعرض الإجابة</summary>
+
+**debounce** يُطلَق بعد أن *يتوقّف* المستخدم عن الكتابة — تحديدًا حين تريد الاستعلام، إذ تُنتِج ضغطات وسط الكلمة طلباتٍ عديمة الجدوى. **throttle** يُطلَق بمعدّلٍ ثابت *أثناء* الكتابة، فيستعلم عن كلماتٍ جزئية ويهدر النداءات. debounce لـ«اعمل حين يستقرّ المدخل»؛ وthrottle لـ«اعمل مرّةً كل N مللي أثناء تدفّقٍ متّصل» (تمرير، تحجيم). تسمية ذلك الفرق هو مقصد السؤال.
+
+</details>
+
+### تمرين 2 — تسابق الردّ القديم
+
+حتى مع debounce، لماذا تظلّ تحتاج `AbortController`؟
+
+<details>
+
+<summary>اعرض الإجابة</summary>
+
+debounce يقلّل الطلبات لكنه لا يرتّب الردود. إن كتبت «re» ثم «react»، فقد يكون كلاهما طائرًا، وقد يصل ردّ «re» الأبطأ *أخيرًا* ويكتب فوق نتائج «react» الصحيحة — تسابق. إلغاء الطلب السابق مع كل جديد (أو تجاهل الردود التي لم يعُد استعلامها يطابق المدخل الحاليّ) يضمن أن تعكس الواجهة أحدث استعلام. هذا الخطأ يفصل عرضًا عاملًا عن عرضٍ صحيح.
+
+</details>
+
+### تمرين 3 — أين تعيش حالة الفرز؟
+
+في الجدول، لماذا تشتقّ الصفوف المُرتَّبة بـ `useMemo` بدل تخزين حالة `sortedRows`؟
+
+<details>
+
+<summary>اعرض الإجابة</summary>
+
+`sortedRows` ستكون *نسخةً ثانية* من البيانات يجب إعادة مزامنتها كلما تغيّر `rows` أو الترشيح أو مفتاح الفرز — فوّت تحديثًا واحدًا فيعرض الجدول بياناتٍ قديمة. الاشتقاق بـ `useMemo` يُبقي مصدرًا واحدًا للحقيقة (`rows`) ويعيد الحساب فقط حين تتغيّر مدخلاته. القاعدة: **إن أمكن حساب قيمةٍ من حالةٍ موجودة، فلا تخزّنها** — اشتقّها. ذلك الانضباط هو تحديدًا ما يختبره هذا البناء.
+
+</details>
+
+## النموذج الذهني الذي تحتفظ به
+
+جولة برمجة الواجهة تكافئ **هندسةً بشكل منتج، مسرودةً بصوتٍ مسموع**. أدِر التسلسل ذاته كل مرة: **وضّح** المتطلّبات، و**اسكتش** الواجهة والحالة الدنيا، و**ابنِ السلوك** أولًا، ثم عالِج الحالات الثلاث غير السعيدة — **التحميل، والفراغ، والخطأ** — واطبق **سهولة الوصول** بنمط ARIA الصحيح ودعم لوحة المفاتيح. عبر البناءات الثلاثة القانونيّة، تتكرّر تفاصيل الإجابة القويّة: **debounce مع إلغاء الطلبات** للمدخل غير المتزامن، و**tabindex متنقّل ومفاتيح أسهم** للعناصر، و**اشتقاق حالة العرض** بدل تكرارها. الميزة العاملة تنجح؛ والحالات الحدّيّة، وسهولة الوصول، والتعليق الجاري هي ما يجعلها نجاحًا *قويًّا*. ابنِ الشيء، لكن لا في صمتٍ أبدًا ولا للمسار السعيد وحده أبدًا.

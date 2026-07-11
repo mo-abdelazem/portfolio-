@@ -1,0 +1,152 @@
+---
+title: "The Airbnb Front End Interview Process"
+description: "A round-by-round map of Airbnb's front end engineering loop — recruiter screen, online assessment, UI coding, frontend system design, code review, and behavioral — with what each round actually tests, how to prepare, the focus topics, and the common mistakes. Coding is one round of six; this shows you where the other five points go and how to weight your prep across a 4–6 week runway."
+publishedAt: "2026-10-03"
+translationKey: "airbnb-frontend-interview"
+tags: ["Interview", "Frontend", "Career", "System Design"]
+---
+
+Most candidates prepare for a front end interview as if it were an algorithms contest, then get blindsided by the four rounds that aren't. Airbnb's loop is a good example: **coding is one round of six**. You're also graded on how you architect a system, review someone else's code, and tell the story of your own work. This post is a round-by-round map — what each stage tests, how to prepare, and where the points actually go — so you can weight a 4–6 week runway correctly instead of pouring it all into LeetCode. It leans on the rest of this series: [coding problems](/blog/javascript-coding-problems), [system design](/blog/system-design-basics), and the [interview question bank](/blog/interview-questions).
+
+> The mental model: this is **breadth with communication**, not a coding gauntlet. Six rounds each measure a different thing — narrative, algorithms, UI craft, architecture, code judgment, and values. You can be excellent at one and still fail the loop on another. The winning strategy is to be *solidly good across all six* and to **narrate your thinking** in every one of them.
+
+## The Shape of the Loop
+
+Six rounds, roughly in this order. The exact set varies by team and level — some candidates skip the online assessment, some get an extra round — so treat this as directional and confirm your real schedule with your recruiter.
+
+| # | Round | ~Time | What it really measures |
+|---|-------|-------|-------------------------|
+| 1 | Recruiter screen | 45 min | Communication, motivation, leveling |
+| 2 | Online assessment | 120 min | Algorithms & data structures |
+| 3 | Coding round | 75 min | Practical UI building |
+| 4 | System design | 70 min | Frontend architecture & trade-offs |
+| 5 | Code review | 70 min | Engineering judgment on others' code |
+| 6 | Behavioral | 50 min | Ownership, collaboration, values |
+
+## Round 1 — Recruiter Screening
+
+**What it tests.** Communication, a coherent career story, genuine interest in Airbnb specifically, and signals for leveling and logistics. Low technical stakes, but a real filter — a rambling answer or a generic "why Airbnb" can end the loop here.
+
+**How to prepare.** Write a 60–90 second intro (who you are, your through-line, what you want next) and rehearse it until it's natural, not memorized. Build a *specific* "why Airbnb" tied to their product or design-craft culture — "it's a big company" is a fail. Know your résumé cold, prepare two or three sharp questions to ask, and decide your comp range so you can state it calmly.
+
+**Focus topics:** career narrative · motivation & fit · team expectations · leveling · logistics.
+
+**Watch out for:** generic motivation, rambling, or badmouthing a past employer.
+
+## Round 2 — Online Technical Assessment
+
+**What it tests.** Problem-solving fundamentals — decompose the problem, pick the right data structure, reason about time and space complexity, and write correct, clean code under time pressure. Usually two or three medium problems. Correctness and edge cases beat a clever one-liner.
+
+**How to prepare.** Practice *by pattern, not by volume* — recognizing the pattern is most of the battle. Master your language's toolbox (in JS: `Map`/`Set`, `sort((a,b) => …)`, `reduce`, and their complexity). Always clarify → state approach and complexity → code → test edge cases (empty, single, duplicates, huge input). Do timed mocks so two hours feels routine; aim for ~100–150 targeted problems, not 500 random ones. The classic JS implementations live in [JavaScript coding problems](/blog/javascript-coding-problems), and the language mechanics behind them in [JavaScript fundamentals](/blog/javascript-fundamentals) and [closures, scope & this](/blog/closures-scope-this).
+
+**Focus topics:** arrays & strings · hash maps/sets · two pointers · sliding window · stacks & queues · trees · graphs (BFS/DFS) · recursion & backtracking · intro DP · binary search · complexity.
+
+**Watch out for:** coding before clarifying, skipping edge cases, and burning time chasing "optimal" before you have anything correct.
+
+## Round 3 — Coding Round (UI Building)
+
+**What it tests.** Practical front end craft. Build a functional, accessible, reasonably-architected UI component from scratch — usually vanilla JS or React — and talk through state, edge cases, and reusability while doing it. This isn't LeetCode; it's "here's a product-shaped task, ship it." Clean component design and running commentary are graded as heavily as whether it works.
+
+**How to prepare.** Build the behavior first, then layer on accessibility and polish. For every build, verbalize the component API, the state shape, event handling, and the three non-happy states: loading, empty, and error. Rehearse the JS *utility* genre too — `debounce`, `throttle`, `Promise.all`, deep clone, `curry`, `memoize` — which show up as warm-ups (all worked through in [coding problems](/blog/javascript-coding-problems)). The building blocks are in [React fundamentals](/blog/react-fundamentals), [state & hooks](/blog/state-and-hooks), [DOM manipulation](/blog/dom-manipulation), [forms](/blog/forms), and [async/await](/blog/async-await).
+
+**Classic builds:** typeahead/autocomplete · tabs · accordion · modal · star rating · carousel · todo app · data table (sort/filter/paginate) · infinite scroll · validated form.
+
+**Focus topics:** JS fundamentals · the event loop & async · DOM & event delegation · reusable component design · state management · forms & validation · accessibility (ARIA, keyboard).
+
+**Watch out for:** not clarifying requirements, ignoring keyboard/ARIA accessibility, over-engineering, and coding in silence.
+
+## Round 4 — System Design Round
+
+**What it tests.** Whether you can take an ambiguous product — "design a news feed," "design the search and listings page" — and structure a *frontend* architecture: component tree, data flow, API shape, and the front end concerns that make it real at scale (performance, rendering strategy, accessibility, i18n, error/loading behavior). You must **drive** the conversation and reason about trade-offs, not wait to be asked. This is the round that separates mid from senior.
+
+**How to prepare.** Learn one framework cold and walk it out loud every time: clarify requirements (functional and non-functional) → scope → high-level architecture → data model and API contract → deep-dive the two or three areas that matter → name the trade-offs. The full method, the core areas, and a worked autocomplete example are in [Frontend System Design Basics](/blog/system-design-basics); back it with [performance](/blog/javascript-performance), [data fetching](/blog/data-fetching), and [Next.js rendering](/blog/nextjs-rendering-caching).
+
+**Common prompts:** news feed · autocomplete at scale · search + listings + filters · image carousel · chat app · infinite data table.
+
+**Watch out for:** designing the backend instead of the frontend, jumping around with no structure, skipping performance and accessibility, and waiting to be prompted for everything.
+
+## Round 5 — Code Review Round
+
+**What it tests.** A distinctive Airbnb round. Given unfamiliar code, build a mental model quickly, catch the *critical* bugs (not just style nits), and communicate feedback the way a good colleague would — prioritized, constructive, specific. It probes engineering maturity: what you consider production quality and how you give feedback.
+
+**How to prepare.** Run a mental checklist every time: correctness → edge cases → accessibility → performance → security → error handling → tests → readability. Do a *structure pass* to understand intent, then a *deep pass* to hunt bugs — say what the code is trying to do before critiquing it. Prioritize out loud: "this is a correctness bug, this is a security risk, these two are style preferences." Learn to spot the common front end defects fast: stale closures and wrong dependency arrays, missing or duplicate list keys, async race conditions, unhandled promise rejections, memory leaks from uncleaned listeners and timers, XSS via unsanitized HTML, direct state mutation, and missing loading/error handling. [Testing JavaScript](/blog/testing-javascript) and [error handling & debugging](/blog/error-handling-debugging) sharpen the eye for the last two.
+
+**Review dimensions:** code quality · accessibility · testing coverage · performance · edge cases · maintainability & naming.
+
+**Watch out for:** only flagging formatting, missing the one critical bug, harsh or vague feedback, and no sense of what matters most.
+
+## Round 6 — Behavioral Round
+
+**What it tests.** Ownership, self-awareness, collaboration, and alignment with Airbnb's culture and craft. They want real stories with *your* specific role, the impact, and — critically — what you learned. Values weigh heavily here; a technically strong candidate can still be turned down on a weak behavioral.
+
+**How to prepare.** Use **STAR** (Situation, Task, Action, Result), keep each story to 2–4 minutes, lead with the result, and own the "I" instead of hiding behind "we." Prepare eight to twelve stories that flex across many questions — a conflict, a real failure, taking ownership, navigating ambiguity, cross-functional work, a tight deadline, mentoring, a user-centric decision. Quantify impact where you can and always end on the lesson. Map each story to a value theme so you speak their language: mission, belonging and hospitality, attention to craft and detail, resourcefulness, and embracing ambiguity. The behavioral section of the [interview question bank](/blog/interview-questions) has prompts to rehearse against.
+
+**Focus topics:** collaboration · conflict resolution · learning from failure · user-centric thinking · craft & detail · ownership.
+
+**Watch out for:** vague stories, "we" that hides your role, no reflection or lesson, and rambling past four minutes.
+
+## A 4–6 Week Plan
+
+A balanced runway that refuses to let coding practice eat the whole schedule. Compress to four weeks by doubling up; stretch to eight if you're rusty. Reweight toward your weak spots.
+
+- **Week 1 — DSA foundations.** Patterns: arrays, hashing, two pointers, sliding window, stacks. Keep one JS utility warm per day.
+- **Week 2 — DSA + trees/graphs.** BFS/DFS, recursion, binary search, intro DP. Start timed sets. Begin one UI build.
+- **Week 3 — UI coding.** Typeahead, tabs, modal, data table — accessibility and edge states every time. Two DSA problems a day to retain.
+- **Week 4 — Frontend system design.** Learn the framework; three full mocks out loud. One UI build; light DSA.
+- **Week 5 — Code review + behavioral.** Review real pull requests; write and tag your STAR stories. One design mock; one UI build.
+- **Week 6 — Full mocks & polish.** One mock per round type; fix weak spots; rehearse narration and recruiter answers.
+
+The rule of thumb: **if more than half your total prep went to LeetCode, you're mis-weighted for this loop.**
+
+## Common Mistakes
+
+- **Treating it as a coding gauntlet** — over-preparing round 2 and neglecting design, review, and behavioral, which together carry more weight.
+- **Silent work** — coding or designing without narrating. Interviewers grade your *reasoning*; if they can't hear it, it doesn't count.
+- **Skipping accessibility** — for interactive UI, keyboard and ARIA support are part of "does it work," not a bonus.
+- **Designing the backend in the frontend round** — spending system design on databases and load balancers instead of component architecture, data flow, and rendering.
+- **Style-only code review** — flagging formatting while the real correctness or security bug sails through.
+- **"We" stories** — behavioral answers that never make your individual contribution clear, with no lesson at the end.
+
+## Exercises
+
+Try each before opening the answer — say your reasoning out loud.
+
+### Exercise 1 — Where do the points go?
+
+You have three weeks and you've been grinding LeetCode daily. What should you *change*?
+
+<details>
+
+<summary>Show answer</summary>
+
+Rebalance. Round 2 is one of six, and DSA is where you likely already have momentum. Shift most of the remaining time to the rounds you can't fake: **UI building** (build real components with accessibility and edge states), **frontend system design** (do full mocks out loud), **code review** (review actual PRs and rank issues by severity), and **behavioral** (write your STAR stories). Keep DSA warm with a couple of problems a day rather than making it the main event.
+
+</details>
+
+### Exercise 2 — The typeahead trap
+
+In the coding round you're asked to build an autocomplete. What separates a passing answer from a strong one?
+
+<details>
+
+<summary>Show answer</summary>
+
+A passing answer renders suggestions as you type. A strong one also **debounces** input (~200ms) so you query on pause not per keystroke, **cancels stale requests** (`AbortController`) to avoid the race where a slow older response overwrites a newer one, handles **loading/empty/error** states, and implements the ARIA **combobox** pattern with full keyboard support (Up/Down, Enter, Escape). Same feature; the difference is the edge cases and accessibility — and narrating *why* you added each one.
+
+</details>
+
+### Exercise 3 — Prioritizing a review
+
+In the code review round you spot a missing `key` prop, a variable that could be `const`, and an unawaited async call that can corrupt state. How do you present them?
+
+<details>
+
+<summary>Show answer</summary>
+
+Lead with severity. The **unawaited async call is a correctness bug** — call it out first, explain the failure (a race that can leave stale or corrupted state), and suggest the fix. The **missing `key`** is a real but lower-severity issue (reconciliation bugs, wasted renders). The **`const`** is a style preference — mention it last, briefly, or skip it. Demonstrating that you *rank* issues rather than listing them flat is exactly the judgment this round measures.
+
+</details>
+
+## The Mental Model to Keep
+
+Airbnb's front end loop is **six rounds measuring six different things** — and coding is only one of them. Round 1 is your **story**; round 2 is **algorithms** (prepare by pattern, test edge cases); round 3 is **UI craft** (build the behavior, then accessibility and the three non-happy states); round 4 is **frontend system design** (drive a structured conversation about architecture and trade-offs); round 5 is **code review** (catch the critical bug, prioritize, be constructive); round 6 is **behavioral** (STAR stories, own the "I," end on the lesson). Across all of them the meta-skill is the same: **communicate your reasoning out loud**. Prepare for breadth, weight your weeks away from pure LeetCode, and narrate everything — that's how you turn a six-round gauntlet into a demonstration that you can do the whole job, not just one slice of it.
