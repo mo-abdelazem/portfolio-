@@ -7,7 +7,9 @@ import { routing } from "@/i18n/routing";
 import { Footer } from "@/components/footer";
 import { Nav } from "@/components/nav";
 import type { SiteContent } from "@/lib/types";
+import { ThemeScript } from "@/components/theme-script";
 import "../globals.css";
+
 
 const inter = Inter({
   subsets: ["latin"],
@@ -127,21 +129,11 @@ export default async function LocaleLayout({ children, params }: Props) {
       data-scroll-behavior="smooth"
       suppressHydrationWarning
     >
+      <head>
+        <ThemeScript />
+      </head>
       <body>
-        {/* Runs synchronously during HTML parse — BEFORE the browser paints any
-            body content — so the theme, color-scheme and the `js` flag (which
-            gates the scroll-reveal hidden state) are all set on the first frame.
-            Must be a plain inline <script>, not next/script beforeInteractive:
-            in the App Router the latter isn't guaranteed to run pre-paint, which
-            is what caused the first-load flash (content flashing visible, then
-            blanking as `html.js` applied, then the wrong-theme flash).
-            theme-ready is flipped on after paint so the body's colour transition
-            never animates the initial load. */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `(function(){try{var d=document.documentElement;d.classList.add('js');var t=localStorage.getItem('theme');if(t!=='light'&&t!=='dark'){t=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}d.setAttribute('data-theme',t);d.style.colorScheme=t;requestAnimationFrame(function(){requestAnimationFrame(function(){d.classList.add('theme-ready');});});}catch(e){}})();`,
-          }}
-        />
+
         <NextIntlClientProvider locale={locale} messages={{}}>
           <a href="#main" className="skip-link">
             {t("skipLink")}
