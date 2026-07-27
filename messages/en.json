@@ -522,6 +522,22 @@
               {
                 "key": "system-design-basics",
                 "title": "System design basics"
+              },
+              {
+                "key": "airbnb-frontend-interview",
+                "title": "Airbnb front end interview"
+              },
+              {
+                "key": "dsa-interview-patterns",
+                "title": "DSA interview patterns"
+              },
+              {
+                "key": "ui-coding-round-builds",
+                "title": "UI coding round builds"
+              },
+              {
+                "key": "star-behavioral-interview",
+                "title": "Behavioral interview (STAR)"
               }
             ]
           }

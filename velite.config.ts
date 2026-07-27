@@ -3,6 +3,22 @@ import remarkGfm from "remark-gfm";
 import rehypeSlug from "rehype-slug";
 import rehypeShiki from "@shikijs/rehype";
 import rehypeAutolinkHeadings from "rehype-autolink-headings";
+import { visit } from "unist-util-visit";
+
+const rehypeMermaid = () => (tree: any) => {
+  visit(tree, "element", (node: any) => {
+    if (node.tagName === "pre" && node.children?.[0]?.tagName === "code") {
+      const codeNode = node.children[0];
+      const className = codeNode.properties?.className || [];
+      if (className.includes("language-mermaid")) {
+        const code = codeNode.children[0]?.value;
+        node.tagName = "mermaid";
+        node.properties = { chart: code };
+        node.children = [];
+      }
+    }
+  });
+};
 
 const posts = defineCollection({
   name: "Post",
@@ -65,6 +81,7 @@ export default defineConfig({
   mdx: {
     remarkPlugins: [remarkGfm],
     rehypePlugins: [
+      rehypeMermaid,
       rehypeSlug,
       // Syntax highlighting at build time (Shiki). A single dark theme keeps
       // code blocks dark in both site themes, matching the existing design.

@@ -1,0 +1,277 @@
+---
+title: "DSA Interview Patterns: The Ones That Actually Recur"
+description: "A pattern-first cheatsheet for the algorithms round — two pointers, sliding window, hashing, binary search, BFS, DFS and backtracking, monotonic stack, top-K with a heap, intervals, and 1D dynamic programming. For each: the tell that signals it, a reusable JavaScript template, representative problems, and the complexity — so you recognize the pattern instead of memorizing hundreds of problems."
+publishedAt: "2026-10-17"
+translationKey: "dsa-interview-patterns"
+tags: ["Interview", "Algorithms", "Data Structures", "Practice"]
+---
+
+The online assessment round rewards *recognition*, not volume. Most medium problems are a small number of patterns wearing different costumes — once you can name the pattern from the problem's shape, the solution is 80% written. This cheatsheet is the pattern layer: for each one, **the tell** that signals it, a reusable JavaScript template, representative problems, and the complexity. Learn these ten and you'll recognize most of what the [Airbnb assessment round](/blog/airbnb-frontend-interview) throws at you. It complements the implementation-focused [JavaScript coding problems](/blog/javascript-coding-problems) and the language mechanics in [JavaScript fundamentals](/blog/javascript-fundamentals).
+
+> The mental model: don't grind 500 problems — learn ~10 **patterns** and do a handful of each until the *tell* is automatic. When you read a new problem, your first job isn't to solve it; it's to ask "which pattern is this?" The tell is usually in the input shape (sorted? a window? a tree?) and what's being asked (a pair? a shortest path? an optimum?).
+
+## Two Pointers
+
+**The tell:** a **sorted** array (or one you can sort), and you're looking for a pair, a triplet, or a partition. Also for in-place array manipulation from both ends.
+
+```js
+// Pair summing to target in a sorted array
+function twoSumSorted(nums, target) {
+  let lo = 0, hi = nums.length - 1;
+  while (lo < hi) {
+    const sum = nums[lo] + nums[hi];
+    if (sum === target) return [lo, hi];
+    if (sum < target) lo++;   // need bigger → move left pointer up
+    else hi--;                // need smaller → move right pointer down
+  }
+  return [-1, -1];
+}
+```
+
+**Representative:** Two Sum II, 3Sum, Container With Most Water, Valid Palindrome, Remove Duplicates. **Complexity:** `O(n)` (plus `O(n log n)` if you sort first), `O(1)` space.
+
+## Sliding Window
+
+**The tell:** a **contiguous** subarray or substring, and you want the longest/shortest/best window satisfying a condition. If you see "substring" or "subarray" with a constraint, reach here.
+
+```js
+// Longest substring without repeating characters
+function longestUnique(s) {
+  const seen = new Map();
+  let start = 0, best = 0;
+  for (let end = 0; end < s.length; end++) {
+    const c = s[end];
+    if (seen.has(c) && seen.get(c) >= start) {
+      start = seen.get(c) + 1;   // shrink window past the duplicate
+    }
+    seen.set(c, end);
+    best = Math.max(best, end - start + 1);
+  }
+  return best;
+}
+```
+
+**Representative:** Longest Substring Without Repeating, Minimum Window Substring, Max Sum Subarray of Size K, Longest Repeating Character Replacement. **Complexity:** `O(n)` — each element enters and leaves the window once.
+
+## Hashing & Frequency
+
+**The tell:** "have I seen this before?", counting occurrences, grouping, or turning an `O(n²)` scan into `O(n)` with a lookup. The most common pattern of all.
+
+```js
+// Group anagrams by their sorted-letter signature
+function groupAnagrams(words) {
+  const groups = new Map();
+  for (const w of words) {
+    const key = [...w].sort().join("");   // canonical signature
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(w);
+  }
+  return [...groups.values()];
+}
+```
+
+**Representative:** Two Sum (unsorted), Group Anagrams, Valid Anagram, Top K Frequent, Contains Duplicate, Subarray Sum Equals K. **Complexity:** typically `O(n)` time, `O(n)` space.
+
+## Binary Search
+
+**The tell:** a **sorted** input, or a "find the minimum/maximum value that satisfies X" phrased as a monotonic condition. Also "search space" problems where the answer lies in a numeric range you can binary-search over.
+
+```js
+function binarySearch(nums, target) {
+  let lo = 0, hi = nums.length - 1;
+  while (lo <= hi) {
+    const mid = lo + ((hi - lo) >> 1);   // avoids overflow, floors
+    if (nums[mid] === target) return mid;
+    if (nums[mid] < target) lo = mid + 1;
+    else hi = mid - 1;
+  }
+  return -1;
+}
+```
+
+**Representative:** Binary Search, Search in Rotated Sorted Array, Find Minimum in Rotated Array, Koko Eating Bananas, Median of Two Sorted Arrays. **Complexity:** `O(log n)`.
+
+## BFS — Breadth-First Search
+
+**The tell:** **shortest path** / minimum steps in an unweighted graph or grid, or level-by-level traversal of a tree. BFS uses a **queue**.
+
+```js
+// Shortest path length in a grid (4-directional)
+function shortestPath(grid, start, end) {
+  const rows = grid.length, cols = grid[0].length;
+  const queue = [[...start, 0]];               // [r, c, distance]
+  const seen = new Set([start.join(",")]);
+  const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+  while (queue.length) {
+    const [r, c, d] = queue.shift();
+    if (r === end[0] && c === end[1]) return d;
+    for (const [dr, dc] of dirs) {
+      const nr = r + dr, nc = c + dc, key = nr + "," + nc;
+      if (nr >= 0 && nr < rows && nc >= 0 && nc < cols &&
+          grid[nr][nc] === 0 && !seen.has(key)) {
+        seen.add(key);
+        queue.push([nr, nc, d + 1]);
+      }
+    }
+  }
+  return -1;
+}
+```
+
+**Representative:** Number of Islands, Rotting Oranges, Word Ladder, Binary Tree Level Order Traversal. **Complexity:** `O(V + E)` (or `O(rows·cols)` for a grid).
+
+## DFS & Backtracking
+
+**The tell:** explore **all** paths/combinations/permutations, or traverse a tree/graph where you go deep before wide. Backtracking = DFS that *undoes* a choice after exploring it.
+
+```js
+// All subsets (the power set) via backtracking
+function subsets(nums) {
+  const result = [];
+  function backtrack(start, path) {
+    result.push([...path]);            // record every node, not just leaves
+    for (let i = start; i < nums.length; i++) {
+      path.push(nums[i]);              // choose
+      backtrack(i + 1, path);          // explore
+      path.pop();                      // un-choose (backtrack)
+    }
+  }
+  backtrack(0, []);
+  return result;
+}
+```
+
+**Representative:** Subsets, Permutations, Combination Sum, Word Search, Generate Parentheses, N-Queens. **Complexity:** exponential by nature — `O(2ⁿ)` or `O(n!)` — the point is exhaustiveness.
+
+## Monotonic Stack
+
+**The tell:** "next greater/smaller element," or you need the nearest boundary on one side. A stack kept in increasing or decreasing order answers these in one pass.
+
+```js
+// Next greater element to the right for each item (indices)
+function nextGreater(nums) {
+  const res = new Array(nums.length).fill(-1);
+  const stack = [];                    // holds indices, values decreasing
+  for (let i = 0; i < nums.length; i++) {
+    while (stack.length && nums[stack[stack.length - 1]] < nums[i]) {
+      res[stack.pop()] = nums[i];      // current resolves everything smaller
+    }
+    stack.push(i);
+  }
+  return res;
+}
+```
+
+**Representative:** Next Greater Element, Daily Temperatures, Largest Rectangle in Histogram, Valid Parentheses, Trapping Rain Water. **Complexity:** `O(n)` — each index is pushed and popped once.
+
+## Top-K with a Heap
+
+**The tell:** "the K largest/smallest/most frequent," or a running median. A heap of size K gives `O(n log k)` instead of sorting everything. JavaScript has no built-in heap, so know a minimal one or simulate it.
+
+```js
+// K largest with a min-heap of size k (using a tiny binary heap)
+function kLargest(nums, k) {
+  const heap = new MinHeap();
+  for (const n of nums) {
+    heap.push(n);
+    if (heap.size() > k) heap.pop();   // keep only the k biggest
+  }
+  return heap.toArray();               // the heap now holds the k largest
+}
+// In an interview, state that JS lacks a native heap and either
+// hand-roll one (~15 lines) or, if n is small, sort in O(n log n).
+```
+
+**Representative:** Kth Largest Element, Top K Frequent, Merge K Sorted Lists, Find Median from Data Stream. **Complexity:** `O(n log k)`.
+
+## Intervals
+
+**The tell:** the input is a list of `[start, end]` pairs and you're merging, inserting, or detecting overlaps. Almost always **sort by start** first.
+
+```js
+function mergeIntervals(intervals) {
+  intervals.sort((a, b) => a[0] - b[0]);
+  const merged = [intervals[0]];
+  for (let i = 1; i < intervals.length; i++) {
+    const last = merged[merged.length - 1];
+    if (intervals[i][0] <= last[1]) {
+      last[1] = Math.max(last[1], intervals[i][1]);   // overlap → extend
+    } else {
+      merged.push(intervals[i]);                       // gap → new interval
+    }
+  }
+  return merged;
+}
+```
+
+**Representative:** Merge Intervals, Insert Interval, Non-overlapping Intervals, Meeting Rooms. **Complexity:** `O(n log n)` for the sort.
+
+## Dynamic Programming (1D)
+
+**The tell:** count the ways, or find the min/max, where the answer for `n` builds on answers for smaller `n`, and the naive recursion recomputes the same subproblems. Start with the recurrence, then cache it.
+
+```js
+// Climbing stairs: ways to reach step n taking 1 or 2 at a time
+function climbStairs(n) {
+  let a = 1, b = 1;                    // dp[i] = dp[i-1] + dp[i-2]
+  for (let i = 2; i <= n; i++) {
+    [a, b] = [b, a + b];              // roll the window; O(1) space
+  }
+  return b;
+}
+```
+
+**Representative:** Climbing Stairs, House Robber, Coin Change, Longest Increasing Subsequence, Word Break, Decode Ways. **Complexity:** `O(n)` to `O(n²)` depending on the recurrence; often `O(1)`–`O(n)` space after rolling.
+
+## Common Mistakes
+
+- **Reaching for code before naming the pattern** — always classify first. The tell is in the input shape and the ask.
+- **Grinding volume over patterns** — 300 random problems teach less than 60 chosen to cover every pattern twice.
+- **Forgetting JS has no native heap or ordered map** — say so out loud and hand-roll or work around it.
+- **Off-by-one in binary search** — pin down your invariant (`lo <= hi` vs `lo < hi`) and whether you return `lo` or `mid`, and keep it consistent.
+- **Not stating complexity** — always give time and space unprompted; it's half of what's being graded.
+- **Skipping edge cases** — empty input, one element, all duplicates, already-sorted, target absent. Test them before you say "done."
+
+## Exercises
+
+Name the pattern before you solve — that's the skill being drilled.
+
+### Exercise 1 — Name the pattern
+
+"Given an array of integers, return the length of the longest subarray whose sum is at most K." Which pattern, and why?
+
+<details>
+
+<summary>Show answer</summary>
+
+**Sliding window.** The tell: a *contiguous subarray* (window) with a *constraint* (sum ≤ K) and you want the longest one. Expand the window on the right, and when the sum exceeds K, shrink from the left — `O(n)` because each index enters and leaves once. (If negatives are allowed the simple window breaks and you'd need prefix sums plus a different structure — a great follow-up to raise unprompted.)
+
+</details>
+
+### Exercise 2 — Pick the right tool
+
+"Find the K most frequent elements in an array." Sort, heap, or bucket — which, and what's the trade-off?
+
+<details>
+
+<summary>Show answer</summary>
+
+Three valid answers, and naming the trade-off is the point. **Sort by frequency:** `O(n log n)`, simplest. **Min-heap of size K:** `O(n log k)`, better when K ≪ n. **Bucket sort by frequency** (index = count): `O(n)`, optimal, since counts are bounded by n. State that you'd reach for the heap by default and the bucket approach when asked to beat `O(n log k)`.
+
+</details>
+
+### Exercise 3 — Grid = graph
+
+"Count the number of islands in a grid of land and water." Which pattern, and BFS or DFS?
+
+<details>
+
+<summary>Show answer</summary>
+
+A grid is just an implicit graph, so this is a **traversal** problem. Iterate every cell; when you hit unvisited land, run **DFS or BFS** to flood-fill the whole island (marking cells visited), and increment a counter. Both work and are `O(rows·cols)`; DFS is a few lines shorter recursively, BFS avoids deep recursion stacks on huge grids. Mention that trade-off.
+
+</details>
+
+## The Mental Model to Keep
+
+The assessment round is **pattern recognition under time pressure**, not raw problem count. Carry these ten patterns and their tells: **two pointers** (sorted, find a pair), **sliding window** (contiguous window with a constraint), **hashing** (seen-before / counting), **binary search** (sorted or monotonic answer), **BFS** (shortest path, uses a queue), **DFS/backtracking** (explore all paths, undo choices), **monotonic stack** (next greater/smaller), **top-K heap** (K largest/most frequent), **intervals** (sort by start, then merge), and **1D DP** (build on smaller subproblems). For any new problem: classify by the input shape and the ask, drop in the template, adapt, then state the complexity and test the edges. Recognition is the whole game — train it, and the assessment stops being a memory test and becomes a matching exercise.
