@@ -44,6 +44,11 @@ export function ThemeToggle({
         : "light";
     }
     document.documentElement.setAttribute("data-theme", theme);
+    
+    // Enable transitions after a tiny delay so the initial paint happens without them
+    window.setTimeout(() => {
+      document.documentElement.classList.add("theme-ready");
+    }, 50);
   }, []);
 
   // Follow the device's color scheme live, unless the user has chosen a theme.
