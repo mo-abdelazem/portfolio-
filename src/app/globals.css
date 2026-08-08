@@ -3,41 +3,44 @@
 /* ===== ElevenLabs Design Tokens ===== */
 
 :root {
-  color-scheme: light;
+  color-scheme: dark;
 
   /* Surfaces */
-  --bg: #ffffff;
-  --bg-secondary: #f5f5f5;
-  --bg-warm: rgba(245, 242, 239, 0.8);
-  --bg-blur: rgba(255, 255, 255, 0.92);
+  --bg: #18251D;
+  --bg-secondary: #223229;
+  --bg-warm: rgba(34, 50, 41, 0.05);
+  --bg-blur: rgba(24, 37, 29, 0.85);
 
   /* Glass (iOS-style pill nav) */
-  --glass-bg: rgba(255, 255, 255, 0.7);
-  --glass-border: rgba(255, 255, 255, 0.7);
+  --glass-bg: rgba(34, 50, 41, 0.6);
+  --glass-border: rgba(183, 255, 114, 0.1);
   --glass-shadow:
-    rgba(0, 0, 0, 0.08) 0px 8px 32px,
-    rgba(255, 255, 255, 0.7) 0px 1px 0px inset;
-  --glass-active: rgba(0, 0, 0, 0.05);
+    rgba(0, 0, 0, 0.45) 0px 8px 32px,
+    rgba(183, 255, 114, 0.06) 0px 1px 0px inset;
+  --glass-active: rgba(183, 255, 114, 0.09);
 
   /* Text */
-  --text: #000000;
-  --text-secondary: #4e4e4e;
-  --text-muted: #777169;
+  --text: #F2F5F1;
+  --text-secondary: #A7B1AA;
+  --text-muted: #A7B1AA;
 
   /* Borders */
-  --border: #e5e5e5;
-  --border-subtle: rgba(0, 0, 0, 0.05);
+  --border: #34443A;
+  --border-subtle: rgba(183, 255, 114, 0.08);
 
-  /* Shadows — ElevenLabs multi-layer system */
-  --shadow-inset: rgba(0, 0, 0, 0.075) 0px 0px 0px 0.5px inset;
-  --shadow-ring: rgba(0, 0, 0, 0.06) 0px 0px 0px 1px;
-  --shadow-soft: rgba(0, 0, 0, 0.04) 0px 4px 4px;
+  /* Accents */
+  --accent: #B7FF72;
+  --accent-hover: #C8FF91;
+
+  /* Shadows */
+  --shadow-inset: rgba(183, 255, 114, 0.05) 0px 0px 0px 0.5px inset;
+  --shadow-ring: rgba(183, 255, 114, 0.09) 0px 0px 0px 1px;
+  --shadow-soft: rgba(0, 0, 0, 0.4) 0px 4px 8px;
   --shadow-card:
-    rgba(0, 0, 0, 0.06) 0px 0px 0px 1px, rgba(0, 0, 0, 0.04) 0px 1px 2px,
-    rgba(0, 0, 0, 0.04) 0px 2px 4px;
+    rgba(183, 255, 114, 0.07) 0px 0px 0px 1px, rgba(0, 0, 0, 0.35) 0px 2px 6px;
   --shadow-elevated:
-    rgba(0, 0, 0, 0.4) 0px 0px 1px, rgba(0, 0, 0, 0.04) 0px 4px 4px;
-  --shadow-warm: rgba(78, 50, 23, 0.04) 0px 6px 16px;
+    rgba(183, 255, 114, 0.08) 0px 0px 0px 1px, rgba(0, 0, 0, 0.5) 0px 6px 16px;
+  --shadow-warm: rgba(0, 0, 0, 0.4) 0px 6px 16px;
 
   /* Font */
   --font: var(--font-inter), "Inter", system-ui, sans-serif;
@@ -74,10 +77,10 @@
   --color-card-foreground: var(--text);
   --color-muted: var(--bg-secondary);
   --color-muted-foreground: var(--text-muted);
-  --color-primary: var(--text);
+  --color-primary: var(--accent);
   --color-primary-foreground: var(--bg);
   --color-accent: var(--bg-secondary);
-  --color-accent-foreground: var(--text);
+  --color-accent-foreground: var(--accent);
   --color-border: var(--border);
   --color-border-subtle: var(--border-subtle);
   --color-ring: var(--text);
@@ -100,37 +103,7 @@
   --shadow-warm: var(--shadow-warm);
 }
 
-[data-theme="dark"] {
-  color-scheme: dark;
 
-  --bg: #0d0d0f;
-  --bg-secondary: #1a1a1e;
-  --bg-warm: rgba(255, 255, 255, 0.05);
-  --bg-blur: rgba(13, 13, 15, 0.85);
-
-  --glass-bg: rgba(24, 24, 27, 0.6);
-  --glass-border: rgba(255, 255, 255, 0.1);
-  --glass-shadow:
-    rgba(0, 0, 0, 0.45) 0px 8px 32px,
-    rgba(255, 255, 255, 0.06) 0px 1px 0px inset;
-  --glass-active: rgba(255, 255, 255, 0.09);
-
-  --text: #f4f4f5;
-  --text-secondary: #a8a8ad;
-  --text-muted: #7d7d83;
-
-  --border: #2b2b30;
-  --border-subtle: rgba(255, 255, 255, 0.08);
-
-  --shadow-inset: rgba(255, 255, 255, 0.05) 0px 0px 0px 0.5px inset;
-  --shadow-ring: rgba(255, 255, 255, 0.09) 0px 0px 0px 1px;
-  --shadow-soft: rgba(0, 0, 0, 0.4) 0px 4px 8px;
-  --shadow-card:
-    rgba(255, 255, 255, 0.07) 0px 0px 0px 1px, rgba(0, 0, 0, 0.35) 0px 2px 6px;
-  --shadow-elevated:
-    rgba(255, 255, 255, 0.08) 0px 0px 0px 1px, rgba(0, 0, 0, 0.5) 0px 6px 16px;
-  --shadow-warm: rgba(0, 0, 0, 0.4) 0px 6px 16px;
-}
 
 @media (max-width: 768px) {
   :root {
@@ -175,14 +148,7 @@ html.js .reveal[data-inview="true"] {
     box-sizing: border-box;
   }
 
-/* Until the inline theme script flags the theme as settled, kill every
-   transition so the initial paint can't animate a light→dark fade (the
-   white flicker on load in dark mode). Re-enabled on the next frame. */
-html:not(.theme-ready) *,
-html:not(.theme-ready) *::before,
-html:not(.theme-ready) *::after {
-  transition: none !important;
-}
+
 
 html {
   scroll-behavior: smooth;
@@ -379,49 +345,7 @@ button {
   font-family: var(--font-ar);
 }
 
-/* Theme toggle */
-.nav__theme,
-.nav__overlay-theme {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
-  color: var(--text-secondary);
-  background: transparent;
-  border-radius: 9999px;
-  box-shadow: var(--shadow-ring);
-  transition:
-    color 0.2s,
-    background 0.2s;
-}
 
-.nav__theme {
-  width: 40px;
-  height: 40px;
-}
-
-.nav__overlay-theme {
-  width: 44px;
-  height: 44px;
-}
-
-.nav__theme:hover,
-.nav__overlay-theme:hover {
-  background: var(--bg-secondary);
-  color: var(--text);
-}
-
-.theme-toggle__icon--sun {
-  display: none;
-}
-
-[data-theme="dark"] .theme-toggle__icon--sun {
-  display: block;
-}
-
-[data-theme="dark"] .theme-toggle__icon--moon {
-  display: none;
-}
 
 .nav__hamburger {
   display: none;

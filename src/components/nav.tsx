@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { Link, usePathname } from "@/i18n/navigation";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { useScrollSpy } from "@/hooks/use-scroll-spy";
 import type { Locale, NavLink, SiteCopy } from "@/lib/types";
 
@@ -133,7 +132,6 @@ export function Nav({ locale, navLinks, copy }: NavProps) {
         </button>
 
         <div className="nav__actions">
-          <ThemeToggle label={copy.themeToggleLabel} className="nav__theme" />
           <Link
             href={pathname}
             locale={targetLocale}

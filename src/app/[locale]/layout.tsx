@@ -7,7 +7,6 @@ import { routing } from "@/i18n/routing";
 import { Footer } from "@/components/footer";
 import { Nav } from "@/components/nav";
 import type { SiteContent } from "@/lib/types";
-import { ThemeScript } from "@/components/theme-script";
 import "../globals.css";
 
 
@@ -130,7 +129,6 @@ export default async function LocaleLayout({ children, params }: Props) {
       suppressHydrationWarning
     >
       <head>
-        <ThemeScript />
       </head>
       <body>
 
