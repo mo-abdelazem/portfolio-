@@ -234,6 +234,18 @@
       "footerRights": "جميع الحقوق محفوظة.",
       "contactHeading": "لديك فكرة أو مشروع؟ يمكننا تحويله إلى تجربة ويب قوية وواضحة.",
       "contactLabel": "تواصل"
+    },
+    "heroDashboard": {
+      "statusLabel": "الحالة",
+      "available": "متاح للعمل",
+      "techStackLabel": "أدواتي الأساسية",
+      "uptimeLabel": "استقرار النظام",
+      "uptimeValue": "99.9% ممتاز",
+      "coffeeLabel": "أكواب القهوة",
+      "coffeeValue": "4,203 كوب",
+      "commitsLabel": "الالتزامات",
+      "commitsValue": "12,408",
+      "initSequence": "جاري التهيئة... [تم]"
     }
   },
   "Blog": {

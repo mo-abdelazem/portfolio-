@@ -44,7 +44,7 @@ export function SectionHeading({
 }) {
   return (
     <Reveal>
-      <p className="mb-2.5 text-[13px] font-medium tracking-[0.14px] text-muted-foreground">
+      <p className="mb-2.5 font-mono text-[12px] font-medium uppercase tracking-[0.2px] text-muted-foreground">
         {label}
       </p>
       <h2

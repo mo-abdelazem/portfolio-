@@ -1,3 +1,6 @@
+"use client";
+
+import React, { useState, useRef } from "react";
 import type { ElementType } from "react";
 import { cn } from "@/lib/utils";
 
@@ -13,16 +16,42 @@ export function Card({
   interactive?: boolean;
   as?: ElementType;
 }) {
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [opacity, setOpacity] = useState(0);
+  const cardRef = useRef<HTMLElement>(null);
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!cardRef.current) return;
+    const rect = cardRef.current.getBoundingClientRect();
+    setPosition({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+  };
+
+  const handleMouseEnter = () => setOpacity(1);
+  const handleMouseLeave = () => setOpacity(0);
+
   return (
     <Comp
+      ref={cardRef}
+      onMouseMove={handleMouseMove}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
       className={cn(
-        "rounded-[var(--radius-xl)] bg-card text-card-foreground shadow-[var(--shadow-card)]",
+        "relative overflow-hidden rounded-[var(--radius-xl)] bg-card text-card-foreground shadow-[var(--shadow-card)]",
         interactive &&
           "transition-[transform,box-shadow] duration-300 ease-[var(--ease-spring)] hover:-translate-y-[3px] hover:shadow-[var(--shadow-ring),rgba(0,0,0,0.04)_0px_4px_8px,rgba(0,0,0,0.03)_0px_12px_24px]",
         className,
       )}
       {...props}
-    />
+    >
+      <div
+        className="pointer-events-none absolute -inset-px opacity-0 transition duration-300"
+        style={{
+          opacity,
+          background: `radial-gradient(600px circle at ${position.x}px ${position.y}px, rgba(183,255,114,.08), transparent 40%)`,
+        }}
+      />
+      {props.children}
+    </Comp>
   );
 }
 

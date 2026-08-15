@@ -88,6 +88,19 @@ export interface SiteCopy {
   readonly contactLabel: string;
 }
 
+export interface HeroDashboard {
+  readonly statusLabel: string;
+  readonly available: string;
+  readonly techStackLabel: string;
+  readonly uptimeLabel: string;
+  readonly uptimeValue: string;
+  readonly coffeeLabel: string;
+  readonly coffeeValue: string;
+  readonly commitsLabel: string;
+  readonly commitsValue: string;
+  readonly initSequence: string;
+}
+
 export interface SectionCopy {
   readonly label: string;
   readonly title: string;
@@ -111,4 +124,5 @@ export interface SiteContent {
     readonly education: SectionCopy;
   };
   readonly copy: SiteCopy;
+  readonly heroDashboard: HeroDashboard;
 }

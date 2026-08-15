@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Link, usePathname } from "@/i18n/navigation";
 import { useScrollSpy } from "@/hooks/use-scroll-spy";
+import { motion, useScroll, useSpring } from "framer-motion";
 import type { Locale, NavLink, SiteCopy } from "@/lib/types";
 
 interface NavProps {
@@ -41,8 +42,16 @@ function GlobeIcon() {
 export function Nav({ locale, navLinks, copy }: NavProps) {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [hoveredPath, setHoveredPath] = useState<string | null>(null);
   const pathname = usePathname();
   const targetLocale = locale === "ar" ? "en" : "ar";
+
+  const { scrollYProgress } = useScroll();
+  const scaleX = useSpring(scrollYProgress, {
+    stiffness: 100,
+    damping: 30,
+    restDelta: 0.001
+  });
 
   // Scroll-spy only applies on the home page, where the nav links are in-page
   // anchors. The shared hook returns the most-visible section id ("" elsewhere).
@@ -96,28 +105,56 @@ export function Nav({ locale, navLinks, copy }: NavProps) {
 
   return (
     <header className={`nav ${scrolled ? "nav--scrolled" : ""}`}>
+      {/* Scroll progress line */}
+      <motion.div
+        className="nav__progress"
+        style={{ scaleX }}
+      />
       <nav className="nav__inner" aria-label={copy.navAriaLabel}>
+        {/* Monospace glow badge logo */}
         <Link
           href="/"
           className="nav__logo"
           aria-label={copy.navTopLabel}
           onClick={handleLogoClick}
         >
+          <span className="nav__logo-bracket">[</span>
           MA
+          <span className="nav__logo-bracket">]</span>
         </Link>
 
-        <ul className="nav__links">
-          {navLinks.map((link) => (
-            <li key={link.href}>
-              <Link
-                href={link.href}
-                className={`nav__link ${isActiveLink(link.href) ? "nav__link--active" : ""}`}
-                onClick={(e) => handleNavClick(e, link.href)}
+        <ul
+          className="nav__links"
+          onMouseLeave={() => setHoveredPath(null)}
+        >
+          {navLinks.map((link) => {
+            const isActive = isActiveLink(link.href);
+            return (
+              <li
+                key={link.href}
+                className="relative"
+                onMouseEnter={() => setHoveredPath(link.href)}
               >
-                {link.label}
-              </Link>
-            </li>
-          ))}
+                {hoveredPath === link.href && (
+                  <motion.div
+                    layoutId="nav-hover"
+                    className="nav__hover-bg"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                  />
+                )}
+                <Link
+                  href={link.href}
+                  className={`nav__link ${isActive ? "nav__link--active" : ""}`}
+                  onClick={(e) => handleNavClick(e, link.href)}
+                >
+                  <span className="relative z-10">{link.label}</span>
+                </Link>
+              </li>
+            );
+          })}
         </ul>
 
         <button
@@ -135,32 +172,59 @@ export function Nav({ locale, navLinks, copy }: NavProps) {
           <Link
             href={pathname}
             locale={targetLocale}
-            className="nav__lang"
+            className="nav__lang-toggle"
             hrefLang={targetLocale}
             lang={targetLocale}
             aria-label={copy.languageSwitchLabel}
           >
-            <GlobeIcon />
-            <span className="nav__lang-text">{copy.languageSwitchLabel}</span>
+            <span className={`nav__lang-option ${locale === "en" ? "nav__lang-option--active" : ""}`}>EN</span>
+            <span className={`nav__lang-option ${locale === "ar" ? "nav__lang-option--active" : ""}`}>AR</span>
           </Link>
         </div>
       </nav>
 
+      {/* Bottom slide-up glassmorphism sheet */}
       {menuOpen && (
-        <div className="nav__overlay" role="dialog" aria-label={copy.navMenuLabel}>
-          <ul className="nav__overlay-links">
-            {navLinks.map((link) => (
-              <li key={link.href}>
-                <Link
-                  href={link.href}
-                  className={`nav__overlay-link ${isActiveLink(link.href) ? "nav__overlay-link--active" : ""}`}
-                  onClick={(e) => handleNavClick(e, link.href)}
-                >
-                  {link.label}
-                </Link>
-              </li>
-            ))}
-          </ul>
+        <div
+          className="nav__overlay"
+          role="dialog"
+          aria-label={copy.navMenuLabel}
+          onClick={(e) => e.target === e.currentTarget && setMenuOpen(false)}
+        >
+          <div className="nav__sheet">
+            {/* Sheet drag handle */}
+            <div className="nav__sheet-handle" aria-hidden="true" />
+            <ul className="nav__overlay-links">
+              {navLinks.map((link) => (
+                <li key={link.href}>
+                  <Link
+                    href={link.href}
+                    className={`nav__overlay-link ${isActiveLink(link.href) ? "nav__overlay-link--active" : ""}`}
+                    onClick={(e) => handleNavClick(e, link.href)}
+                  >
+                    {isActiveLink(link.href) && (
+                      <span className="nav__overlay-active-dot" aria-hidden="true" />
+                    )}
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+            <div className="nav__sheet-footer">
+              <Link
+                href={pathname}
+                locale={targetLocale}
+                className="nav__lang-toggle"
+                hrefLang={targetLocale}
+                lang={targetLocale}
+                aria-label={copy.languageSwitchLabel}
+                onClick={() => setMenuOpen(false)}
+              >
+                <span className={`nav__lang-option ${locale === "en" ? "nav__lang-option--active" : ""}`}>EN</span>
+                <span className={`nav__lang-option ${locale === "ar" ? "nav__lang-option--active" : ""}`}>AR</span>
+              </Link>
+            </div>
+          </div>
         </div>
       )}
     </header>

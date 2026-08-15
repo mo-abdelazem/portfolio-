@@ -28,59 +28,64 @@ export function Skills({ skills, section }: SkillsProps) {
           label={section.label}
           title={section.title}
         />
-        <Reveal delay={100}>
-          <div
-            className="mb-8 flex flex-wrap gap-2"
-            role="tablist"
-            aria-label="Skill categories"
-          >
-            {categories.map((cat) => {
-              const selected = active === cat;
-              return (
-                <button
-                  key={cat}
-                  id={`skills-tab-${cat}`}
-                  role="tab"
-                  type="button"
-                  aria-selected={selected}
-                  aria-controls="skills-panel"
-                  className={cn(
-                    "rounded-full px-[18px] py-2 text-sm font-medium tracking-[0.14px] transition-[background-color,color,box-shadow] duration-200",
-                    selected
-                      ? "bg-primary text-primary-foreground"
-                      : "text-secondary-foreground shadow-[var(--shadow-ring)] hover:bg-secondary",
-                  )}
-                  onClick={() => setActive(cat)}
-                >
-                  {cat}
-                </button>
-              );
-            })}
-          </div>
-        </Reveal>
-        <Reveal delay={200}>
-          <div
-            key={active}
-            id="skills-panel"
-            role="tabpanel"
-            tabIndex={0}
-            aria-labelledby={`skills-tab-${active}`}
-            className="grid grid-cols-[repeat(auto-fill,minmax(165px,1fr))] gap-3 animate-[skills-fade_0.4s_var(--ease-spring)] focus-visible:outline-none"
-          >
-            {items.map((skill) => (
-              <span
-                key={skill}
-                className="group flex items-center gap-[11px] rounded-[var(--radius-md)] bg-card px-[18px] py-4 text-[15px] font-medium tracking-[0.1px] text-foreground shadow-[var(--shadow-card)] transition-[transform,box-shadow] duration-[250ms] ease-[var(--ease-spring)] hover:-translate-y-[3px] hover:shadow-[var(--shadow-ring),rgba(0,0,0,0.05)_0px_6px_16px]"
-              >
+        <div className="flex flex-col gap-8 md:flex-row md:gap-12">
+          {/* Terminal-style category sidebar */}
+          <Reveal delay={100}>
+            <div
+              className="flex flex-row flex-wrap gap-1 md:flex-col md:w-48 md:flex-shrink-0"
+              role="tablist"
+              aria-label="Skill categories"
+            >
+              {categories.map((cat) => {
+                const selected = active === cat;
+                return (
+                  <button
+                    key={cat}
+                    id={`skills-tab-${cat}`}
+                    role="tab"
+                    type="button"
+                    aria-selected={selected}
+                    aria-controls="skills-panel"
+                    className={cn(
+                      "group relative flex items-center gap-2 rounded-[var(--radius-sm)] px-4 py-2.5 font-mono text-[13px] font-medium transition-all duration-200 text-left",
+                      selected
+                        ? "border-l-2 border-[var(--accent)] bg-[rgba(183,255,114,0.08)] text-[var(--accent)] pl-[14px]"
+                        : "border-l-2 border-transparent text-secondary-foreground hover:border-[var(--border)] hover:text-foreground pl-[14px]",
+                    )}
+                    onClick={() => setActive(cat)}
+                  >
+                    <span className={cn(
+                      "transition-opacity duration-200 font-mono text-[var(--accent)]",
+                      selected ? "opacity-100" : "opacity-0 group-hover:opacity-40"
+                    )}>{">"}</span>
+                    {cat}
+                  </button>
+                );
+              })}
+            </div>
+          </Reveal>
+          <Reveal delay={200}>
+            <div
+              key={active}
+              id="skills-panel"
+              role="tabpanel"
+              tabIndex={0}
+              aria-labelledby={`skills-tab-${active}`}
+              className="flex-1 grid grid-cols-[repeat(auto-fill,minmax(155px,1fr))] gap-3 animate-[skills-fade_0.4s_var(--ease-spring)] focus-visible:outline-none"
+            >
+              {items.map((skill) => (
                 <span
-                  aria-hidden="true"
-                  className="h-1.5 w-1.5 flex-none rounded-full bg-[var(--text-muted)] transition-[transform,background-color] duration-[250ms] ease-[var(--ease-spring)] group-hover:scale-150 group-hover:bg-[var(--text)]"
-                />
-                {skill}
-              </span>
-            ))}
-          </div>
-        </Reveal>
+                  key={skill}
+                  className="group flex items-center justify-center gap-0 rounded-[var(--radius-md)] border border-[var(--border)] bg-card px-4 py-3.5 font-mono text-[13px] font-medium tracking-wide text-secondary-foreground shadow-[var(--shadow-card)] transition-all duration-[250ms] ease-[var(--ease-spring)] hover:-translate-y-[2px] hover:border-[var(--accent)] hover:text-[var(--accent)] hover:shadow-[0_0_16px_rgba(183,255,114,0.12)]"
+                >
+                  <span aria-hidden="true" className="text-[var(--border)] group-hover:text-[var(--accent)] transition-colors duration-200">[</span>
+                  <span className="px-1.5">{skill}</span>
+                  <span aria-hidden="true" className="text-[var(--border)] group-hover:text-[var(--accent)] transition-colors duration-200">]</span>
+                </span>
+              ))}
+            </div>
+          </Reveal>
+        </div>
       </Container>
     </Section>
   );

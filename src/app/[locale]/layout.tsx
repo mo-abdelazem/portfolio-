@@ -7,6 +7,8 @@ import { routing } from "@/i18n/routing";
 import { Footer } from "@/components/footer";
 import { Nav } from "@/components/nav";
 import type { SiteContent } from "@/lib/types";
+import { Noise } from "@/components/noise";
+import { CustomCursor } from "@/components/custom-cursor";
 import "../globals.css";
 
 
@@ -131,7 +133,8 @@ export default async function LocaleLayout({ children, params }: Props) {
       <head>
       </head>
       <body>
-
+        <Noise />
+        <CustomCursor />
         <NextIntlClientProvider locale={locale} messages={{}}>
           <a href="#main" className="skip-link">
             {t("skipLink")}

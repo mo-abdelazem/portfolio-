@@ -1,23 +1,14 @@
 import type { SiteContent } from "@/lib/types";
 import { Reveal } from "./reveal";
 import { Section, Container, SectionHeading } from "@/components/ui/section";
-import { Card, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 
-function ExternalLinkIcon() {
+function ArrowIcon() {
   return (
-    <svg
-      width="18"
-      height="18"
-      viewBox="0 0 18 18"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden="true"
-    >
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path
-        d="M15.75 6.75L15.75 2.25M15.75 2.25H11.25M15.75 2.25L9.75 8.25M7.5 3.75H5.85C4.59 3.75 3.96 3.75 3.48 3.99C3.06 4.2 2.7 4.56 2.49 4.98C2.25 5.46 2.25 6.09 2.25 7.35V12.15C2.25 13.41 2.25 14.04 2.49 14.52C2.7 14.94 3.06 15.3 3.48 15.51C3.96 15.75 4.59 15.75 5.85 15.75H10.65C11.91 15.75 12.54 15.75 13.02 15.51C13.44 15.3 13.8 14.94 14.01 14.52C14.25 14.04 14.25 13.41 14.25 12.15V10.5"
+        d="M7 17L17 7M17 7H7M17 7V17"
         stroke="currentColor"
-        strokeWidth="1.5"
+        strokeWidth="1.8"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
@@ -38,42 +29,61 @@ export function Projects({ content }: ProjectsProps) {
           label={content.sections.projects.label}
           title={content.sections.projects.title}
         />
-        <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-3">
           {content.projects.map((project, i) => (
-            <Reveal key={project.name} delay={100 + i * 100}>
-              <Card
-                as="article"
-                interactive
-                className="group relative flex flex-col p-7 md:p-10"
+            <Reveal key={project.name} delay={100 + i * 80}>
+              <a
+                href={project.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`${content.copy.externalProjectLabel} ${project.name}`}
+                className="group flex items-center gap-5 md:gap-8 rounded-[var(--radius-xl)] border border-[var(--border)] bg-card px-6 py-6 md:px-10 md:py-7 transition-all duration-300 hover:border-[var(--accent)] hover:bg-[rgba(183,255,114,0.03)] relative overflow-hidden"
               >
-                <div className="mb-3 flex flex-col items-baseline gap-1 md:flex-row md:justify-between md:gap-4">
-                  <CardTitle>{project.name}</CardTitle>
-                  <div className="flex flex-shrink-0 items-center gap-3">
-                    <span className="text-sm tracking-[0.14px] text-muted-foreground">
+                {/* Number */}
+                <span
+                  className="shrink-0 font-mono text-4xl md:text-5xl font-bold leading-none text-[var(--accent)] opacity-40 group-hover:opacity-100 transition-opacity duration-300 w-12 md:w-16 text-center tabular-nums select-none"
+                  aria-hidden="true"
+                >
+                  {String(i + 1).padStart(2, "0")}
+                </span>
+
+                {/* Divider */}
+                <div className="hidden md:block shrink-0 h-10 w-px bg-[var(--border)] group-hover:bg-[var(--accent)] group-hover:opacity-30 transition-colors duration-300" />
+
+                {/* Content */}
+                <div className="flex flex-col gap-2 flex-1 min-w-0">
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <h3 className="font-medium text-foreground text-base md:text-lg leading-tight group-hover:text-[var(--accent)] transition-colors duration-200">
+                      {project.name}
+                    </h3>
+                    <span className="font-mono text-[11px] text-muted-foreground uppercase tracking-wider shrink-0">
                       {project.period}
                     </span>
-                    <a
-                      href={project.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      aria-label={`${content.copy.externalProjectLabel} ${project.name}`}
-                      className="relative z-[1] inline-flex h-9 w-9 items-center justify-center rounded-full bg-card text-muted-foreground shadow-[var(--shadow-inset),var(--shadow-ring)] transition-[color,box-shadow,background-color,transform] duration-[250ms] ease-[var(--ease-spring)] after:absolute after:inset-0 after:rounded-[inherit] after:content-[''] hover:bg-secondary hover:text-foreground hover:shadow-[var(--shadow-inset),var(--shadow-ring),var(--shadow-soft)] group-hover:translate-x-[2px] group-hover:-translate-y-[2px] group-hover:text-foreground"
-                    >
-                      <ExternalLinkIcon />
-                    </a>
+                  </div>
+                  <p className="text-sm text-secondary-foreground leading-relaxed line-clamp-2">
+                    {project.description}
+                  </p>
+                  <div className="flex flex-wrap gap-1.5 mt-1">
+                    {project.tags.map((tag) => (
+                      <span
+                        key={tag}
+                        className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground border border-[var(--border)] rounded px-2 py-0.5 group-hover:border-[rgba(183,255,114,0.3)] group-hover:text-[var(--accent)] transition-colors duration-200"
+                      >
+                        [{tag}]
+                      </span>
+                    ))}
                   </div>
                 </div>
-                <CardDescription className="mb-5">
-                  {project.description}
-                </CardDescription>
-                <div className="relative z-[1] flex flex-wrap gap-2">
-                  {project.tags.map((tag) => (
-                    <Badge key={tag} variant="secondary">
-                      {tag}
-                    </Badge>
-                  ))}
+
+                {/* Arrow button */}
+                <div className="shrink-0 flex items-center justify-center h-10 w-10 md:h-12 md:w-12 rounded-full border border-[var(--border)] bg-[rgba(0,0,0,0.2)] text-muted-foreground transition-all duration-300 group-hover:bg-[var(--accent)] group-hover:text-[var(--bg)] group-hover:border-[var(--accent)] group-hover:shadow-[0_0_20px_rgba(183,255,114,0.4)]">
+                  <ArrowIcon />
                 </div>
-              </Card>
+
+                {/* Subtle right-side glow on hover */}
+                <div className="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                  style={{ background: "linear-gradient(270deg, rgba(183,255,114,0.04) 0%, transparent 50%)" }} />
+              </a>
             </Reveal>
           ))}
         </div>

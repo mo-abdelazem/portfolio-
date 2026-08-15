@@ -234,6 +234,18 @@
       "footerRights": "All rights reserved.",
       "contactHeading": "Let's build something great together",
       "contactLabel": "Contact"
+    },
+    "heroDashboard": {
+      "statusLabel": "Status",
+      "available": "Available for work",
+      "techStackLabel": "Core Stack",
+      "uptimeLabel": "System Uptime",
+      "uptimeValue": "99.9% OK",
+      "coffeeLabel": "Coffee Consumed",
+      "coffeeValue": "4,203 Cups",
+      "commitsLabel": "Commits Pushed",
+      "commitsValue": "12,408",
+      "initSequence": "INITIALIZING SEQUENCE... [OK]"
     }
   },
   "Blog": {
