@@ -36,9 +36,9 @@ export function Card({
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       className={cn(
-        "relative overflow-hidden rounded-[var(--radius-xl)] bg-card text-card-foreground shadow-[var(--shadow-card)]",
+        "relative overflow-hidden rounded-xl bg-card text-card-foreground shadow-card",
         interactive &&
-          "transition-[transform,box-shadow] duration-300 ease-[var(--ease-spring)] hover:-translate-y-[3px] hover:shadow-[var(--shadow-ring),rgba(0,0,0,0.04)_0px_4px_8px,rgba(0,0,0,0.03)_0px_12px_24px]",
+          "transition-[transform,box-shadow] duration-300 ease-spring hover:-translate-y-0.5 hover:shadow-ring",
         className,
       )}
       {...props}

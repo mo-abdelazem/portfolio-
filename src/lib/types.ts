@@ -68,6 +68,12 @@ export interface Detail {
   readonly value: string;
 }
 
+export interface StatItem {
+  readonly label: string;
+  readonly target: number;
+  readonly suffix: string;
+}
+
 export interface SiteCopy {
   readonly skipLink: string;
   readonly heroPrimaryCta: string;
@@ -86,6 +92,8 @@ export interface SiteCopy {
   readonly footerRights: string;
   readonly contactHeading: string;
   readonly contactLabel: string;
+  readonly githubAriaLabel?: string;
+  readonly linkedinAriaLabel?: string;
 }
 
 export interface HeroDashboard {
@@ -112,6 +120,8 @@ export interface SiteContent {
   readonly personal: Personal;
   readonly navLinks: readonly NavLink[];
   readonly details: readonly Detail[];
+  readonly aboutStats?: readonly StatItem[];
+  readonly educationCertifiedBadge?: string;
   readonly skills: Skills;
   readonly experience: readonly Experience[];
   readonly projects: readonly Project[];
@@ -126,3 +136,4 @@ export interface SiteContent {
   readonly copy: SiteCopy;
   readonly heroDashboard: HeroDashboard;
 }
+

@@ -1,5 +1,4 @@
 import type { SiteContent } from "@/lib/types";
-import { SectionNav } from "@/components/section-nav";
 import { Hero } from "@/components/hero";
 import { About } from "@/components/about";
 import { Skills } from "@/components/skills";
@@ -15,10 +14,6 @@ interface HomePageProps {
 export function HomePage({ content }: HomePageProps) {
   return (
     <div lang={content.locale} dir={content.dir}>
-      <SectionNav
-        navLinks={content.navLinks}
-        label={content.copy.sectionNavLabel}
-      />
       <main id="main">
         <Hero content={content} />
         <About content={content} />

@@ -6,41 +6,41 @@
   color-scheme: dark;
 
   /* Surfaces */
-  --bg: #18251D;
-  --bg-secondary: #223229;
-  --bg-warm: rgba(34, 50, 41, 0.05);
-  --bg-blur: rgba(24, 37, 29, 0.85);
+  --bg: #070908;
+  --bg-secondary: #0f1311;
+  --bg-warm: rgba(255, 255, 255, 0.02);
+  --bg-blur: rgba(7, 9, 8, 0.85);
 
-  /* Glass (iOS-style pill nav) */
-  --glass-bg: rgba(34, 50, 41, 0.6);
-  --glass-border: rgba(183, 255, 114, 0.1);
+  /* Glass (iOS / Cyber style pill nav) */
+  --glass-bg: rgba(12, 16, 14, 0.75);
+  --glass-border: rgba(255, 255, 255, 0.09);
   --glass-shadow:
-    rgba(0, 0, 0, 0.45) 0px 8px 32px,
-    rgba(183, 255, 114, 0.06) 0px 1px 0px inset;
-  --glass-active: rgba(183, 255, 114, 0.09);
+    rgba(0, 0, 0, 0.6) 0px 12px 40px,
+    rgba(255, 255, 255, 0.04) 0px 1px 0px inset;
+  --glass-active: rgba(183, 255, 114, 0.08);
 
   /* Text */
-  --text: #F2F5F1;
-  --text-secondary: #A7B1AA;
-  --text-muted: #A7B1AA;
+  --text: #FFFFFF;
+  --text-secondary: #9aa7a0;
+  --text-muted: #64736b;
 
   /* Borders */
-  --border: #34443A;
-  --border-subtle: rgba(183, 255, 114, 0.08);
+  --border: rgba(255, 255, 255, 0.09);
+  --border-subtle: rgba(255, 255, 255, 0.05);
 
   /* Accents */
   --accent: #B7FF72;
   --accent-hover: #C8FF91;
 
   /* Shadows */
-  --shadow-inset: rgba(183, 255, 114, 0.05) 0px 0px 0px 0.5px inset;
-  --shadow-ring: rgba(183, 255, 114, 0.09) 0px 0px 0px 1px;
-  --shadow-soft: rgba(0, 0, 0, 0.4) 0px 4px 8px;
+  --shadow-inset: rgba(255, 255, 255, 0.04) 0px 0px 0px 0.5px inset;
+  --shadow-ring: rgba(255, 255, 255, 0.08) 0px 0px 0px 1px;
+  --shadow-soft: rgba(0, 0, 0, 0.5) 0px 4px 12px;
   --shadow-card:
-    rgba(183, 255, 114, 0.07) 0px 0px 0px 1px, rgba(0, 0, 0, 0.35) 0px 2px 6px;
+    rgba(255, 255, 255, 0.06) 0px 0px 0px 1px, rgba(0, 0, 0, 0.5) 0px 4px 16px;
   --shadow-elevated:
-    rgba(183, 255, 114, 0.08) 0px 0px 0px 1px, rgba(0, 0, 0, 0.5) 0px 6px 16px;
-  --shadow-warm: rgba(0, 0, 0, 0.4) 0px 6px 16px;
+    rgba(255, 255, 255, 0.08) 0px 0px 0px 1px, rgba(0, 0, 0, 0.7) 0px 8px 24px;
+  --shadow-warm: rgba(0, 0, 0, 0.5) 0px 6px 20px;
 
   /* Font */
   --font: var(--font-inter), "Inter", system-ui, sans-serif;
@@ -49,15 +49,15 @@
     Consolas, "Liberation Mono", monospace;
 
   /* Layout */
-  --max-width: 1100px;
+  --max-width: 1240px;
   --px: 48px;
   --section-py: 120px;
 
   /* Radius scale */
   --radius-sm: 10px;
   --radius-md: 14px;
-  --radius-lg: 16px;
-  --radius-xl: 20px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
   --radius-full: 9999px;
 
   /* Motion */

@@ -5,13 +5,25 @@ import rehypeShiki from "@shikijs/rehype";
 import rehypeAutolinkHeadings from "rehype-autolink-headings";
 import { visit } from "unist-util-visit";
 
-const rehypeMermaid = () => (tree: any) => {
-  visit(tree, "element", (node: any) => {
+import type { Node } from "unist";
+
+interface HastElement extends Node {
+  tagName?: string;
+  properties?: Record<string, unknown>;
+  children?: Array<{
+    tagName?: string;
+    properties?: { className?: string[] };
+    children?: Array<{ value?: string }>;
+  }>;
+}
+
+const rehypeMermaid = () => (tree: Node) => {
+  visit(tree, "element", (node: HastElement) => {
     if (node.tagName === "pre" && node.children?.[0]?.tagName === "code") {
       const codeNode = node.children[0];
       const className = codeNode.properties?.className || [];
       if (className.includes("language-mermaid")) {
-        const code = codeNode.children[0]?.value;
+        const code = codeNode.children?.[0]?.value;
         node.tagName = "mermaid";
         node.properties = { chart: code };
         node.children = [];

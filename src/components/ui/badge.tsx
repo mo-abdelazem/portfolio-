@@ -7,10 +7,10 @@ export const badgeVariants = cva(
     variants: {
       variant: {
         secondary:
-          "bg-secondary px-3.5 py-[5px] text-secondary-foreground shadow-[var(--shadow-inset)]",
-        solid: "bg-primary px-3.5 py-[5px] text-primary-foreground",
+          "bg-secondary px-3.5 py-1.5 text-secondary-foreground shadow-inset",
+        solid: "bg-primary px-3.5 py-1.5 text-primary-foreground",
         outline:
-          "px-3.5 py-[5px] text-muted-foreground shadow-[var(--shadow-ring)]",
+          "px-3.5 py-1.5 text-muted-foreground shadow-ring",
       },
     },
     defaultVariants: { variant: "secondary" },

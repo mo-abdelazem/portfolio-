@@ -9,12 +9,12 @@ export const buttonVariants = cva(
         primary:
           "bg-primary text-primary-foreground hover:-translate-y-0.5 hover:opacity-90",
         outline:
-          "bg-[var(--bg-warm)] text-foreground shadow-[var(--shadow-warm)] hover:-translate-y-0.5 hover:shadow-[rgba(78,50,23,0.07)_0px_8px_24px]",
-        pill: "bg-card text-foreground shadow-[var(--shadow-elevated)] hover:-translate-y-0.5 hover:bg-primary hover:text-primary-foreground hover:shadow-none",
+          "bg-(--bg-warm) text-foreground shadow-warm hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(78,50,23,0.07)]",
+        pill: "bg-card text-foreground shadow-elevated hover:-translate-y-0.5 hover:bg-primary hover:text-primary-foreground hover:shadow-none",
       },
       size: {
         default: "px-7 py-3 text-[15px]",
-        sm: "px-[18px] py-2 text-sm",
+        sm: "px-4.5 py-2 text-sm",
         lg: "px-8 py-3.5 text-base",
       },
     },

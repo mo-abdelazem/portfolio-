@@ -14,6 +14,13 @@ export function AnimatedCounter({ target, suffix = "", duration = 1500 }: Counte
   const hasAnimated = useRef(false);
 
   useEffect(() => {
+    // If user prefers reduced motion, show target immediately without animation
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      const rafId = requestAnimationFrame(() => setCount(target));
+      hasAnimated.current = true;
+      return () => cancelAnimationFrame(rafId);
+    }
+
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry?.isIntersecting && !hasAnimated.current) {
@@ -40,8 +47,9 @@ export function AnimatedCounter({ target, suffix = "", duration = 1500 }: Counte
   }, [target, duration]);
 
   return (
-    <span ref={ref} className="tabular-nums">
+    <span ref={ref} className="tabular-nums inline-block" dir="ltr">
       {count}{suffix}
     </span>
   );
 }
+

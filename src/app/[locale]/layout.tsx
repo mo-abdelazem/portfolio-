@@ -45,11 +45,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title: t("title"),
     description: t("description"),
     keywords: [
-      "Frontend Developer",
+      "Full Stack Developer",
+      "MERN Stack Developer",
       "React",
-      "Vue",
+      "Node.js",
+      "Express.js",
+      "MongoDB",
       "Next.js",
       "TypeScript",
+      "REST APIs",
       "Performance",
       "Accessibility",
       "i18n",
@@ -108,7 +112,7 @@ export default async function LocaleLayout({ children, params }: Props) {
     "@context": "https://schema.org",
     "@type": "Person",
     name: "Mohamed Abdelazem",
-    jobTitle: "Frontend Developer",
+    jobTitle: "Full Stack MERN Developer",
     url: isArabic ? "https://mohamed.work/ar" : "https://mohamed.work",
     email: "hello@mohamed.work",
     address: {
@@ -131,6 +135,11 @@ export default async function LocaleLayout({ children, params }: Props) {
       suppressHydrationWarning
     >
       <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: "document.documentElement.classList.add('js');",
+          }}
+        />
       </head>
       <body>
         <Noise />

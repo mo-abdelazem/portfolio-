@@ -160,7 +160,7 @@ export function BlogExplorer({
               <p className="text-[14.5px] leading-[1.6] text-secondary-foreground">
                 {post.description}
               </p>
-              <div className="relative z-[1] mt-auto flex flex-wrap gap-[7px] pt-1">
+              <div className="relative z-1 mt-auto flex flex-wrap gap-1.75 pt-1">
                 {post.tags.slice(0, 3).map((tag) => (
                   <TagChip key={tag}>{tag}</TagChip>
                 ))}

@@ -10,7 +10,7 @@ export function Section({
   return (
     <section
       className={cn(
-        "px-[var(--px)] py-[var(--section-py)]",
+        "px-(--px) py-(--section-py) relative",
         centered && "text-center",
         className,
       )}
@@ -26,13 +26,13 @@ export function Container({
 }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cn("mx-auto w-full max-w-[var(--max-width)]", className)}
+      className={cn("mx-auto w-full max-w-(--max-width)", className)}
       {...props}
     />
   );
 }
 
-/** Eyebrow label + section title, wrapped in a single reveal. */
+/** Eyebrow label + section title, wrapped in a single reveal with cyber typography. */
 export function SectionHeading({
   label,
   title,
@@ -44,12 +44,13 @@ export function SectionHeading({
 }) {
   return (
     <Reveal>
-      <p className="mb-2.5 font-mono text-[12px] font-medium uppercase tracking-[0.2px] text-muted-foreground">
-        {label}
-      </p>
+      <div className="mb-3 flex items-center gap-2 font-mono text-xs font-semibold uppercase tracking-widest text-(--accent)">
+        <span className="opacity-40">{"//"}</span>
+        <span>{label}</span>
+      </div>
       <h2
         id={id}
-        className="mb-12 text-[clamp(32px,5vw,48px)] font-light leading-[1.08] tracking-[-0.96px] text-foreground"
+        className="mb-12 text-[clamp(32px,5vw,52px)] font-extrabold leading-[1.08] tracking-[-0.03em] text-foreground"
       >
         {title}
       </h2>

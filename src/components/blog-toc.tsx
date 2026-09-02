@@ -74,8 +74,10 @@ export function BlogToc({ items, label, openLabel, closeLabel }: BlogTocProps) {
     };
     document.addEventListener("keydown", onKeyDown);
 
+    const fab = fabRef.current;
+    const drawer = drawerRef.current;
     // Focus the first link so keyboard users land inside the drawer.
-    drawerRef.current?.querySelector<HTMLElement>("a")?.focus();
+    drawer?.querySelector<HTMLElement>("a")?.focus();
 
     return () => {
       document.removeEventListener("keydown", onKeyDown);
@@ -98,18 +100,14 @@ export function BlogToc({ items, label, openLabel, closeLabel }: BlogTocProps) {
       } else {
         // Closed without navigating (backdrop / Escape / close button): return
         // focus to the FAB that opened it.
-        fabRef.current?.focus();
+        fab?.focus();
       }
     };
   }, [drawerOpen]);
 
   if (items.length === 0) return null;
 
-  // Take full control of the jump: prevent the default anchor scroll (it fires
-  // while the drawer still has scroll locked and is lost), record the target,
-  // and close the drawer. The drawer effect's cleanup performs the jump after
-  // it releases the lock. (scroll-margin-top on headings supplies the offset.)
-  const closeAndScrollTo = (
+  const handleDrawerNavigate = (
     e: React.MouseEvent<HTMLAnchorElement>,
     id: string,
   ) => {
@@ -117,27 +115,6 @@ export function BlogToc({ items, label, openLabel, closeLabel }: BlogTocProps) {
     pendingScrollRef.current = id;
     setDrawerOpen(false);
   };
-
-  const list = (
-    onNavigate?: (e: React.MouseEvent<HTMLAnchorElement>, id: string) => void,
-  ) => (
-    <ul className="blog-toc__list">
-      {items.map((item) => (
-        <li key={item.id} className="blog-toc__item" data-depth={item.depth}>
-          <a
-            href={`#${item.id}`}
-            className={`blog-toc__link ${
-              activeId === item.id ? "blog-toc__link--active" : ""
-            }`}
-            aria-current={activeId === item.id ? "true" : undefined}
-            onClick={onNavigate ? (e) => onNavigate(e, item.id) : undefined}
-          >
-            {item.text}
-          </a>
-        </li>
-      ))}
-    </ul>
-  );
 
   return (
     <>
@@ -148,7 +125,9 @@ export function BlogToc({ items, label, openLabel, closeLabel }: BlogTocProps) {
         onToggle={(e) => setOpen(e.currentTarget.open)}
       >
         <summary className="blog-toc__summary">{label}</summary>
-        <nav aria-label={label}>{list()}</nav>
+        <nav aria-label={label}>
+          <TocList items={items} activeId={activeId} />
+        </nav>
       </details>
 
       {/* Mobile: floating trigger that opens an end drawer. */}
@@ -207,10 +186,43 @@ export function BlogToc({ items, label, openLabel, closeLabel }: BlogTocProps) {
             </button>
           </div>
           <nav aria-label={label} className="toc-drawer__nav">
-            {list(closeAndScrollTo)}
+            <TocList
+              items={items}
+              activeId={activeId}
+              onNavigate={handleDrawerNavigate}
+            />
           </nav>
         </aside>
       </div>
     </>
+  );
+}
+
+function TocList({
+  items,
+  activeId,
+  onNavigate,
+}: {
+  items: readonly TocItem[];
+  activeId: string;
+  onNavigate?: (e: React.MouseEvent<HTMLAnchorElement>, id: string) => void;
+}) {
+  return (
+    <ul className="blog-toc__list">
+      {items.map((item) => (
+        <li key={item.id} className="blog-toc__item" data-depth={item.depth}>
+          <a
+            href={`#${item.id}`}
+            className={`blog-toc__link ${
+              activeId === item.id ? "blog-toc__link--active" : ""
+            }`}
+            aria-current={activeId === item.id ? "true" : undefined}
+            onClick={onNavigate ? (e) => onNavigate(e, item.id) : undefined}
+          >
+            {item.text}
+          </a>
+        </li>
+      ))}
+    </ul>
   );
 }

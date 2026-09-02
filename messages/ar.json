@@ -1,24 +1,24 @@
 {
   "Metadata": {
-    "title": "Mohamed Abdelazem - Frontend Developer",
-    "description": "مطوّر واجهات أمامية أعمل على بناء مواقع وتطبيقات ويب سريعة، واضحة وسهلة الاستخدام باستخدام React وVue وTypeScript، مع اهتمام كبير بالأداء، تجربة المستخدم، ودعم اللغتين العربية والإنجليزية.",
-    "ogDescription": "مطوّر واجهات أمامية أساعد في تحويل التصميمات والأفكار إلى مواقع وتطبيقات ويب احترافية، سريعة، متجاوبة، وسهلة الاستخدام."
+    "title": "Mohamed Abdelazem - مطوّر Full Stack MERN",
+    "description": "مطوّر Full Stack MERN متخصص في بناء تطبيقات ويب متكاملة وقابلة للتوسع باستخدام MongoDB وExpress.js وReact وNode.js وTypeScript، مع اهتمام كبير بالأداء وتجربة المستخدم ودعم اللغتين العربية والإنجليزية.",
+    "ogDescription": "مطوّر Full Stack MERN متخصص في بناء تطبيقات ويب متكاملة وسريعة وقابلة للتوسع باستخدام React وNode.js وExpress وMongoDB وTypeScript."
   },
   "Home": {
     "locale": "ar",
     "dir": "rtl",
     "personal": {
       "name": "Mohamed Abdelazem",
-      "title": "مطوّر واجهات أمامية",
+      "title": "مطوّر Full Stack MERN",
       "email": "hello@mohamed.work",
       "phone": "01281235865",
       "location": "دمياط، مصر",
       "github": "https://github.com/mo-abdelazem",
       "linkedin": "https://linkedin.com/in/mo-abdelazem",
       "whatsapp": "https://wa.me/201281235865",
-      "bio": "أنا مطوّر واجهات أمامية أعمل على بناء مواقع وتطبيقات ويب حديثة باستخدام React وVue وTypeScript. أركز على كتابة كود منظم، تحسين سرعة الموقع، وتقديم تجربة استخدام واضحة وسلسة على مختلف الأجهزة، مع دعم كامل للواجهات العربية والإنجليزية.",
-      "heroHeadline": "أبني واجهات ويب سريعة وواضحة تخدم هدفك",
-      "heroDescription": "أحوّل التصميمات إلى واجهات احترافية متجاوبة، سهلة الاستخدام، وسريعة التحميل، مع اهتمام بالتفاصيل، الأداء، وتجربة المستخدم."
+      "bio": "مطوّر Full Stack MERN أمتلك خبرة في بناء وتطوير تطبيقات ويب متكاملة وقابلة للتوسع باستخدام React وNode.js وExpress وMongoDB وTypeScript. أركز على بناء واجهات تفاعلية سريعة، وخدمات خلفية وواجهات برمجة تطبيقات (APIs) قوية وآمنة، وتصميم قواعد بيانات منظمة، مع دعم كامل للواجهات العربية والإنجليزية.",
+      "heroHeadline": "أبني تطبيقات ويب متكاملة وقابلة للتوسع تخدم أهدافك",
+      "heroDescription": "مطوّر Full Stack MERN متخصص في بناء واجهات تفاعلية متجاوبة وخدمات خلفية قوية وسريعة باستخدام React وNode.js وExpress وMongoDB وTypeScript."
     },
     "navLinks": [
       {
@@ -61,23 +61,42 @@
       },
       {
         "label": "نوع المشاريع",
-        "value": "مواقع ويب، تطبيقات واجهة واحدة، مواقع SSR/SSG"
+        "value": "تطبيقات ويب متكاملة (Full Stack)، REST APIs، مواقع SSR/SSG"
       },
       {
         "label": "أهم ما أركز عليه",
-        "value": "السرعة، سهولة الاستخدام، وتجربة المستخدم"
+        "value": "هندسة التطبيقات المتكاملة، الأداء، وسهولة الاستخدام"
       }
     ],
+    "aboutStats": [
+      { "label": "سنوات خبرة", "target": 1, "suffix": "+" },
+      { "label": "مشروعاً منجزاً", "target": 20, "suffix": "+" },
+      { "label": "درجة Lighthouse", "target": 85, "suffix": "+" },
+      { "label": "أطر عمل رئيسية", "target": 4, "suffix": "" }
+    ],
+    "educationCertifiedBadge": "[معتمد]",
     "skills": {
       "لغات البرمجة": [
         "JavaScript (ES6+)",
         "TypeScript",
         "HTML5",
-        "CSS3"
+        "CSS3",
+        "SQL"
       ],
-      "أطر العمل": [
+      "الواجهة الخلفية وقواعد البيانات": [
+        "Node.js",
+        "Express.js",
+        "MongoDB",
+        "Mongoose",
+        "PostgreSQL",
+        "REST APIs",
+        "JWT & Authentication"
+      ],
+      "أطر عمل الواجهة الأمامية": [
         "React.js",
         "Next.js",
+        "Redux Toolkit",
+        "TanStack Query",
         "Vue.js",
         "Nuxt.js"
       ],
@@ -89,16 +108,10 @@
         "SASS/LESS",
         "Framer Motion"
       ],
-      "إدارة البيانات والحالة": [
-        "Redux Toolkit",
-        "Pinia",
-        "Context API",
-        "TanStack Query",
-        "REST APIs"
-      ],
       "الاختبار": [
         "Jest",
         "React Testing Library",
+        "Supertest",
         "Cypress"
       ],
       "الأدوات والنشر": [
@@ -106,18 +119,15 @@
         "GitHub Actions",
         "Vercel",
         "Docker",
+        "Postman",
+        "Linux",
         "Figma"
       ],
-      "المتاجر وأنظمة المحتوى": [
-        "WordPress",
-        "Shopify",
-        "Salla",
-        "Zid"
-      ],
       "ممارسات العمل": [
+        "هندسة MERN Stack",
+        "تصميم RESTful APIs",
         "دعم العربية والإنجليزية",
-        "تحسين محركات البحث",
-        "تحسين سرعة الموقع",
+        "تحسين محركات البحث وسرعة الموقع",
         "سهولة الوصول",
         "Agile/Scrum"
       ]
@@ -233,7 +243,9 @@
       "externalProjectLabel": "زيارة المشروع",
       "footerRights": "جميع الحقوق محفوظة.",
       "contactHeading": "لديك فكرة أو مشروع؟ يمكننا تحويله إلى تجربة ويب قوية وواضحة.",
-      "contactLabel": "تواصل"
+      "contactLabel": "تواصل",
+      "githubAriaLabel": "الملف الشخصي على GitHub",
+      "linkedinAriaLabel": "الملف الشخصي على LinkedIn"
     },
     "heroDashboard": {
       "statusLabel": "الحالة",

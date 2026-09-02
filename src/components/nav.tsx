@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, usePathname } from "@/i18n/navigation";
 import { useScrollSpy } from "@/hooks/use-scroll-spy";
-import { motion, useScroll, useSpring } from "framer-motion";
+import { motion } from "framer-motion";
 import type { Locale, NavLink, SiteCopy } from "@/lib/types";
 
 interface NavProps {
@@ -17,44 +17,15 @@ function getHash(href: string) {
   return hashIndex >= 0 ? href.slice(hashIndex) : null;
 }
 
-function GlobeIcon() {
-  return (
-    <svg
-      className="nav__lang-icon"
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden="true"
-    >
-      <path
-        d="M12 21C16.9706 21 21 16.9706 21 12C21 7.02944 16.9706 3 12 3M12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3M12 21C14.2 18.8 15.3333 15.8 15.3333 12C15.3333 8.2 14.2 5.2 12 3M12 21C9.8 18.8 8.66667 15.8 8.66667 12C8.66667 8.2 9.8 5.2 12 3M3.5 9H20.5M3.5 15H20.5"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
 export function Nav({ locale, navLinks, copy }: NavProps) {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [hoveredPath, setHoveredPath] = useState<string | null>(null);
+  const hamburgerRef = useRef<HTMLButtonElement>(null);
+  const sheetRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
   const targetLocale = locale === "ar" ? "en" : "ar";
 
-  const { scrollYProgress } = useScroll();
-  const scaleX = useSpring(scrollYProgress, {
-    stiffness: 100,
-    damping: 30,
-    restDelta: 0.001
-  });
-
-  // Scroll-spy only applies on the home page, where the nav links are in-page
-  // anchors. The shared hook returns the most-visible section id ("" elsewhere).
   const sectionIds =
     pathname === "/"
       ? navLinks
@@ -64,14 +35,40 @@ export function Nav({ locale, navLinks, copy }: NavProps) {
   const activeSection = useScrollSpy(sectionIds);
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 40);
+    const onScroll = () => setScrolled(window.scrollY > 30);
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  useEffect(() => {
+    if (!menuOpen) return;
+
+    const scroller = document.documentElement;
+    const prevOverflow = scroller.style.overflow;
+    scroller.style.overflow = "hidden";
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setMenuOpen(false);
+        hamburgerRef.current?.focus();
+      }
+    };
+
+    document.addEventListener("keydown", onKeyDown);
+    sheetRef.current?.querySelector<HTMLElement>("a")?.focus();
+
+    return () => {
+      scroller.style.overflow = prevOverflow;
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [menuOpen]);
+
   function handleNavClick(e: React.MouseEvent<HTMLAnchorElement>, href: string) {
-    setMenuOpen(false);
+    if (menuOpen) {
+      setMenuOpen(false);
+      hamburgerRef.current?.focus();
+    }
 
     const hash = getHash(href);
     const targetPathname = href.split("#")[0] || "/";
@@ -86,8 +83,9 @@ export function Nav({ locale, navLinks, copy }: NavProps) {
   }
 
   function handleLogoClick(e: React.MouseEvent<HTMLAnchorElement>) {
-    setMenuOpen(false);
-    // Already home → just scroll up; otherwise let the link navigate home.
+    if (menuOpen) {
+      setMenuOpen(false);
+    }
     if (pathname === "/") {
       e.preventDefault();
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -99,19 +97,13 @@ export function Nav({ locale, navLinks, copy }: NavProps) {
     if (hash) {
       return pathname === "/" && activeSection === hash.slice(1);
     }
-
     return href === "/blog" && pathname.startsWith("/blog");
   }
 
   return (
     <header className={`nav ${scrolled ? "nav--scrolled" : ""}`}>
-      {/* Scroll progress line */}
-      <motion.div
-        className="nav__progress"
-        style={{ scaleX }}
-      />
       <nav className="nav__inner" aria-label={copy.navAriaLabel}>
-        {/* Monospace glow badge logo */}
+        {/* Brand Logo [MA] */}
         <Link
           href="/"
           className="nav__logo"
@@ -123,12 +115,14 @@ export function Nav({ locale, navLinks, copy }: NavProps) {
           <span className="nav__logo-bracket">]</span>
         </Link>
 
+        {/* Numbered Monospaced Navigation */}
         <ul
           className="nav__links"
           onMouseLeave={() => setHoveredPath(null)}
         >
-          {navLinks.map((link) => {
+          {navLinks.map((link, idx) => {
             const isActive = isActiveLink(link.href);
+            const indexStr = String(idx + 1).padStart(2, "0");
             return (
               <li
                 key={link.href}
@@ -150,24 +144,33 @@ export function Nav({ locale, navLinks, copy }: NavProps) {
                   className={`nav__link ${isActive ? "nav__link--active" : ""}`}
                   onClick={(e) => handleNavClick(e, link.href)}
                 >
-                  <span className="relative z-10">{link.label}</span>
+                  <span className="relative z-10 flex items-center gap-1">
+                    <span className="font-mono text-[10px] opacity-40 group-hover:opacity-75">
+                      {indexStr}{"//"}
+                    </span>
+                    <span className="uppercase">{link.label}</span>
+                  </span>
                 </Link>
               </li>
             );
           })}
         </ul>
 
+        {/* Hamburger Toggle */}
         <button
+          ref={hamburgerRef}
           className={`nav__hamburger ${menuOpen ? "nav__hamburger--open" : ""}`}
           onClick={() => setMenuOpen(!menuOpen)}
           type="button"
           aria-label={menuOpen ? copy.navCloseLabel : copy.navOpenLabel}
           aria-expanded={menuOpen}
+          aria-controls="mobile-nav-sheet"
         >
           <span />
           <span />
         </button>
 
+        {/* Language switch actions */}
         <div className="nav__actions">
           <Link
             href={pathname}
@@ -183,32 +186,37 @@ export function Nav({ locale, navLinks, copy }: NavProps) {
         </div>
       </nav>
 
-      {/* Bottom slide-up glassmorphism sheet */}
+      {/* Bottom slide-up sheet */}
       {menuOpen && (
         <div
           className="nav__overlay"
           role="dialog"
+          aria-modal="true"
           aria-label={copy.navMenuLabel}
           onClick={(e) => e.target === e.currentTarget && setMenuOpen(false)}
         >
-          <div className="nav__sheet">
-            {/* Sheet drag handle */}
+          <div ref={sheetRef} id="mobile-nav-sheet" className="nav__sheet">
             <div className="nav__sheet-handle" aria-hidden="true" />
             <ul className="nav__overlay-links">
-              {navLinks.map((link) => (
-                <li key={link.href}>
-                  <Link
-                    href={link.href}
-                    className={`nav__overlay-link ${isActiveLink(link.href) ? "nav__overlay-link--active" : ""}`}
-                    onClick={(e) => handleNavClick(e, link.href)}
-                  >
-                    {isActiveLink(link.href) && (
-                      <span className="nav__overlay-active-dot" aria-hidden="true" />
-                    )}
-                    {link.label}
-                  </Link>
-                </li>
-              ))}
+              {navLinks.map((link, idx) => {
+                const indexStr = String(idx + 1).padStart(2, "0");
+                const isActive = isActiveLink(link.href);
+                return (
+                  <li key={link.href}>
+                    <Link
+                      href={link.href}
+                      className={`nav__overlay-link ${isActive ? "nav__overlay-link--active" : ""}`}
+                      onClick={(e) => handleNavClick(e, link.href)}
+                    >
+                      <span className="font-mono text-xs opacity-40">{indexStr}{"//"}</span>
+                      <span className="uppercase">{link.label}</span>
+                      {isActive && (
+                        <span className="nav__overlay-active-dot ms-auto" aria-hidden="true" />
+                      )}
+                    </Link>
+                  </li>
+                );
+              })}
             </ul>
             <div className="nav__sheet-footer">
               <Link

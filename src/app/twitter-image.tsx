@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og";
 
 export const runtime = "edge";
-export const alt = "Mohamed Abdelazem — Frontend Developer";
+export const alt = "Mohamed Abdelazem — Full Stack MERN Developer";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -147,7 +147,7 @@ export default function TwitterImage() {
               display: "flex",
             }}
           >
-            Building performant web experiences with React, Vue & TypeScript.
+            Full Stack MERN Developer — React, Node.js, Express, MongoDB & TypeScript.
           </div>
         </div>
 

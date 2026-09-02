@@ -9,8 +9,8 @@ export const tagChipVariants = cva(
     variants: {
       variant: {
         filter:
-          "px-3.5 py-1.5 text-sm text-secondary-foreground shadow-[var(--shadow-ring)] hover:bg-secondary hover:text-foreground",
-        static: "bg-secondary px-[11px] py-1 text-[13px] text-muted-foreground",
+          "px-3.5 py-1.5 text-sm text-secondary-foreground shadow-ring hover:bg-secondary hover:text-foreground",
+        static: "bg-secondary px-3 py-1 text-[13px] text-muted-foreground",
       },
       active: { true: "", false: "" },
     },

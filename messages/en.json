@@ -1,24 +1,24 @@
 {
   "Metadata": {
-    "title": "Mohamed Abdelazem - Frontend Developer",
-    "description": "Frontend Developer with production experience in React and Vue, focused on performance optimization, TypeScript, accessible design, and full RTL/LTR internationalization support.",
-    "ogDescription": "React & Vue developer focused on performance optimization, TypeScript, accessible design, and full RTL/LTR internationalization support."
+    "title": "Mohamed Abdelazem - Full Stack MERN Developer",
+    "description": "Full Stack MERN Developer specializing in MongoDB, Express.js, React, Node.js, Next.js, and TypeScript. Building scalable, performant web applications with full RTL/LTR internationalization support.",
+    "ogDescription": "Full Stack MERN Developer specializing in React, Node.js, Express, MongoDB, and Next.js with full RTL/LTR internationalization support."
   },
   "Home": {
     "locale": "en",
     "dir": "ltr",
     "personal": {
       "name": "Mohamed Abdelazem",
-      "title": "Frontend Developer",
+      "title": "Full Stack MERN Developer",
       "email": "hello@mohamed.work",
       "phone": "01281235865",
       "location": "Damietta, Egypt",
       "github": "https://github.com/mo-abdelazem",
       "linkedin": "https://linkedin.com/in/mo-abdelazem",
       "whatsapp": "https://wa.me/201281235865",
-      "bio": "Frontend Developer with production experience in React and Vue, focused on performance optimization. Skilled in TypeScript, accessible design, and building multilingual interfaces with full RTL/LTR support.",
-      "heroHeadline": "Building performant web experiences",
-      "heroDescription": "React & Vue developer focused on performance optimization, TypeScript, accessible design, and full RTL/LTR internationalization support."
+      "bio": "Full Stack MERN Developer experienced in architecting scalable end-to-end web applications with React, Node.js, Express, and MongoDB. Skilled in TypeScript, Next.js, RESTful APIs, database design, performance optimization, and building multilingual interfaces with full RTL/LTR support.",
+      "heroHeadline": "Architecting scalable Full Stack MERN applications",
+      "heroDescription": "Full Stack MERN Developer building high-performance web applications with React, Node.js, Express, MongoDB, TypeScript, and modern full-stack architectures."
     },
     "navLinks": [
       {
@@ -61,23 +61,42 @@
       },
       {
         "label": "Platforms",
-        "value": "Web, SPA, SSR/SSG"
+        "value": "Full Stack Web, REST APIs, SSR/SSG, SPA"
       },
       {
         "label": "Focus",
-        "value": "Performance & A11y"
+        "value": "Full Stack Architecture, Performance & A11y"
       }
     ],
+    "aboutStats": [
+      { "label": "Years experience", "target": 1, "suffix": "+" },
+      { "label": "Projects shipped", "target": 20, "suffix": "+" },
+      { "label": "Lighthouse score", "target": 85, "suffix": "+" },
+      { "label": "Frameworks", "target": 4, "suffix": "" }
+    ],
+    "educationCertifiedBadge": "[CERTIFIED]",
     "skills": {
       "Languages": [
         "JavaScript (ES6+)",
         "TypeScript",
         "HTML5",
-        "CSS3"
+        "CSS3",
+        "SQL"
       ],
-      "Frameworks": [
+      "Backend & Database": [
+        "Node.js",
+        "Express.js",
+        "MongoDB",
+        "Mongoose",
+        "PostgreSQL",
+        "REST APIs",
+        "JWT & Authentication"
+      ],
+      "Frontend Frameworks": [
         "React.js",
         "Next.js",
+        "Redux Toolkit",
+        "TanStack Query",
         "Vue.js",
         "Nuxt.js"
       ],
@@ -89,16 +108,10 @@
         "SASS/LESS",
         "Framer Motion"
       ],
-      "State & Data": [
-        "Redux Toolkit",
-        "Pinia",
-        "Context API",
-        "TanStack Query",
-        "REST APIs"
-      ],
       "Testing": [
         "Jest",
         "React Testing Library",
+        "Supertest",
         "Cypress"
       ],
       "Tools & DevOps": [
@@ -106,18 +119,15 @@
         "GitHub Actions",
         "Vercel",
         "Docker",
+        "Postman",
+        "Linux",
         "Figma"
       ],
-      "E-commerce & CMS": [
-        "WordPress",
-        "Shopify",
-        "Salla",
-        "Zid"
-      ],
       "Practices": [
+        "MERN Architecture",
+        "RESTful API Design",
         "i18n/RTL",
-        "SEO",
-        "Core Web Vitals",
+        "SEO & Core Web Vitals",
         "Accessibility",
         "Agile/Scrum"
       ]
@@ -233,7 +243,9 @@
       "externalProjectLabel": "Visit",
       "footerRights": "All rights reserved.",
       "contactHeading": "Let's build something great together",
-      "contactLabel": "Contact"
+      "contactLabel": "Contact",
+      "githubAriaLabel": "GitHub profile",
+      "linkedinAriaLabel": "LinkedIn profile"
     },
     "heroDashboard": {
       "statusLabel": "Status",
