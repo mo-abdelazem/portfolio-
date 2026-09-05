@@ -25,7 +25,7 @@ export function Hero({ content }: HeroProps) {
       aria-label="Hero Section"
     >
       {/* Outer Cyber Card Frame matching the reference style */}
-      <div className="relative flex flex-col justify-between w-full max-w-(--max-width) min-h-[85vh] rounded-[24px] md:rounded-[32px] border border-white/10 bg-[#070908] p-6 sm:p-8 md:p-12 lg:p-14 overflow-hidden shadow-[0_0_80px_rgba(0,0,0,0.8)]">
+      <div className="relative flex flex-col justify-between w-full max-w-(--max-width) min-h-[85vh] rounded-[24px] md:rounded-[32px] border border-white/10 bg-[#070908] p-6 sm:p-8 md:p-12 lg:p-14 overflow-hidden shadow-[0_0_80px_rgba(0,0,0,0.8)] transform-gpu">
         
         {/* Interactive 3D Particle Wave Mesh Background */}
         <ParticleWave particleColor="230, 245, 235" />
@@ -111,7 +111,7 @@ export function Hero({ content }: HeroProps) {
           {/* Bottom Right: Real Portfolio Description */}
           <Reveal delay={400}>
             <div className="max-w-[460px] text-xs sm:text-sm leading-relaxed text-white/80 font-mono">
-              <p className="bg-black/40 backdrop-blur-md p-3.5 rounded-xl border border-white/10 shadow-lg">
+              <p className="bg-black/85 sm:bg-black/40 sm:backdrop-blur-md p-3.5 rounded-xl border border-white/10 shadow-lg">
                 {content.personal.heroDescription || content.personal.bio}
               </p>
             </div>

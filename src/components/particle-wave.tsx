@@ -7,9 +7,17 @@ interface ParticleWaveProps {
   particleColor?: string;
 }
 
+interface Particle {
+  u: number;
+  v: number;
+  baseX: number;
+  baseY: number;
+  baseZ: number;
+}
+
 export function ParticleWave({
   className = "",
-  particleColor = "255, 255, 255",
+  particleColor = "230, 245, 235",
 }: ParticleWaveProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
@@ -20,58 +28,74 @@ export function ParticleWave({
     const ctx = canvas.getContext("2d", { alpha: true });
     if (!ctx) return;
 
-    let animationFrameId: number;
-    let width = (canvas.width = canvas.parentElement?.clientWidth || window.innerWidth);
-    let height = (canvas.height = canvas.parentElement?.clientHeight || window.innerHeight);
+    let animationFrameId = 0;
+    let width = canvas.parentElement?.clientWidth || window.innerWidth;
+    let height = canvas.parentElement?.clientHeight || window.innerHeight;
 
     let mouseX = 0;
     let mouseY = 0;
     let targetMouseX = 0;
     let targetMouseY = 0;
 
-    // Grid configuration for the parametric topological wave
-    const cols = 56;
-    const rows = 46;
+    // Responsive grid configuration to drastically improve mobile performance
+    let cols = 52;
+    let rows = 40;
+    let particles: Particle[] = [];
 
-    const particles: {
-      u: number;
-      v: number;
-      baseX: number;
-      baseY: number;
-      baseZ: number;
-    }[] = [];
-
-    for (let i = 0; i < cols; i++) {
-      for (let j = 0; j < rows; j++) {
-        const u = (i / (cols - 1) - 0.5) * 2;
-        const v = (j / (rows - 1) - 0.5) * 2;
-
-        const radius = Math.sqrt(u * u + v * v);
-        const theta = Math.atan2(v, u);
-
-        particles.push({
-          u,
-          v,
-          baseX: u * 480 + Math.cos(theta * 2 + radius * 3) * 60,
-          baseY: v * 380 + Math.sin(theta * 2 + radius * 3) * 60,
-          baseZ: Math.sin(radius * 4) * 120,
-        });
+    const initGrid = (w: number) => {
+      if (w < 640) {
+        cols = 22;
+        rows = 18;
+      } else if (w < 1024) {
+        cols = 36;
+        rows = 28;
+      } else {
+        cols = 52;
+        rows = 40;
       }
-    }
+
+      particles = [];
+      for (let i = 0; i < cols; i++) {
+        for (let j = 0; j < rows; j++) {
+          const u = (i / (cols - 1) - 0.5) * 2;
+          const v = (j / (rows - 1) - 0.5) * 2;
+
+          const radius = Math.sqrt(u * u + v * v);
+          const theta = Math.atan2(v, u);
+
+          particles.push({
+            u,
+            v,
+            baseX: u * 480 + Math.cos(theta * 2 + radius * 3) * 60,
+            baseY: v * 380 + Math.sin(theta * 2 + radius * 3) * 60,
+            baseZ: Math.sin(radius * 4) * 120,
+          });
+        }
+      }
+    };
 
     const handleResize = () => {
       if (!canvas || !canvas.parentElement) return;
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
       width = canvas.parentElement.clientWidth;
       height = canvas.parentElement.clientHeight;
-      canvas.width = width * dpr;
-      canvas.height = height * dpr;
-      ctx.scale(dpr, dpr);
+
+      const isMobile = width < 640;
+      const dpr = isMobile
+        ? Math.min(window.devicePixelRatio || 1, 1.25)
+        : Math.min(window.devicePixelRatio || 1, 1.75);
+
+      canvas.width = Math.round(width * dpr);
+      canvas.height = Math.round(height * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      initGrid(width);
     };
 
     handleResize();
-    window.addEventListener("resize", handleResize);
+    window.addEventListener("resize", handleResize, { passive: true });
 
+    // Only listen to mouse movements on non-coarse pointers
+    const isTouchOnly = window.matchMedia("(pointer: coarse)").matches;
     const handleMouseMove = (e: MouseEvent) => {
       const rect = canvas.getBoundingClientRect();
       const x = (e.clientX - rect.left) / width - 0.5;
@@ -80,12 +104,46 @@ export function ParticleWave({
       targetMouseY = y * 2;
     };
 
-    window.addEventListener("mousemove", handleMouseMove, { passive: true });
+    if (!isTouchOnly) {
+      window.addEventListener("mousemove", handleMouseMove, { passive: true });
+    }
+
+    const prefersReducedMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)"
+    ).matches;
 
     let time = 0;
+    let lastTime = performance.now();
+    let isVisible = true;
 
-    const render = () => {
-      time += 0.012;
+    // Pre-allocated buckets for batch rendering
+    interface ParticleBucket {
+      x: number[];
+      y: number[];
+      r: number[];
+      alpha: number;
+    }
+    const particleBuckets: ParticleBucket[] = [
+      { x: [], y: [], r: [], alpha: 0.12 },
+      { x: [], y: [], r: [], alpha: 0.32 },
+      { x: [], y: [], r: [], alpha: 0.58 },
+      { x: [], y: [], r: [], alpha: 0.85 },
+    ];
+
+    interface LineBucket {
+      points: number[];
+      alpha: number;
+    }
+    const lineBuckets: LineBucket[] = [
+      { points: [], alpha: 0.03 },
+      { points: [], alpha: 0.08 },
+      { points: [], alpha: 0.16 },
+    ];
+
+    const render = (now: number) => {
+      const delta = Math.min(now - lastTime, 50);
+      lastTime = now;
+      time += (delta / 1000) * 0.72;
 
       mouseX += (targetMouseX - mouseX) * 0.05;
       mouseY += (targetMouseY - mouseY) * 0.05;
@@ -106,11 +164,31 @@ export function ParticleWave({
       const cosZ = Math.cos(rotZ);
       const sinZ = Math.sin(rotZ);
 
-      // Position center of 3D cloud towards right-center as in screenshot
       const centerX = width * 0.64 + mouseX * 20;
       const centerY = height * 0.45 + mouseY * 18;
 
-      for (let i = 0; i < particles.length; i++) {
+      // Reset draw buckets
+      for (const bucket of particleBuckets) {
+        bucket.x.length = 0;
+        bucket.y.length = 0;
+        bucket.r.length = 0;
+      }
+      for (const lBucket of lineBuckets) {
+        lBucket.points.length = 0;
+      }
+
+      let prevScreenX = 0;
+      let prevScreenY = 0;
+      let prevDepthNorm = 0;
+      let prevValid = false;
+
+      const total = particles.length;
+      for (let i = 0; i < total; i++) {
+        const isColumnStart = i % rows === 0;
+        if (isColumnStart) {
+          prevValid = false;
+        }
+
         const p = particles[i];
         if (!p) continue;
 
@@ -136,71 +214,141 @@ export function ParticleWave({
         const y3 = x2 * sinZ + y2 * cosZ;
         const z3 = z2 + cameraZ;
 
-        if (z3 <= 10) continue;
+        if (z3 <= 10) {
+          prevValid = false;
+          continue;
+        }
 
         const scale = fov / z3;
         const screenX = centerX + x3 * scale;
         const screenY = centerY + y3 * scale;
 
         const depthNorm = Math.max(0, Math.min(1, (z3 - 250) / 700));
-        const alpha = Math.max(0.04, (1 - depthNorm) * 0.85);
         const size = Math.max(0.8, (1 - depthNorm) * 2.5);
 
-        ctx.beginPath();
-        ctx.arc(screenX, screenY, size, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(${particleColor}, ${alpha})`;
-        ctx.fill();
+        // Group particle into depth bucket
+        const pBucketIdx = Math.min(particleBuckets.length - 1, Math.max(0, Math.floor((1 - depthNorm) * particleBuckets.length)));
+        const pBucket = particleBuckets[pBucketIdx];
+        if (pBucket) {
+          pBucket.x.push(screenX);
+          pBucket.y.push(screenY);
+          pBucket.r.push(size);
+        }
 
-        // Connect neighboring dots with subtle lines along columns to create organic ribbon curves
-        if (i % rows !== 0 && depthNorm < 0.72) {
-          const prevP = particles[i - 1];
-          if (!prevP) continue;
-
-          const prevWave1 = Math.sin(Math.sqrt(prevP.u * prevP.u + prevP.v * prevP.v) * 5 - time * 2) * 45;
-          const prevWave2 = Math.cos(prevP.u * 3 + time * 1.5) * 35;
-          const prevWave3 = Math.sin(prevP.v * 4 + time * 1.2) * 30;
-
-          const px0 = prevP.baseX;
-          const py0 = prevP.baseY + prevWave1 + prevWave2;
-          const pz0 = prevP.baseZ + prevWave3 + Math.sin(prevP.u * 4 + prevP.v * 4 + time) * 40;
-
-          const px1 = px0 * cosY + pz0 * sinY;
-          const py1 = py0;
-          const pz1 = -px0 * sinY + pz0 * cosY;
-
-          const px2 = px1;
-          const py2 = py1 * cosX - pz1 * sinX;
-          const pz2 = py1 * sinX + pz1 * cosX;
-
-          const px3 = px2 * cosZ - py2 * sinZ;
-          const py3 = px2 * sinZ + py2 * cosZ;
-          const pz3 = pz2 + cameraZ;
-
-          if (pz3 > 10) {
-            const prevScale = fov / pz3;
-            const prevScreenX = centerX + px3 * prevScale;
-            const prevScreenY = centerY + py3 * prevScale;
-
-            const lineAlpha = Math.max(0.015, (1 - depthNorm) * 0.16);
-            ctx.beginPath();
-            ctx.moveTo(screenX, screenY);
-            ctx.lineTo(prevScreenX, prevScreenY);
-            ctx.strokeStyle = `rgba(${particleColor}, ${lineAlpha})`;
-            ctx.lineWidth = 0.6;
-            ctx.stroke();
+        // Connect neighboring ribbon dots along columns without recalculation
+        if (!isColumnStart && prevValid && depthNorm < 0.72) {
+          const lineBucketIdx = Math.min(lineBuckets.length - 1, Math.max(0, Math.floor((1 - depthNorm) * lineBuckets.length)));
+          const lb = lineBuckets[lineBucketIdx];
+          if (lb) {
+            lb.points.push(screenX, screenY, prevScreenX, prevScreenY);
           }
         }
+
+        prevScreenX = screenX;
+        prevScreenY = screenY;
+        prevDepthNorm = depthNorm;
+        prevValid = true;
       }
 
-      animationFrameId = requestAnimationFrame(render);
+      // Render batched lines (at most 3 draw calls total)
+      ctx.lineWidth = 0.6;
+      for (const lb of lineBuckets) {
+        const pts = lb.points;
+        if (pts.length === 0) continue;
+
+        ctx.strokeStyle = `rgba(${particleColor}, ${lb.alpha})`;
+        ctx.beginPath();
+        for (let k = 0; k < pts.length; k += 4) {
+          const x1 = pts[k];
+          const y1 = pts[k + 1];
+          const x2 = pts[k + 2];
+          const y2 = pts[k + 3];
+          if (x1 !== undefined && y1 !== undefined && x2 !== undefined && y2 !== undefined) {
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+          }
+        }
+        ctx.stroke();
+      }
+
+      // Render batched particles (at most 4 draw calls total)
+      for (const pb of particleBuckets) {
+        const { x, y, r, alpha } = pb;
+        if (x.length === 0) continue;
+
+        ctx.fillStyle = `rgba(${particleColor}, ${alpha})`;
+        ctx.beginPath();
+        for (let k = 0; k < x.length; k++) {
+          const px = x[k];
+          const py = y[k];
+          const pr = r[k];
+          if (px !== undefined && py !== undefined && pr !== undefined) {
+            ctx.moveTo(px + pr, py);
+            ctx.arc(px, py, pr, 0, Math.PI * 2);
+          }
+        }
+        ctx.fill();
+      }
+
+      if (!prefersReducedMotion && isVisible) {
+        animationFrameId = requestAnimationFrame(render);
+      }
     };
 
-    render();
+    // IntersectionObserver to pause RAF when Hero is offscreen
+    let observer: IntersectionObserver | null = null;
+    if (typeof window !== "undefined" && "IntersectionObserver" in window) {
+      observer = new IntersectionObserver(
+        (entries) => {
+          const entry = entries[0];
+          if (!entry) return;
+          const nowVisible = entry.isIntersecting;
+          if (nowVisible !== isVisible) {
+            isVisible = nowVisible;
+            if (isVisible && !animationFrameId && !prefersReducedMotion) {
+              lastTime = performance.now();
+              animationFrameId = requestAnimationFrame(render);
+            } else if (!isVisible && animationFrameId) {
+              cancelAnimationFrame(animationFrameId);
+              animationFrameId = 0;
+            }
+          }
+        },
+        { threshold: 0.05 }
+      );
+      observer.observe(canvas);
+    }
+
+    // Page visibility listener to stop animation when tab is inactive
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        if (animationFrameId) {
+          cancelAnimationFrame(animationFrameId);
+          animationFrameId = 0;
+        }
+      } else if (isVisible && !animationFrameId && !prefersReducedMotion) {
+        lastTime = performance.now();
+        animationFrameId = requestAnimationFrame(render);
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    // Initial kick-off
+    lastTime = performance.now();
+    if (prefersReducedMotion) {
+      render(lastTime);
+    } else {
+      animationFrameId = requestAnimationFrame(render);
+    }
 
     return () => {
-      cancelAnimationFrame(animationFrameId);
+      if (animationFrameId) cancelAnimationFrame(animationFrameId);
       window.removeEventListener("resize", handleResize);
-      window.removeEventListener("mousemove", handleMouseMove);
+      if (!isTouchOnly) {
+        window.removeEventListener("mousemove", handleMouseMove);
+      }
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      if (observer) observer.disconnect();
     };
   }, [particleColor]);
 
@@ -208,6 +356,10 @@ export function ParticleWave({
     <canvas
       ref={canvasRef}
       className={`pointer-events-none absolute inset-0 h-full w-full ${className}`}
+      style={{
+        contain: "strict",
+        transform: "translateZ(0)",
+      }}
       aria-hidden="true"
     />
   );
