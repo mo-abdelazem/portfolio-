@@ -26,18 +26,18 @@ export function Hero({ content }: HeroProps) {
     >
       {/* Outer Cyber Card Frame matching the reference style */}
       <div className="relative flex flex-col justify-between w-full max-w-(--max-width) min-h-[85vh] rounded-[24px] md:rounded-[32px] border border-white/10 bg-[#070908] p-6 sm:p-8 md:p-12 lg:p-14 overflow-hidden shadow-[0_0_80px_rgba(0,0,0,0.8)] transform-gpu">
-        
+
         {/* Interactive 3D Particle Wave Mesh Background */}
         <ParticleWave particleColor="230, 245, 235" />
 
         {/* Ambient subtle vignette & depth gradient */}
-        <div 
-          className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(circle_at_75%_45%,rgba(183,255,114,0.03),transparent_65%)]" 
+        <div
+          className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(circle_at_75%_45%,rgba(183,255,114,0.03),transparent_65%)]"
           aria-hidden="true"
         />
 
         {/* Top Status / Metadata Bar inside Hero Frame */}
-        <div className="relative z-20 flex items-center justify-between gap-4 pb-6 border-b border-white/5 font-mono text-[11px] text-white/50 tracking-wider">
+        <div className="relative z-20 flex items-center justify-between gap-4 pb-6 border-b border-white/5 font-mono text-[8px] text-white/50 tracking-wider">
           <div className="flex items-center gap-2">
             <span className="h-1.5 w-1.5 rounded-full bg-(--accent)" />
             <span>{"SYS.LOC: DAMIETTA // EGYPT"}</span>
@@ -59,15 +59,15 @@ export function Hero({ content }: HeroProps) {
           <Reveal delay={100}>
             <div className="flex flex-col select-none">
               {/* Line 1: CREATIVE */}
-              <h1 className="font-sans font-black tracking-[-0.04em] text-white leading-[0.88] text-[clamp(3.8rem,11.5vw,9.8rem)] uppercase drop-shadow-[0_4px_24px_rgba(0,0,0,0.6)]">
+              <h1 className="font-sans font-black tracking-[-0.04em] text-white leading-[0.88] text-[clamp(3.25rem,11.5vw,9.8rem)] uppercase drop-shadow-[0_4px_24px_rgba(0,0,0,0.6)]">
                 CREATIVE
               </h1>
 
               {/* Line 2: DEVELOPER with left accent indicator bar */}
               <div className="flex items-center gap-3 md:gap-6 mt-1 md:mt-2">
-                <div 
-                  className="w-1.5 md:w-3 h-[0.72em] bg-white/40 rounded-full shrink-0" 
-                  aria-hidden="true" 
+                <div
+                  className="w-1.5 md:w-3 h-[0.72em] bg-white/40 rounded-full shrink-0"
+                  aria-hidden="true"
                 />
                 <span className="font-sans font-black tracking-[-0.04em] text-[#4d5651] hover:text-[#6a756f] transition-colors duration-500 leading-[0.88] text-[clamp(3.8rem,11.5vw,9.8rem)] uppercase">
                   DEVELOPER
