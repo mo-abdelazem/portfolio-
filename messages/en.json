@@ -98,10 +98,11 @@
         "Redux Toolkit",
         "TanStack Query",
         "Vue.js",
-        "Nuxt.js"
+        "Nuxt.js",
+        "Jinja2 (Zid Engine)"
       ],
       "Styling & UI": [
-        "Tailwind CSS",
+        "Tailwind CSS (v4)",
         "Shadcn/ui",
         "Material UI",
         "Chakra UI",
@@ -121,12 +122,15 @@
         "Docker",
         "Postman",
         "Linux",
-        "Figma"
+        "Figma",
+        "Vite (Asset Bundling)"
       ],
       "Practices": [
         "MERN Architecture",
         "RESTful API Design",
-        "i18n/RTL",
+        "E-commerce Development",
+        "Responsive Web Design",
+        "RTL Development & i18n",
         "SEO & Core Web Vitals",
         "Accessibility",
         "Agile/Scrum"
@@ -157,15 +161,17 @@
     ],
     "projects": [
       {
-        "name": "Argatall - WhatsApp Notification System",
+        "name": "Woodland - Vitrin Theme (Zid Platform)",
         "period": "02/2026 - 05/2026",
-        "description": "WhatsApp bulk notification system with campaign/contact/task management, RBAC, bilingual support.",
+        "description": "Engineered and coded the \"Vitrin\" e-commerce theme for Zid platform (Woodland store), featuring an RTL-first responsive architecture, 12 core pages, 11 schema-driven customizable dynamic sections, and sub-second loading powered by Vite and Tailwind CSS v4.",
         "tags": [
-          "Next.js 16",
-          "React 19",
-          "WaSender API"
+          "Tailwind CSS v4",
+          "Jinja2",
+          "Vite",
+          "Zid Platform",
+          "RTL"
         ],
-        "url": "http://argatall.cloud/"
+        "url": "https://wood-land.co/"
       },
       {
         "name": "Emtethal - SaaS Compliance Platform",

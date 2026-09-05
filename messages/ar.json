@@ -98,10 +98,11 @@
         "Redux Toolkit",
         "TanStack Query",
         "Vue.js",
-        "Nuxt.js"
+        "Nuxt.js",
+        "Jinja2 (محرك قوالب زد)"
       ],
       "تصميم الواجهات": [
-        "Tailwind CSS",
+        "Tailwind CSS (الإصدار الرابع v4)",
         "Shadcn/ui",
         "Material UI",
         "Chakra UI",
@@ -121,12 +122,15 @@
         "Docker",
         "Postman",
         "Linux",
-        "Figma"
+        "Figma",
+        "Vite (Asset Bundling)"
       ],
       "ممارسات العمل": [
         "هندسة MERN Stack",
         "تصميم RESTful APIs",
-        "دعم العربية والإنجليزية",
+        "تطوير المتاجر الإلكترونية (E-commerce)",
+        "تصميم متجاوب (Responsive Web Design)",
+        "تطوير واجهات RTL ودعم اللغات (RTL & i18n)",
         "تحسين محركات البحث وسرعة الموقع",
         "سهولة الوصول",
         "Agile/Scrum"
@@ -157,15 +161,17 @@
     ],
     "projects": [
       {
-        "name": "Argatall - نظام إشعارات واتساب",
+        "name": "Woodland - تصميم وتطوير قالب Vitrin الافتراضي (منصة زد)",
         "period": "02/2026 - 05/2026",
-        "description": "نظام لإدارة حملات إشعارات واتساب، يساعد على تنظيم جهات الاتصال، إرسال التنبيهات، متابعة المهام، وإدارة صلاحيات المستخدمين، مع دعم للغتين العربية والإنجليزية.",
+        "description": "تطوير وتكويد قالب \"Vitrin\" لمتاجر منصة زد للتجارة الإلكترونية (متجر Woodland)، مبني بأسلوب RTL-first فائق السرعة ويشمل 12 صفحة متكاملة و11 قسماً ديناميكياً قابلاً للتخصيص عبر Schema مع تسريع البناء بـ Vite وتكامل سلس مع خدمات زد.",
         "tags": [
-          "Next.js 16",
-          "React 19",
-          "WaSender API"
+          "Tailwind CSS v4",
+          "Jinja2",
+          "Vite",
+          "Zid Platform",
+          "RTL"
         ],
-        "url": "http://argatall.cloud/"
+        "url": "https://wood-land.co/"
       },
       {
         "name": "Emtethal - منصة امتثال SaaS",
