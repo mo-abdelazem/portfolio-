@@ -69,7 +69,7 @@
       }
     ],
     "aboutStats": [
-      { "label": "Years experience", "target": 1, "suffix": "+" },
+      { "label": "Years experience", "target": 2, "suffix": "+" },
       { "label": "Projects shipped", "target": 20, "suffix": "+" },
       { "label": "Lighthouse score", "target": 85, "suffix": "+" },
       { "label": "Frameworks", "target": 4, "suffix": "" }

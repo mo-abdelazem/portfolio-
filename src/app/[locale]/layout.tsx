@@ -40,6 +40,24 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const t = await getTranslations({ locale, namespace: "Metadata" });
   const isArabic = locale === "ar";
 
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Person",
+    name: "Mohamed Abdelazem",
+    jobTitle: "Full Stack MERN Developer",
+    url: isArabic ? "https://mohamed.work/ar" : "https://mohamed.work",
+    email: "hello@mohamed.work",
+    address: {
+      "@type": "PostalAddress",
+      addressLocality: "Damietta",
+      addressCountry: "EG",
+    },
+    sameAs: [
+      "https://github.com/mo-abdelazem",
+      "https://linkedin.com/in/mo-abdelazem",
+    ],
+  };
+
   return {
     metadataBase: new URL("https://mohamed.work"),
     title: t("title"),
@@ -92,6 +110,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         "max-snippet": -1,
       },
     },
+    other: {
+      "application/ld+json": JSON.stringify(jsonLd),
+    },
   };
 }
 
@@ -108,39 +129,14 @@ export default async function LocaleLayout({ children, params }: Props) {
   const t = await getTranslations({ locale, namespace: "Home.copy" });
   const isArabic = locale === "ar";
 
-  const jsonLd = {
-    "@context": "https://schema.org",
-    "@type": "Person",
-    name: "Mohamed Abdelazem",
-    jobTitle: "Full Stack MERN Developer",
-    url: isArabic ? "https://mohamed.work/ar" : "https://mohamed.work",
-    email: "hello@mohamed.work",
-    address: {
-      "@type": "PostalAddress",
-      addressLocality: "Damietta",
-      addressCountry: "EG",
-    },
-    sameAs: [
-      "https://github.com/mo-abdelazem",
-      "https://linkedin.com/in/mo-abdelazem",
-    ],
-  };
-
   return (
     <html
       lang={locale}
       dir={isArabic ? "rtl" : "ltr"}
-      className={`${inter.variable} ${notoSansArabic.variable}`}
+      className={`${inter.variable} ${notoSansArabic.variable} js`}
       data-scroll-behavior="smooth"
       suppressHydrationWarning
     >
-      <head>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: "document.documentElement.classList.add('js');",
-          }}
-        />
-      </head>
       <body>
         <Noise />
         <CustomCursor />
@@ -156,10 +152,6 @@ export default async function LocaleLayout({ children, params }: Props) {
           {children}
           <Footer content={content} />
         </NextIntlClientProvider>
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-        />
       </body>
     </html>
   );
