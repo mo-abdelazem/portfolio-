@@ -40,7 +40,7 @@ export function Hero({ content }: HeroProps) {
         <div className="relative z-20 flex items-center justify-between gap-4 pb-6 border-b border-white/5 font-mono text-[8px] text-white/50 tracking-wider">
           <div className="flex items-center gap-2">
             <span className="h-1.5 w-1.5 rounded-full bg-(--accent)" />
-            <span>{"SYS.LOC: DAMIETTA // EGYPT"}</span>
+            <span>{"SYS.LOC: CAIRO // EGYPT"}</span>
           </div>
           <div className="hidden sm:flex items-center gap-2 text-white/40">
             <span>FULL STACK MERN ARCHITECTURE</span>

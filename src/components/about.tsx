@@ -25,7 +25,7 @@ export function About({ content }: AboutProps) {
   useEffect(() => {
     const updateTime = () => {
       const now = new Date();
-      // Format to Damietta / Cairo time (UTC+2 / UTC+3 depending on DST)
+      // Format to Cairo time (UTC+2 / UTC+3 depending on DST)
       const options: Intl.DateTimeFormatOptions = {
         timeZone: "Africa/Cairo",
         hour: "2-digit",
@@ -58,7 +58,7 @@ export function About({ content }: AboutProps) {
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-(--accent)" />
               </span>
               <span className="text-foreground font-medium">SYS.LOC:</span>
-              <span>DAMIETTA, EG</span>
+              <span>CAIRO, EG</span>
             </div>
 
             <div className="flex items-center gap-2 text-white/60">
@@ -143,7 +143,7 @@ export function About({ content }: AboutProps) {
                   <span className="h-3 w-3 rounded-full bg-[#febc2e]" aria-hidden="true" />
                   <span className="h-3 w-3 rounded-full bg-[#28c840]" aria-hidden="true" />
                   <span className="ms-3 font-mono text-xs text-muted-foreground">
-                    mohamed@damietta: ~/about (bash)
+                    mohamed@cairo: ~/about (bash)
                   </span>
                 </div>
 

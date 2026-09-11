@@ -12,7 +12,7 @@
       "title": "Full Stack MERN Developer",
       "email": "hello@mohamed.work",
       "phone": "01281235865",
-      "location": "Damietta, Egypt",
+      "location": "Cairo, Egypt",
       "github": "https://github.com/mo-abdelazem",
       "linkedin": "https://linkedin.com/in/mo-abdelazem",
       "whatsapp": "https://wa.me/201281235865",
@@ -53,7 +53,7 @@
     "details": [
       {
         "label": "Location",
-        "value": "Damietta, Egypt"
+        "value": "Cairo, Egypt"
       },
       {
         "label": "Languages",

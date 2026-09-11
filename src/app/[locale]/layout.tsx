@@ -49,7 +49,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     email: "hello@mohamed.work",
     address: {
       "@type": "PostalAddress",
-      addressLocality: "Damietta",
+      addressLocality: "Cairo",
       addressCountry: "EG",
     },
     sameAs: [
