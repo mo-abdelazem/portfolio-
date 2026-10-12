@@ -161,6 +161,19 @@
     ],
     "projects": [
       {
+        "name": "Adly Tex - Luxury B2B Textile Platform",
+        "period": "10/2026",
+        "description": "Bilingual luxury B2B digital platform and wholesale ordering showroom for a heritage Egyptian textile supplier. Features an interactive 20+ shade catalog with Pantone/Lab-Dip matcher, tactile virtual measuring tape (Meter Tape) with MOQ validation, garment consumption estimator, bespoke physical trade objects UI, and 100/100 Lighthouse score powered by GSAP and Lenis.",
+        "tags": [
+          "Next.js 16",
+          "React 19",
+          "GSAP",
+          "Tailwind CSS v4",
+          "next-intl"
+        ],
+        "url": "https://adlytex.com/"
+      },
+      {
         "name": "Woodland - Vitrin Theme (Zid Platform)",
         "period": "02/2026 - 05/2026",
         "description": "Engineered and coded the \"Vitrin\" e-commerce theme for Zid platform (Woodland store), featuring an RTL-first responsive architecture, 12 core pages, 11 schema-driven customizable dynamic sections, and sub-second loading powered by Vite and Tailwind CSS v4.",
@@ -183,17 +196,6 @@
           "i18n"
         ],
         "url": "https://www.emtethal.com/"
-      },
-      {
-        "name": "Napeeh - Educational Challenge Platform",
-        "period": "10/2025 - 12/2025",
-        "description": "Exams, quizzes, real-time tracking, adaptive difficulty, bilingual.",
-        "tags": [
-          "Nuxt.js",
-          "SSR",
-          "i18n"
-        ],
-        "url": "https://www.napeeh.net/"
       }
     ],
     "education": [
